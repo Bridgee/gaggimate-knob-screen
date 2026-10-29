@@ -1,0 +1,45 @@
+{
+  "schema": 1,
+  "kind": "gaggimate-knob-screen-firmware-pair",
+  "release_repository": "Bridgee/gaggimate-knob-screen",
+  "screen": {
+    "version": "0.3.6-rc.1",
+    "upstream_version": "v1.9.0",
+    "target": "display-knob",
+    "board": "Guition-K718",
+    "chip": "ESP32-S3",
+    "source_commit": "d58c6eb13028be84f10b6711180494ceefaaa8fe",
+    "source_tree": "9bf0efa965fbb3f19a15ff1026c39c78bd1dbeaa",
+    "application_offset": 65536,
+    "application_size": 6553600,
+    "asset": {
+      "bytes": 3688064,
+      "sha256": "3a7feb3c973501a0e841eefc401f624f77b3f42ff4d59d652ffe98946232f0c6",
+      "name": "display-knob-firmware.bin"
+    }
+  },
+  "controller": {
+    "version": "v1.9.0",
+    "board": "Gaggimate-Controller",
+    "chip": "ESP32-S3",
+    "origin": "official-release-unmodified",
+    "upstream_repository": "jniebuhr/gaggimate",
+    "upstream_commit": "43d2a7ba2299c196fd67c001f455985e07e57a49",
+    "upstream_release_id": 398998635,
+    "upstream_asset_id": 597822725,
+    "upstream_asset_url": "https://github.com/jniebuhr/gaggimate/releases/download/v1.9.0/board-firmware.bin",
+    "asset": {
+      "name": "board-firmware.bin",
+      "bytes": 701856,
+      "sha256": "00eedb76594a4c5bd04b2687a46a32d12b082952df240485bbc335f7bf2a5628"
+    }
+  },
+  "compatibility": {
+    "controller_protocol": 5,
+    "upstream_commit": "43d2a7ba2299c196fd67c001f455985e07e57a49",
+    "status": "package-verified",
+    "controller_ota_verified": false,
+    "screen_ota_verified": false
+  },
+  "installation_allowed": false
+}

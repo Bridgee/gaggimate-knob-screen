@@ -330,7 +330,7 @@ export function SystemTab() {
         <form ref={formRef} onSubmit={onSubmit} className='space-y-4'>
           <div className='form-control max-w-md'>
             <label htmlFor='channel' className='mb-2 block text-sm font-medium'>
-              Update Channel
+              {formData.pairSupported ? 'Official update channel' : 'Update Channel'}
             </label>
             <div className='flex w-full items-center gap-2'>
               <select id='channel' name='channel' className='select select-bordered grow'>
@@ -364,7 +364,12 @@ export function SystemTab() {
             </span>
           </div>
 
-          <FirmwareVersions settings={formData} submitting={submitting} onUpdate={onUpdate} />
+          <FirmwareVersions
+            settings={formData}
+            submitting={submitting}
+            onUpdate={onUpdate}
+            onCheckPair={() => apiService.send({ tp: 'req:ota-settings', refreshPair: true })}
+          />
         </div>
       </Section>
 

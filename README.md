@@ -15,6 +15,7 @@ This is an independent port maintained by [Bridgee](https://github.com/Bridgee).
 - Optional LED-ring temperature/pressure bars, following the screen colors. Enable the ring and set its brightness in **Settings → General → LED Ring**; saved preferences survive restarts.
 - Custom standby text or a centered clock, with both themes and touch wake.
 - Callable speaker and microphone interfaces. The temporary hardware-test page has been removed.
+- Read-only discovery of our matched releases, with separate screen/controller versions and compatibility status. Official upstream notices remain available.
 - Locked build inputs, official-base patch replay and reproducible firmware builds.
 
 ## Feature previews
@@ -83,7 +84,7 @@ See [Port architecture and migration](docs/PORTING.md) for the implementation ma
 
 ## Releases and compatibility
 
-The development candidate is **0.3.6-rc.1**, including persistent LED controls. The latest published candidate is **[v0.3.6-rc.1](https://github.com/Bridgee/gaggimate-knob-screen/releases/tag/v0.3.6-rc.1)**, based on GaggiMate v1.9.0 / protocol 5.
+The development candidate is **0.3.7-rc.1**, adding read-only matched-release discovery. The latest published candidate is **[v0.3.6-rc.1](https://github.com/Bridgee/gaggimate-knob-screen/releases/tag/v0.3.6-rc.1)**, based on GaggiMate v1.9.0 / protocol 5.
 It is a **pre-release**: software/build checks do not imply hardware acceptance of this exact binary. Release notes identify the tested scope and artifact hashes.
 
 - Update the display over **USB using a K718 build**. OTA installation for both the display and controller is disabled in the knob-screen firmware. Official update checks and notifications remain enabled; update notices do not confirm port compatibility.

@@ -7,6 +7,7 @@
 - Custom standby text/clock and hardware audio interfaces.
 - English firmware repository, source reconstruction and reproducible-build tooling.
 - Matched-package preparation with our screen image and a hash-pinned, unmodified official controller image.
+- Read-only matched-release discovery, independent component versions and compatibility status; official upstream notices retained.
 
 ## Next
 
@@ -16,7 +17,7 @@
 
 ## Proposed directions
 
-- OTA discovery from our matched releases, with separate component versions, compatibility/target checks and verified installation/recovery.
+- Verified OTA installation/recovery from matched releases, building on the read-only discovery path.
 - Reproducible controller self-builds compared against official release binaries.
 - Pinned build-tool packages for more host platforms.
 - Better battery estimation and power-source reporting where hardware permits.

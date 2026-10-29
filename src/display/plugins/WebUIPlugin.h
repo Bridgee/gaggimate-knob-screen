@@ -6,6 +6,9 @@
 #include <DNSServer.h>
 
 #include "GitHubOTA.h"
+#ifdef GAGGIMATE_KNOB
+#include "MatchedRelease.h"
+#endif
 #include <ArduinoJson.h>
 #include <ESPAsyncWebServer.h>
 #include <display/core/Plugin.h>
@@ -61,6 +64,11 @@ class WebUIPlugin : public Plugin {
     // Core dump download
     void handleCoreDumpDownload(AsyncWebServerRequest *request);
 
+    bool anyUpdateAvailable() const;
+#ifdef GAGGIMATE_KNOB
+    matched_release::Discovery matchedReleases;
+    std::atomic<bool> pairRefreshRequested{true};
+#endif
     GitHubOTA *ota = nullptr;
     AsyncWebServer server;
     WebSocketHandler wsHandler;

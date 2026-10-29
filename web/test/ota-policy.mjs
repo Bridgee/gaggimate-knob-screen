@@ -9,7 +9,7 @@ const server = await createServer({
   optimizeDeps: { noDiscovery: true, entries: [] },
 });
 try {
-  const { FirmwareVersions, canInstallOta } = await server.ssrLoadModule(
+  const { FirmwareVersions, MatchedVersions, canInstallOta } = await server.ssrLoadModule(
     '/src/pages/Settings/tabs/FirmwareVersions.jsx',
   );
   const settings = {
@@ -67,6 +67,60 @@ try {
   check(upstream, true, [false, false]);
   assert.equal(canInstallOta(upstream, 'both'), false);
   assert.equal(canInstallOta(upstream, ''), false);
+  const pair = {
+    ...settings,
+    pairSupported: true,
+    pairStatus: 'ready',
+    pairReleaseTag: 'v0.3.6-rc.1',
+    pairReleaseUrl: 'https://github.com/Bridgee/gaggimate-knob-screen/releases/tag/v0.3.6-rc.1',
+    pairPrerelease: true,
+    pairIncludesPrereleases: true,
+    pairProtocol: 5,
+    pairDisplayVersion: '0.3.6-rc.1',
+    pairControllerVersion: 'v1.9.0',
+    pairDisplayState: 'local-newer',
+    pairControllerState: 'up-to-date',
+    pairCompatibility: 'matched',
+  };
+  let refreshes = 0;
+  const pairedTree = MatchedVersions({ settings: pair, onCheckPair: () => refreshes++ });
+  const pairedButtons = buttons(pairedTree);
+  assert.equal(pairedButtons.length, 3);
+  assert.deepEqual(
+    pairedButtons.map(b => !!b.props.disabled),
+    [false, true, true],
+  );
+  pairedButtons[0].props.onClick();
+  assert.equal(refreshes, 1);
+  const pairedHtml = renderToString(pairedTree);
+  assert.match(pairedHtml, /Published: 0.3.6-rc.1/);
+  assert.match(pairedHtml, /Published: v1.9.0/);
+  assert.match(pairedHtml, /Installed version is newer/);
+  assert.match(pairedHtml, /Pre-release/);
+  assert.match(pairedHtml, /Official GaggiMate 1.10.0 is available/);
+  assert.match(pairedHtml, /OTA installation is unverified/);
+  assert.equal(canInstallOta({ ...pair, otaAllowed: true }, 'controller'), false);
+  assert.equal(canInstallOta({ ...pair, otaAllowed: true }, 'display'), false);
+  for (const [status, message] of [
+    ['error', 'Release metadata transfer was interrupted.'],
+    ['no-release', 'No stable matched release was found.'],
+    ['checking', ''],
+  ]) {
+    const tree = MatchedVersions({
+      settings: { ...pair, pairStatus: status, pairMessage: message },
+    });
+    const html = renderToString(tree);
+    assert.doesNotMatch(html, /Published: 0.3.6-rc.1/);
+    assert.match(html, /Published: Unavailable/);
+    assert.equal(!!buttons(tree)[0].props.disabled, status === 'checking');
+    assert.equal(buttons(tree).filter(b => b.props.disabled).length >= 2, true);
+  }
+  for (const state of ['unknown', 'incompatible']) {
+    const html = renderToString(
+      MatchedVersions({ settings: { ...pair, pairCompatibility: state } }),
+    );
+    assert.doesNotMatch(html, /Target, protocol and controller version match/);
+  }
   console.log(
     'OTA web policy: disabled controls, guarded actions, update notices and legacy behavior passed.',
   );

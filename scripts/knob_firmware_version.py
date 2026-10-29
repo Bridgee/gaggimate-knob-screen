@@ -19,6 +19,8 @@ timestamp = datetime.datetime.fromtimestamp(epoch, datetime.timezone.utc).strfti
 (root / 'src/version.h').write_text(
     f'#pragma once\n#define BUILD_GIT_VERSION "{version}"\n'
     f'#define BUILD_UPSTREAM_VERSION "{config["upstream"]["version"]}"\n'
+    f'#define BUILD_PORT_VERSION "{config["port_version"]}"\n'
+    f'#define BUILD_RELEASE_CHANNEL "{config.get("release_channel", "development")}"\n'
     f'#define BUILD_TIMESTAMP "{timestamp}"\n'
 )
 print('K718 build version:', version)

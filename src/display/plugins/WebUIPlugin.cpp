@@ -21,6 +21,7 @@
 #include <version.h>
 #ifdef GAGGIMATE_KNOB
 #include <display/drivers/GuitionKnob/Hardware.h>
+#include <Protocol.h>
 #endif
 
 static WebUIPlugin *g_webUIPlugin = nullptr;
@@ -35,7 +36,23 @@ static void *mbedtlsPsramCalloc(size_t n, size_t size) { // NOSONAR
 }
 static void mbedtlsPsramFree(void *p) { heap_caps_free(p); } // NOSONAR
 
-WebUIPlugin::WebUIPlugin() : server(80) { g_webUIPlugin = this; }
+WebUIPlugin::WebUIPlugin()
+#ifdef GAGGIMATE_KNOB
+    : matchedReleases(std::strcmp(BUILD_RELEASE_CHANNEL, "candidate") == 0), server(80)
+#else
+    : server(80)
+#endif
+{ g_webUIPlugin = this; }
+
+bool WebUIPlugin::anyUpdateAvailable() const {
+#ifdef GAGGIMATE_KNOB
+    const auto pair = matchedReleases.snapshot();
+    if (pair.status == "ready" &&
+        (matched_release::order(pair.pair.screenVersion, BUILD_PORT_VERSION) > 0 ||
+         matched_release::order(pair.pair.controllerVersion, controller->getSystemInfo().version.c_str()) > 0)) return true;
+#endif
+    return ota->isUpdateAvailable() || ota->isUpdateAvailable(true);
+}
 
 void WebUIPlugin::setup(Controller *_controller, PluginManager *_pluginManager) {
     // Redirect mbedTLS allocations to PSRAM before any TLS (OTA) handshake runs, so the
@@ -74,7 +91,7 @@ void WebUIPlugin::setup(Controller *_controller, PluginManager *_pluginManager) 
     wsHandler.setup(controller, pluginManager);
     wsHandler.onOtaSettings([this](JsonDocument &request) { handleOTASettings(request); });
     wsHandler.onOtaStart([this](JsonDocument &request) { handleOTAStart(request); });
-    wsHandler.setUpdateAvailableProvider([this] { return ota->isUpdateAvailable() || ota->isUpdateAvailable(true); });
+    wsHandler.setUpdateAvailableProvider([this] { return anyUpdateAvailable(); });
 
     setupServer();
 }
@@ -100,10 +117,22 @@ void WebUIPlugin::loop() {
     // (not now > last + interval) keeps the interval check millis()-rollover-safe.
     if (!controller->isActive() && (lastUpdateCheck == 0 || now - lastUpdateCheck > UPDATE_CHECK_INTERVAL)) {
         ota->checkForUpdates();
+#ifdef GAGGIMATE_KNOB
+        matchedReleases.request();
+        pluginManager->trigger("ota:update:status", "value", anyUpdateAvailable());
+#else
         pluginManager->trigger("ota:update:status", "value", ota->isUpdateAvailable());
+#endif
         lastUpdateCheck = now;
         updateOTAStatus(ota->getCurrentVersion());
     }
+#ifdef GAGGIMATE_KNOB
+    if (!controller->isActive() && pairRefreshRequested.exchange(false)) matchedReleases.request();
+    if (matchedReleases.takeChanged()) {
+        pluginManager->trigger("ota:update:status", "value", anyUpdateAvailable());
+        updateOTAStatus(ota->getCurrentVersion());
+    }
+#endif
     wsHandler.loop(now);
     if (now > lastDns + DNS_PERIOD && dnsServer != nullptr) {
         lastDns = now;
@@ -281,6 +310,9 @@ void WebUIPlugin::stop() {
 }
 
 void WebUIPlugin::handleOTASettings(JsonDocument &request) {
+#ifdef GAGGIMATE_KNOB
+    if (request["refreshPair"].as<bool>()) pairRefreshRequested = true;
+#endif
     if (request["update"].as<bool>()) {
         if (!request["channel"].isNull()) {
             controller->getSettings().setOTAChannel(request["channel"].as<String>() == "latest" ? "latest" : "nightly");
@@ -699,6 +731,26 @@ void WebUIPlugin::updateOTAStatus(const String &version) {
     doc["latestVersion"] = ota->getCurrentVersion();
     doc["channel"] = settings.getOTAChannel();
     doc["updating"] = updating;
+#ifdef GAGGIMATE_KNOB
+    const auto pair = matchedReleases.snapshot();
+    const auto system = controller->getSystemInfo();
+    const bool ready = pair.status == "ready";
+    doc["pairSupported"] = true;
+    doc["pairStatus"] = pair.status;
+    doc["pairMessage"] = pair.message;
+    doc["pairSource"] = "https://github.com/Bridgee/gaggimate-knob-screen/releases";
+    doc["pairIncludesPrereleases"] = std::strcmp(BUILD_RELEASE_CHANNEL, "candidate") == 0;
+    doc["pairReleaseTag"] = pair.release.tag;
+    doc["pairPrerelease"] = pair.release.preview;
+    doc["pairReleaseUrl"] = ready ? std::string(matched_release::ReleaseRoot) + "tag/" + pair.release.tag : "";
+    doc["pairDisplayVersion"] = pair.pair.screenVersion;
+    doc["pairControllerVersion"] = pair.pair.controllerVersion;
+    doc["pairProtocol"] = pair.pair.protocol;
+    doc["pairDisplayState"] = ready ? matched_release::componentState(BUILD_PORT_VERSION, pair.pair.screenVersion) : "unknown";
+    doc["pairControllerState"] = ready ? matched_release::componentState(system.version.c_str(), pair.pair.controllerVersion) : "unknown";
+    doc["pairCompatibility"] = ready ? matched_release::compatibility(pair.pair, gm_proto::PROTOCOL_VERSION,
+        system.protocolVersion, controller->getSystemState() == SYSTEM_READY, system.version.c_str()) : "unknown";
+#endif
     // LittleFS usage metrics
     {
         size_t total = LittleFS.totalBytes();

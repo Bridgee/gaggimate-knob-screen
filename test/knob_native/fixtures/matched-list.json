@@ -1,0 +1,46 @@
+[
+  {
+    "tag_name": "v0.3.6-rc.1",
+    "draft": false,
+    "prerelease": true,
+    "published_at": "2026-10-29T21:13:28Z",
+    "assets": [
+      {
+        "name": "board-firmware.bin",
+        "browser_download_url": "https://github.com/Bridgee/gaggimate-knob-screen/releases/download/v0.3.6-rc.1/board-firmware.bin",
+        "size": 701856,
+        "digest": "sha256:00eedb76594a4c5bd04b2687a46a32d12b082952df240485bbc335f7bf2a5628"
+      },
+      {
+        "name": "display-knob-firmware.bin",
+        "browser_download_url": "https://github.com/Bridgee/gaggimate-knob-screen/releases/download/v0.3.6-rc.1/display-knob-firmware.bin",
+        "size": 3688064,
+        "digest": "sha256:3a7feb3c973501a0e841eefc401f624f77b3f42ff4d59d652ffe98946232f0c6"
+      },
+      {
+        "name": "gaggimate-knob-screen-v0.3.6-rc.1-pair.zip",
+        "browser_download_url": "https://github.com/Bridgee/gaggimate-knob-screen/releases/download/v0.3.6-rc.1/gaggimate-knob-screen-v0.3.6-rc.1-pair.zip",
+        "size": 2787131,
+        "digest": "sha256:9079ea6d2b9cba7c8a7cc172cea593872133204718d50f1ae36cd959d5c74053"
+      },
+      {
+        "name": "gaggimate-knob-screen-v0.3.6-rc.1-usb.zip",
+        "browser_download_url": "https://github.com/Bridgee/gaggimate-knob-screen/releases/download/v0.3.6-rc.1/gaggimate-knob-screen-v0.3.6-rc.1-usb.zip",
+        "size": 30853810,
+        "digest": "sha256:9bf763d6f3516839fe064d86f04b868bf3ca105e79e4106e5996c0108ef679ba"
+      },
+      {
+        "name": "pair.json",
+        "browser_download_url": "https://github.com/Bridgee/gaggimate-knob-screen/releases/download/v0.3.6-rc.1/pair.json",
+        "size": 1533,
+        "digest": "sha256:a1f9de587001a9f57acd854ed18a9695deaec330206ff176901f0dc191805513"
+      },
+      {
+        "name": "SHA256SUMS",
+        "browser_download_url": "https://github.com/Bridgee/gaggimate-knob-screen/releases/download/v0.3.6-rc.1/SHA256SUMS",
+        "size": 470,
+        "digest": "sha256:ff481c976604a6ad534622f397899f7138df2d990f4ad1049e26572805c5e628"
+      }
+    ]
+  }
+]

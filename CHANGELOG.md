@@ -1,6 +1,13 @@
 # Changelog
 
-## 0.3.6-rc.1 — candidate
+## 0.3.7-rc.1 — candidate
+
+- Check our published matched releases in a background worker and display independent component versions and compatibility in System & Updates.
+- Validate HTTPS metadata, manifest/asset digests, target/partition and protocol metadata; keep both OTA installers disabled.
+- Preserve separate official Stable/Nightly notices and handle missing releases, network errors and unknown controllers explicitly.
+- Compare port versions using SemVer precedence, including final/prerelease ordering and build metadata.
+
+## 0.3.6-rc.1 — pre-release
 
 - Add LED-ring enable/brightness controls in Settings → General. Saved preferences apply immediately and return after reboot.
 - Keep LED-only saves separate from coffee-machine parameter updates.
