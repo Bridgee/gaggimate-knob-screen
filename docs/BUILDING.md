@@ -12,6 +12,7 @@ source .venv/bin/activate
 python -m pip install -r port/requirements.lock.txt
 nvm install
 nvm use
+npm install --global npm@11.6.2
 python scripts/k718.py doctor
 python scripts/k718.py build --out dist/release
 ```
