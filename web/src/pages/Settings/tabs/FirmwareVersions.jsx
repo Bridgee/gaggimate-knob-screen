@@ -50,7 +50,7 @@ export function MatchedVersions({ settings, onCheckPair }) {
               {settings.pairReleaseTag}
             </a>
             {settings.pairPrerelease && (
-              <span className='badge badge-warning badge-outline'>Pre-release</span>
+              <span className='badge badge-warning'>Pre-release</span>
             )}
             <span className='text-base-content/70 text-sm'>Protocol {settings.pairProtocol}</span>
           </div>
