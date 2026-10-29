@@ -199,6 +199,18 @@ gaggimate_ui::StandbyAppearance Settings::getStandbyAppearance() const {
     }
     return result;
 }
+#ifdef GAGGIMATE_KNOB
+guition_knob::LedPreferences Settings::getKnobLedPreferences() const {
+    std::lock_guard<std::mutex> guard(standbyAppearanceMutex);
+    return {knobLedEnabled.get(), std::clamp(knobLedBrightness.get(), 0, 100)};
+}
+void Settings::setKnobLedPreferences(const guition_knob::LedPreferences &value) {
+    std::lock_guard<std::mutex> guard(standbyAppearanceMutex);
+    knobLedEnabled.set(value.enabled);
+    knobLedBrightness.set(std::clamp(value.brightness, 0, 100));
+}
+#endif
+
 void Settings::setStandbyContent(const String &content) {
     if(content.length()!=std::strlen(content.c_str()) || !gaggimate_ui::validStandbyContent(content.c_str()))return;
     std::lock_guard<std::mutex> guard(standbyAppearanceMutex);standbyContent.set(content);
@@ -312,7 +324,7 @@ void Settings::doSave() {
     bool dirty = false;
     for (auto *property : registry) {
         std::unique_lock<std::mutex> appearanceGuard(standbyAppearanceMutex,std::defer_lock);
-        if(property==&standbyContent || property==&standbyText)appearanceGuard.lock();
+        if(protectedAppearanceProperty(property))appearanceGuard.lock();
         if (property->isDirty()) {
             dirty = true;
             break;
@@ -325,7 +337,7 @@ void Settings::doSave() {
     preferences.begin(PREFERENCES_KEY, false);
     for (auto *property : registry) {
         std::unique_lock<std::mutex> appearanceGuard(standbyAppearanceMutex,std::defer_lock);
-        if(property==&standbyContent || property==&standbyText)appearanceGuard.lock();
+        if(protectedAppearanceProperty(property))appearanceGuard.lock();
         property->store(preferences);
     }
     preferences.end();

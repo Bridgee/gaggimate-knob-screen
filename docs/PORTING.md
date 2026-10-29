@@ -16,7 +16,7 @@ This is a display port. The original controller/PID/process behavior and coffee-
 | Board support | `boards/Guition-K718.json`, `src/display/drivers/GuitionKnob*` | LCD initialization, touch, backlight and board peripherals |
 | Native UI | `scripts/generate_knob_ui.py`, `src/display/ui/default/knob360/` | Generate 360 × 360 geometry, fonts and image resources from upstream EEZ inputs |
 | Power status | `KnobMenuBattery.*`, `KnobBatteryImages.*` | Shared menu/standby battery icon and power-source state |
-| LED gauges | `KnobLedGauges.h`, `LedGaugePolicy.h`, `LedSpiEncoding.h` | Mirror visible meter values/colors through the hardware worker |
+| LED gauges | `KnobLedGauges.h`, `LedGaugePolicy.h`, `LedPreferences.h`, `LedSpiEncoding.h` | Mirror visible meter values/colors through the hardware worker |
 | Rotary input | `EncoderDetents.h`, `KnobAdjustment.*` | Decode direction contacts; select a field and invoke its existing +/− action |
 | Standby appearance | `StandbyDisplay.*`, `Settings.*`, General web settings | Optional custom text or centered clock with original wake behavior |
 | Build/maintenance | `port/`, `scripts/k718*.py`, `test/knob*` | Locked inputs, checks, source replay, artifact identity and checked installation |

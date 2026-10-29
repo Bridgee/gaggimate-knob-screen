@@ -3,7 +3,7 @@
 ## Implemented
 
 - Native 360 × 360 display, touch, backlight and upstream controller connection.
-- Battery/power status, optional LED gauge mirror and rotary parameter adjustment.
+- Battery/power status, optional LED gauge mirror with persistent enable/brightness controls, and rotary parameter adjustment.
 - Custom standby text/clock and hardware audio interfaces.
 - English firmware repository, source reconstruction and reproducible-build tooling.
 
@@ -15,7 +15,6 @@
 
 ## Proposed directions
 
-- Persistent, opt-in LED mode and brightness settings.
 - A K718-compatible OTA delivery path with image/target checks.
 - Pinned build-tool packages for more host platforms.
 - Better battery estimation and power-source reporting where hardware permits.

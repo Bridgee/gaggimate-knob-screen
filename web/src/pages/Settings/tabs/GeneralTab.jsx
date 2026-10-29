@@ -1,3 +1,4 @@
+import { KnobLedSettings } from './KnobLedSettings';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faEye } from '@fortawesome/free-solid-svg-icons/faEye';
 import { faEyeSlash } from '@fortawesome/free-solid-svg-icons/faEyeSlash';
@@ -291,6 +292,8 @@ export function GeneralTab({
           </div>
         </div>
       </Section>
+
+      <KnobLedSettings formData={formData} onChange={onChange} />
 
       {/* Display Settings */}
       <Section title='Display Settings' className='h-full'>

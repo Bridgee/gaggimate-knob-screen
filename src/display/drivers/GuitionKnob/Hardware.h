@@ -5,6 +5,7 @@
 #include <freertos/queue.h>
 #include "HardwarePolicy.h"
 #include "LedGaugePolicy.h"
+#include "LedPreferences.h"
 #include <driver/spi_master.h>
 #include <esp_timer.h>
 #include "EncoderDetents.h"
@@ -51,6 +52,7 @@ class Hardware {
     void bindWeb(AsyncWebServer &server);
     bool configureLeds(const LedConfig &config);
     void publishLedGauges(const GaugeFrame &frame);
+    void applyLedPreferences(const LedPreferences &value, bool force = false);
   private:
     HardwareState state;
     portMUX_TYPE lock = portMUX_INITIALIZER_UNLOCKED;
@@ -65,6 +67,7 @@ class Hardware {
     void closeLeds();
     void serviceLeds();
     GaugeFrame ledGauges;
+    LedPreferenceApplier ledPreferenceApplier;
     uint32_t ledPublishedMs = 0, lastLedService = 0;
     bool ledInstalled = false, ledFrameSent = false;
     spi_device_handle_t ledSpi = nullptr;

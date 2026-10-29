@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.6-rc.1 — candidate
+
+- Add LED-ring enable/brightness controls in Settings → General. Saved preferences apply immediately and return after reboot.
+- Keep LED-only saves separate from coffee-machine parameter updates.
+
 ## 0.3.5-rc.2 — candidate
 
 - Disable display and controller OTA installation in the web UI and firmware, with a USB installation notice.

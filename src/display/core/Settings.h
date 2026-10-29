@@ -10,6 +10,9 @@
 #include <vector>
 #include <mutex>
 #include <display/ui/default/StandbyDisplayPolicy.h>
+#ifdef GAGGIMATE_KNOB
+#include <display/drivers/GuitionKnob/LedPreferences.h>
+#endif
 
 #define PREFERENCES_KEY "controller"
 
@@ -71,6 +74,10 @@ using SettingsCallback = std::function<void(Settings *)>;
 class Settings {
   public:
     Settings();
+#ifdef GAGGIMATE_KNOB
+    guition_knob::LedPreferences getKnobLedPreferences() const;
+    void setKnobLedPreferences(const guition_knob::LedPreferences &value);
+#endif
 
     void batchUpdate(const SettingsCallback &callback);
     void save(bool noDelay = false);
@@ -320,6 +327,19 @@ class Settings {
     mutable std::mutex standbyAppearanceMutex;
     Property<String> standbyContent{registry, "sb_content", "logo"};
     Property<String> standbyText{registry, "sb_text", "GaggiMate"};
+
+#ifdef GAGGIMATE_KNOB
+    Property<bool> knobLedEnabled{registry, "kl_en", false};
+    Property<int> knobLedBrightness{registry, "kl_pct", 45};
+#endif
+    bool protectedAppearanceProperty(const PropertyBase *property) const {
+        if (property == &standbyContent || property == &standbyText) return true;
+#ifdef GAGGIMATE_KNOB
+        return property == &knobLedEnabled || property == &knobLedBrightness;
+#else
+        return false;
+#endif
+    }
 
     // Warning levels (WarningLevel)
     Property<int> warnWaterLevel{registry, "wl_water", WARNING_LEVEL_WARN};

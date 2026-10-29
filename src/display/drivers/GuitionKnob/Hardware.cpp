@@ -120,6 +120,16 @@ bool Hardware::configureLeds(const LedConfig &config) {
     return accept;
 }
 
+void Hardware::applyLedPreferences(const LedPreferences &value, bool force) {
+    portENTER_CRITICAL(&lock);
+    ledPreferenceApplier.update(value, [this](const LedConfig &config) {
+        if (!state.ready || state.busy) return false;
+        state.ledConfig = config;
+        return true;
+    }, force);
+    portEXIT_CRITICAL(&lock);
+}
+
 void Hardware::publishLedGauges(const GaugeFrame &frame) {
     const uint32_t now = millis();
     portENTER_CRITICAL(&lock);

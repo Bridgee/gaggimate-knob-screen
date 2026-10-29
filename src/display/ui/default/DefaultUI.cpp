@@ -321,6 +321,7 @@ void DefaultUI::loop() {
     const uint32_t ledNow = millis();
     if (ledNow - lastLedPublish >= 100) {
         lastLedPublish = ledNow;
+        guition_knob::Hardware::instance().applyLedPreferences(controller->getSettings().getKnobLedPreferences());
         const bool active = eez_flow_get_current_screen() != SCREEN_ID_STANDBY_SCREEN &&
             controller->getClientController()->isConnected() && !controller->isErrorState();
         guition_knob::Hardware::instance().publishLedGauges(guition_knob::captureLedGauges(lv_scr_act(), active));

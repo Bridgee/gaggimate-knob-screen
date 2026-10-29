@@ -12,7 +12,7 @@ This is an independent port maintained by [Bridgee](https://github.com/Bridgee).
 - Native display, touch and backlight support; upstream Wi-Fi/web and Bluetooth controller communication remain available.
 - Battery/power-source icons on both the menu and standby screens, including low-battery colors.
 - Rotary parameter adjustment: direct on single-field pages; tap to select on multi-field pages. Original +/− buttons remain available.
-- Optional LED-ring temperature/pressure bars, following the screen colors.
+- Optional LED-ring temperature/pressure bars, following the screen colors. Enable the ring and set its brightness in **Settings → General → LED Ring**; saved preferences survive restarts.
 - Custom standby text or a centered clock, with both themes and touch wake.
 - Callable speaker and microphone interfaces. The temporary hardware-test page has been removed.
 - Locked build inputs, official-base patch replay and reproducible firmware builds.
@@ -81,12 +81,12 @@ See [Port architecture and migration](docs/PORTING.md) for the implementation ma
 
 ## Releases and compatibility
 
-The first public candidate is **[v0.3.5-rc.1](https://github.com/Bridgee/gaggimate-knob-screen/releases/tag/v0.3.5-rc.1)**, based on GaggiMate v1.9.0 / protocol 5.
+The development candidate is **0.3.6-rc.1**, including persistent LED controls. The last published candidate is **[v0.3.5-rc.1](https://github.com/Bridgee/gaggimate-knob-screen/releases/tag/v0.3.5-rc.1)**, based on GaggiMate v1.9.0 / protocol 5.
 It is a **pre-release**: software/build checks do not imply hardware acceptance of this exact binary. Release notes identify the tested scope and artifact hashes.
 
 - Update the display over **USB using a K718 build**. OTA installation for both the display and controller is disabled in the knob-screen firmware. Official update checks and notifications remain enabled; update notices do not confirm port compatibility.
 - Battery percentage is uncalibrated. The lightning symbol means external power, not measured charging current.
-- LED mode/brightness are currently RAM-only and reset at reboot.
+- LED-ring preferences are saved on the screen. The ring remains off in standby and while the controller is disconnected.
 - Speaker/microphone interfaces have been exercised; continuous audio, audio quality and optional haptics are not qualified.
 
 Successful CI runs provide development firmware bundles under Actions. Versioned public packages are published under [Releases](https://github.com/Bridgee/gaggimate-knob-screen/releases).

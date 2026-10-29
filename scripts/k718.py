@@ -116,7 +116,7 @@ def checks(audit):
     audit.run('workflow-failure-cases',[sys.executable,'-m','unittest','discover','-s','test/knob_workflow'])
     audit.run('native-ui',[sys.executable,'test/knob_native/check_ui.py'])
     audit.run('diagnostic-nonblocking',[sys.executable,'test/knob_native/check_diagnostics.py'])
-    for name,source in [('geometry','test/knob_geometry/check.cpp'),('brightness','test/knob_native/check_brightness.cpp'),('hardware-policy','test/knob_native/check_hardware.cpp'),('led-gauges','test/knob_native/check_led_gauges.cpp'),('led-wire','test/knob_native/check_led_encoding.cpp'),('rotary-standby','test/knob_native/check_rotary_policy.cpp')]:
+    for name,source in [('geometry','test/knob_geometry/check.cpp'),('brightness','test/knob_native/check_brightness.cpp'),('hardware-policy','test/knob_native/check_hardware.cpp'),('led-gauges','test/knob_native/check_led_gauges.cpp'),('led-wire','test/knob_native/check_led_encoding.cpp'),('led-preferences','test/knob_native/check_led_preferences.cpp'),('rotary-standby','test/knob_native/check_rotary_policy.cpp')]:
         binary=audit.path/name
         audit.run(name+'-compile',['c++','-std=c++17','-Wall','-Wextra','-Werror','-fsanitize=address,undefined','-Isrc',source,'-o',binary])
         audit.run(name,[binary])
@@ -185,6 +185,7 @@ def bind_upstream(version, expected_protocol):
 def web_bundle(audit):
     audit.run('npm-ci',['npm','ci'],ROOT/'web')
     audit.run('web-ota-policy',['npm','run','test:ota'],ROOT/'web')
+    audit.run('web-led-settings',['npm','run','test:led'],ROOT/'web')
     audit.run('web-build',['npm','run','build'],ROOT/'web')
     dist=ROOT/'web/dist'
     gzip_assets(dist)

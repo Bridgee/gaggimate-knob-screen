@@ -311,13 +311,36 @@ static bool parseBoolArg(const String &value) {
 
 void WebUIPlugin::handleSettings(AsyncWebServerRequest *request) const {
     if (request->method() == HTTP_POST) {
+#ifdef GAGGIMATE_KNOB
+        const auto validLedArg = [request](const char *name, bool (*validate)(const char *)) {
+            if (!request->hasArg(name)) return true;
+            const String value = request->arg(name);
+            return value.length() == std::strlen(value.c_str()) && validate(value.c_str());
+        };
+        if (!validLedArg("knobLedEnabled", guition_knob::validLedEnabled) ||
+            !validLedArg("knobLedBrightness", guition_knob::validLedPercent)) {
+            request->send(400, "text/plain", "LED enabled must be 0/1; brightness must be an integer from 0 to 100.");
+            return;
+        }
+#endif
         if ((request->hasArg("standbyContent") && (request->arg("standbyContent").length()!=std::strlen(request->arg("standbyContent").c_str()) || !gaggimate_ui::validStandbyContent(request->arg("standbyContent").c_str()))) ||
             (request->hasArg("standbyText") && (request->arg("standbyText").length()!=std::strlen(request->arg("standbyText").c_str()) || !gaggimate_ui::validStandbyText(request->arg("standbyText").c_str())))) {
             request->send(400,"text/plain","Standby content must be logo/text/clock; text allows at most24 printable ASCII characters.");return;
         }
-        const bool appearanceOnly=(request->hasArg("standbyContent") || request->hasArg("standbyText")) &&
-            request->args()==int(request->hasArg("standbyContent"))+int(request->hasArg("standbyText"));
+        int appearanceArgs = int(request->hasArg("standbyContent")) + int(request->hasArg("standbyText"));
+#ifdef GAGGIMATE_KNOB
+        appearanceArgs += int(request->hasArg("knobLedEnabled")) + int(request->hasArg("knobLedBrightness"));
+#endif
+        const bool appearanceOnly = appearanceArgs > 0 && request->args() == appearanceArgs;
         controller->getSettings().batchUpdate([request](Settings *settings) {
+#ifdef GAGGIMATE_KNOB
+            if (request->hasArg("knobLedEnabled") || request->hasArg("knobLedBrightness")) {
+                auto value = settings->getKnobLedPreferences();
+                if (request->hasArg("knobLedEnabled")) value.enabled = request->arg("knobLedEnabled") == "1";
+                if (request->hasArg("knobLedBrightness")) value.brightness = request->arg("knobLedBrightness").toInt();
+                settings->setKnobLedPreferences(value);
+            }
+#endif
             if (request->hasArg("startupMode"))
                 settings->setStartupMode(request->arg("startupMode") == "brew" ? MODE_BREW : MODE_STANDBY);
             if (request->hasArg("startupProfile"))
@@ -488,6 +511,11 @@ void WebUIPlugin::handleSettings(AsyncWebServerRequest *request) const {
             }
             settings->save(true);
         });
+#ifdef GAGGIMATE_KNOB
+        if (request->hasArg("knobLedEnabled") || request->hasArg("knobLedBrightness")) {
+            guition_knob::Hardware::instance().applyLedPreferences(controller->getSettings().getKnobLedPreferences(), true);
+        }
+#endif
         pluginManager->trigger("settings:changed");
         if(!appearanceOnly) {
             controller->setTargetTemp(controller->getTargetTemp());
@@ -548,6 +576,12 @@ void WebUIPlugin::handleSettings(AsyncWebServerRequest *request) const {
     doc["steamPumpPercentage"] = settings.getSteamPumpPercentage();
     doc["steamPumpCutoff"] = settings.getSteamPumpCutoff();
     doc["themeMode"] = settings.getThemeMode();
+#ifdef GAGGIMATE_KNOB
+    const auto ledPreferences = settings.getKnobLedPreferences();
+    doc["knobLedSupported"] = true;
+    doc["knobLedEnabled"] = ledPreferences.enabled;
+    doc["knobLedBrightness"] = ledPreferences.brightness;
+#endif
     doc["sunriseIdle"] = settings.getSunriseIdle();
     doc["sunriseActive"] = settings.getSunriseActive();
     doc["sunriseFinished"] = settings.getSunriseFinished();

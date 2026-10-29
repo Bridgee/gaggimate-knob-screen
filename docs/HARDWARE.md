@@ -24,7 +24,11 @@ Clockwise rotation produces negative raw detents on the tested screen; the UI ap
 The decoder samples every 500 µs, qualifies 6 ms low and 2 ms both-high, and rejects ambiguous or startup-held pulses.
 
 LED 0 is at 12 o'clock, numbering clockwise; LED 6 is at the bottom. UI mode follows the actual visible meter colors, leaves the unfilled arc white and turns the top/bottom gaps off.
-`LedConfig` supports off, UI, identify and fixed-color modes. Brightness is 0–255; mode/brightness are RAM-only (boot defaults: off/32).
+`LedConfig` supports off, UI, identify and fixed-color modes. Driver brightness is 0–255. **Settings → General → LED Ring** stores enable/brightness (0–100%) in screen NVS; default off/45%. Enabling uses the validated 12-LED UI mapping. The ring stays off in standby, on controller loss or without visible gauges.
+
+`GET /api/settings` advertises `knobLedSupported`, `knobLedEnabled` and `knobLedBrightness`. A partial `POST /api/settings` with `knobLedEnabled=0|1` and/or `knobLedBrightness=0..100` saves and applies preferences. Invalid values return 400 without applying changes. LED-only changes avoid machine-parameter updates.
+
+Low-level `/api/hardware/led` settings remain temporary overrides until the next explicit LED-preference save or reboot. `Hardware::applyLedPreferences()` retries once the driver is ready/not busy.
 
 These interfaces have been exercised on the target board. Reuse their known configuration; new features need checks for their own behavior, not repeated pin discovery.
 Battery capacity is not calibrated, charge-only adapters can be ambiguous, audio quality is not qualified, and optional haptics are not validated.

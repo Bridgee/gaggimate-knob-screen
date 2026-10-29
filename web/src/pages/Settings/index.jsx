@@ -1,3 +1,4 @@
+import { ledOnlyPatch } from '../../utils/knobLedSettings.js';
 import { faFileExport } from '@fortawesome/free-solid-svg-icons/faFileExport';
 import { faFileImport } from '@fortawesome/free-solid-svg-icons/faFileImport';
 import { faEllipsisVertical } from '@fortawesome/free-solid-svg-icons/faEllipsisVertical';
@@ -58,6 +59,7 @@ import { faBluetoothB } from '@fortawesome/free-brands-svg-icons/faBluetoothB';
 import { faRotate } from '@fortawesome/free-solid-svg-icons/faRotate';
 
 const CHECKBOX_KEYS = [
+  'knobLedEnabled',
   'homekit',
   'boilerFillActive',
   'smartGrindActive',
@@ -184,7 +186,7 @@ function buildSubmitFormData(formData, autowakeupSchedules, restart) {
   const formDataToSubmit = new FormData();
 
   for (const [key, value] of Object.entries(formData)) {
-    if (value === undefined || value === null) continue;
+    if (value === undefined || value === null || key === 'knobLedSupported') continue;
 
     if (CHECKBOX_KEYS.includes(key)) {
       // Always explicit: the firmware leaves absent booleans untouched (GM-214).
@@ -267,6 +269,8 @@ export function Settings() {
     loadProfiles();
   }, [machine.value.connected, apiService]);
 
+  const savedFormData = useRef(null);
+  const savedSchedules = useRef(null);
   const formRef = useRef();
   const dropdownRef = useRef(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -291,6 +295,8 @@ export function Settings() {
       setAutoWakeupSchedules(parsedSchedules);
       setClock24h(!!fetchedSettings.clock24hFormat);
       setFormData(settingsWithToggle);
+      savedFormData.current = { ...settingsWithToggle };
+      savedSchedules.current = JSON.parse(JSON.stringify(parsedSchedules));
     } else {
       setFormData({});
       setAutoWakeupSchedules([{ time: '07:00', days: [true, true, true, true, true, true, true] }]);
@@ -370,7 +376,14 @@ export function Settings() {
       if (e) e.preventDefault();
       setSubmitting(true);
       const form = formRef.current;
-      const formDataToSubmit = buildSubmitFormData(formData, autowakeupSchedules, restart);
+      const formDataToSubmit =
+        ledOnlyPatch(
+          formData,
+          savedFormData.current,
+          autowakeupSchedules,
+          savedSchedules.current,
+          restart,
+        ) || buildSubmitFormData(formData, autowakeupSchedules, restart);
 
       try {
         const response = await fetch(form.action, {
@@ -392,6 +405,8 @@ export function Settings() {
 
         updateSettingsCache(data);
         setFormData(updatedData);
+        savedFormData.current = { ...updatedData };
+        savedSchedules.current = JSON.parse(JSON.stringify(autowakeupSchedules));
         setImportNotice(null);
       } catch (error) {
         console.error('Failed to save settings:', error);
@@ -417,6 +432,7 @@ export function Settings() {
         throw new Error('Settings have not loaded yet.');
       }
       const knownKeys = new Set([...Object.keys(formData), ...FORM_ONLY_KEYS]);
+      knownKeys.delete('knobLedSupported');
       const { fields, schedules, ignored, count } = normalizeImportedSettings(
         JSON.parse(await file.text()),
         knownKeys,
