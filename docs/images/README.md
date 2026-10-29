@@ -2,7 +2,7 @@
 
 These are native 360 × 360 LVGL renders of this port, using simulated state. They are not photographs, hardware captures or evidence of hardware acceptance.
 
-- Power examples call `updateKnobStatusBattery()` with external power or a 60% battery fixture.
+- Power examples call `updateKnobStatusBattery()` with external power, or 90% (high), 25% (low/yellow) and 10% (critical/red) battery fixtures.
 - Knob examples call `KnobAdjustment`: automatic single-field focus and touch-selected multi-field focus.
 - Standby examples call `updateStandbyDisplay()` with custom text or a centered clock.
 - Menu positioning uses the exact helper and runtime effect extracted from `DefaultUI.cpp`, after the EEZ screen is created. Exporting the EEZ design coordinates alone gives an incorrect menu layout.

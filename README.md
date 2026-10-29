@@ -19,13 +19,15 @@ This is an independent port maintained by [Bridgee](https://github.com/Bridgee).
 
 ## Feature previews
 
-Native 360 × 360 UI renders with simulated values, not device photographs. Each pair illustrates one knob-screen extension; both themes are shown across the examples.
+Native 360 × 360 UI renders with simulated values, not device photographs. The examples illustrate power status, rotary focus and standby customization, with both themes represented.
 
 ### Power status
 
-| External power | Battery power |
+| External power | Battery power (high) |
 | :---: | :---: |
-| <img src="docs/images/menu-charging.png" alt="Four-button menu with a lightning symbol in the battery icon" width="260" /> | <img src="docs/images/menu-battery.png" alt="The same menu with battery fill level instead of the lightning symbol" width="260" /> |
+| <img src="docs/images/menu-charging.png" alt="Four-button menu with a lightning symbol in the battery icon" width="260" /> | <img src="docs/images/menu-battery-high.png" alt="Four-button menu with a full battery icon at a simulated 90 percent charge" width="260" /> |
+| **Battery power (low)** | **Battery power (critical)** |
+| <img src="docs/images/menu-battery-low.png" alt="Four-button menu with a yellow low-battery icon at a simulated 25 percent charge" width="260" /> | <img src="docs/images/menu-battery-critical.png" alt="Four-button menu with a red critical-battery icon at a simulated 10 percent charge" width="260" /> |
 
 Menu examples have the optional grinder enabled. The lightning symbol indicates external power. On battery, the icon shows estimated fill level, turning yellow at 25% or below and red at 10% or below.
 

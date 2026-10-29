@@ -15,11 +15,23 @@
       "purpose": "External power: lightning icon",
       "sha256": "3cc7ded7d757d6f8a3702a4aefda17d471389b5febbb9992a528457023bbce29"
     },
-    "menu-battery.png": {
-      "scene": "doc-menu-battery.png",
+    "menu-battery-high.png": {
+      "scene": "doc-menu-battery-high.png",
       "theme": "Dark",
-      "purpose": "Battery power: 60 percent fixture, fill-level icon",
-      "sha256": "f5763c1d24acaa28b540fd1a970f477c7ce0c87589a0cd014fdccea5ab7f4535"
+      "purpose": "High battery: 90 percent fixture, full icon",
+      "sha256": "ff1a9e578df16627deb4746414a5c4705559365e26cc49c0eb91cec12510925b"
+    },
+    "menu-battery-low.png": {
+      "scene": "doc-menu-low.png",
+      "theme": "Dark",
+      "purpose": "Low battery: 25 percent fixture, yellow icon",
+      "sha256": "d45ff21246421a72825169645282ded14bb54b936a7632f6618598885cd89ec9"
+    },
+    "menu-battery-critical.png": {
+      "scene": "doc-menu-critical.png",
+      "theme": "Dark",
+      "purpose": "Critical battery: 10 percent fixture, red icon",
+      "sha256": "7d1e35edefaf4faf18a89a182051a2111897fc5181b74bd8c13ea5d0dbee5124"
     },
     "knob-single.png": {
       "scene": "doc-knob-single.png",

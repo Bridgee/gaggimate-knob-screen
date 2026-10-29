@@ -12,7 +12,9 @@ from PIL import Image
 ROOT = Path(__file__).resolve().parents[1]
 SCENES = [
     ('menu-charging.png', 'doc-menu-charging.png', 'Dark', 'External power: lightning icon'),
-    ('menu-battery.png', 'doc-menu-battery.png', 'Dark', 'Battery power: 60 percent fixture, fill-level icon'),
+    ('menu-battery-high.png', 'doc-menu-battery-high.png', 'Dark', 'High battery: 90 percent fixture, full icon'),
+    ('menu-battery-low.png', 'doc-menu-low.png', 'Dark', 'Low battery: 25 percent fixture, yellow icon'),
+    ('menu-battery-critical.png', 'doc-menu-critical.png', 'Dark', 'Critical battery: 10 percent fixture, red icon'),
     ('knob-single.png', 'doc-knob-single.png', 'Light', 'Single temperature field selected automatically'),
     ('knob-multiple.png', 'doc-knob-multiple.png', 'Light', 'Temperature selected by touch among multiple fields'),
     ('standby-text.png', 'doc-standby-text.png', 'Dark', 'Custom standby text: MY COFFEE'),

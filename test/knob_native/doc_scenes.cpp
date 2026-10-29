@@ -48,8 +48,8 @@ void renderDocumentationFrames(const char *directory, int theme, void(*save)(con
     assert(std::abs(brew.x + steam.x - 360) <= 1 && std::abs(brew.y + grind.y - 360) <= 1);
     updateKnobStatusBattery(objects.status_icons, guition_knob::PowerSource::External, -1);
     paint(); save(directory, "doc-menu-charging.ppm");
-    updateKnobStatusBattery(objects.status_icons, guition_knob::PowerSource::Battery, 60);
-    paint(); save(directory, "doc-menu-battery.ppm");
+    updateKnobStatusBattery(objects.status_icons, guition_knob::PowerSource::Battery, 90);
+    paint(); save(directory, "doc-menu-battery-high.ppm");
     updateKnobStatusBattery(objects.status_icons, guition_knob::PowerSource::Battery, 25);
     paint(); save(directory, "doc-menu-low.ppm");
     updateKnobStatusBattery(objects.status_icons, guition_knob::PowerSource::Battery, 10);
