@@ -63,6 +63,8 @@ You may find this screen on [AliExpress](https://www.aliexpress.com/); verify th
 | Audio | I2S speaker output and PDM microphone |
 | Power | Battery and USB; SYS-voltage-based battery estimate |
 
+Manufacturer manuals, schematics and examples: [Official K718 English package](https://pan.jczn1688.com/directlink/1/HMI%20display/JC3636K718_knob_EN.zip).
+
 Pin assignments, callable interfaces and limitations are in [Hardware interfaces](docs/HARDWARE.md).
 
 ## From official firmware to this port

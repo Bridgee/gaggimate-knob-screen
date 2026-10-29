@@ -14,6 +14,10 @@ The public interfaces are in `src/display/drivers/GuitionKnob/Hardware.h` and `K
 | Speaker | I2S1 TX, 44.1 kHz/16-bit stereo; BCK3, WS45, DATA42, EN46 | `requestTest(HardwareTest::Speaker, jobId)` |
 | Microphone | I2S0 PDM RX, 16 kHz/16-bit mono; CLK5, DATA4 | `requestTest(HardwareTest::Microphone, jobId)` |
 
+## Manufacturer resources
+
+The [official K718 English package](https://pan.jczn1688.com/directlink/1/HMI%20display/JC3636K718_knob_EN.zip) includes manuals, schematics, sample code and factory flashing tools. It is a hardware reference and is not required to build this firmware.
+
 ## Integration
 
 The existing startup owns `Hardware::begin()`. Reuse the singleton and its value snapshots; do not start a second driver on the same pins or buses.
