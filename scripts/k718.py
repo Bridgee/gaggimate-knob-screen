@@ -183,6 +183,7 @@ def bind_upstream(version, expected_protocol):
 
 def web_bundle(audit):
     audit.run('npm-ci',['npm','ci'],ROOT/'web')
+    audit.run('web-ota-policy',['npm','run','test:ota'],ROOT/'web')
     audit.run('web-build',['npm','run','build'],ROOT/'web')
     dist=ROOT/'web/dist'
     gzip_assets(dist)

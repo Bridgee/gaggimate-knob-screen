@@ -30,7 +30,7 @@ Checks preserve the ten upstream pages, all 64 page event handlers and the flow 
 Rotary changes call existing button handlers, retaining their step sizes, limits and save behavior. Multi-field pages require touch selection first.
 
 The additional power icon, rotary highlight, LED mirror, standby options and web attribution are extensions. Brightness updates and theme-cache handling are compatibility fixes.
-Stock screen OTA is an explicit functional difference: an official LilyGO binary does not contain the K718 driver, so the current display update path is USB.
+OTA installation is an explicit functional difference: both display and controller installation are blocked in this port until a compatible OTA path is implemented. Official release discovery and notifications remain enabled. Use compatible firmware over USB; an official LilyGO binary does not contain the K718 driver.
 
 ## Reconstruct from official firmware
 

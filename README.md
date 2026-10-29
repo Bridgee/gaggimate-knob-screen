@@ -54,7 +54,7 @@ See [Port architecture and migration](docs/PORTING.md) for the implementation ma
 The first public candidate is **[v0.3.5-rc.1](https://github.com/Bridgee/gaggimate-knob-screen/releases/tag/v0.3.5-rc.1)**, based on GaggiMate v1.9.0 / protocol 5.
 It is a **pre-release**: software/build checks do not imply hardware acceptance of this exact binary. Release notes identify the tested scope and artifact hashes.
 
-- Update the display over **USB using a K718 build**. Stock LilyGO display OTA is blocked; controller-only OTA retains the upstream path.
+- Update the display over **USB using a K718 build**. OTA installation for both the display and controller is disabled in the knob-screen firmware. Official update checks and notifications remain enabled; update notices do not confirm port compatibility.
 - Battery percentage is uncalibrated. The lightning symbol means external power, not measured charging current.
 - LED mode/brightness are currently RAM-only and reset at reboot.
 - Speaker/microphone interfaces have been exercised; continuous audio, audio quality and optional haptics are not qualified.

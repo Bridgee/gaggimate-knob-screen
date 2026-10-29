@@ -1,3 +1,4 @@
+import { FirmwareVersions, canInstallOta } from './FirmwareVersions';
 import { useCallback, useContext, useEffect, useRef, useState } from 'preact/hooks';
 import { ApiServiceContext, machine } from '../../../services/ApiService.js';
 import { downloadJson } from '../../../utils/download.js';
@@ -170,7 +171,7 @@ function MaintenanceSection({
           )}
           {rebuilt && (
             <span className='text-success ml-2'>
-              <FontAwesomeIcon icon={faCheck}></FontAwesomeIcon>
+              <FontAwesomeIcon icon={faCheck} />
             </span>
           )}
         </button>
@@ -296,9 +297,11 @@ export function SystemTab() {
 
   const onUpdate = useCallback(
     component => {
-      apiService.send({ tp: 'req:ota-start', cp: component });
+      if (canInstallOta(formData, component, submitting)) {
+        apiService.send({ tp: 'req:ota-start', cp: component });
+      }
     },
-    [apiService],
+    [apiService, formData, submitting],
   );
 
   const [rebuilding, setRebuilding] = useState(false);
@@ -361,55 +364,7 @@ export function SystemTab() {
             </span>
           </div>
 
-          <div className='flex flex-col space-y-2'>
-            <span className='text-base-content/70 text-sm font-medium'>Controller Version</span>
-            <div className='flex flex-wrap items-center gap-4'>
-              <span className='text-base-content font-semibold break-all'>
-                {formData.controllerVersion}
-              </span>
-              {formData.controllerUpdateAvailable && (
-                <span className='text-primary text-sm font-bold'>
-                  Update available: {formData.latestVersion}
-                </span>
-              )}
-              <button
-                type='button'
-                className='btn btn-secondary btn-sm'
-                disabled={!formData.controllerUpdateAvailable || submitting}
-                onClick={() => onUpdate('controller')}
-              >
-                Update Controller
-              </button>
-            </div>
-          </div>
-
-          <div className='flex flex-col space-y-2'>
-            <span className='text-base-content/70 text-sm font-medium'>Display Version</span>
-            <div className='flex flex-wrap items-center gap-4'>
-              <span className='text-base-content font-semibold break-all'>
-                {formData.displayVersion}
-              </span>
-              {formData.displayUpdateAvailable && (
-                <span className='text-primary text-sm font-bold'>
-                  Update available: {formData.latestVersion}
-                </span>
-              )}
-              <button
-                type='button'
-                className='btn btn-secondary btn-sm'
-                disabled={!formData.displayUpdateAvailable || submitting}
-                onClick={() => onUpdate('display')}
-              >
-                Update Display
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div className='alert alert-warning mt-6'>
-          <span>
-            Make sure to backup your profiles from the profiles screen before updating the display.
-          </span>
+          <FirmwareVersions settings={formData} submitting={submitting} onUpdate={onUpdate} />
         </div>
       </Section>
 

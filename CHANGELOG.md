@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.5-rc.2 — candidate
+
+- Disable display and controller OTA installation in the web UI and firmware, with a USB installation notice.
+- Preserve official update checks, channel selection and update notifications. Compare official releases against the upstream base version rather than the K718 port suffix.
+
 ## 0.3.5-rc.1 — pre-release
 
 - Remove the hardware-test page while retaining callable hardware APIs.

@@ -17,6 +17,8 @@ if dirty: version += '.dirty'
 epoch = int(os.environ.get('SOURCE_DATE_EPOCH', git('show', '-s', '--format=%at', 'HEAD')))
 timestamp = datetime.datetime.fromtimestamp(epoch, datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
 (root / 'src/version.h').write_text(
-    f'#pragma once\n#define BUILD_GIT_VERSION "{version}"\n#define BUILD_TIMESTAMP "{timestamp}"\n'
+    f'#pragma once\n#define BUILD_GIT_VERSION "{version}"\n'
+    f'#define BUILD_UPSTREAM_VERSION "{config["upstream"]["version"]}"\n'
+    f'#define BUILD_TIMESTAMP "{timestamp}"\n'
 )
 print('K718 build version:', version)

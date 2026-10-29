@@ -1,4 +1,5 @@
 #include "WebUIPlugin.h"
+#include "OtaPolicy.h"
 #include <cstring>
 #include <DNSServer.h>
 #include <LittleFS.h>
@@ -44,7 +45,7 @@ void WebUIPlugin::setup(Controller *_controller, PluginManager *_pluginManager) 
     this->profileManager = _controller->getProfileManager();
     this->pluginManager = _pluginManager;
     this->ota = new GitHubOTA(
-        BUILD_GIT_VERSION, controller->getSystemInfo().version,
+        FirmwareOtaPolicy::displayComparisonVersion, controller->getSystemInfo().version,
         RELEASE_URL + (controller->getSettings().getOTAChannel() == "latest" ? "latest" : "tag/nightly"),
         [this](uint8_t phase) {
             pluginManager->trigger("ota:update:phase", "phase", phase);
@@ -291,14 +292,10 @@ void WebUIPlugin::handleOTASettings(JsonDocument &request) {
 }
 
 void WebUIPlugin::handleOTAStart(JsonDocument &request) {
-#ifdef GAGGIMATE_KNOB
-    // Upstream releases do not contain this panel driver. Keep board-only OTA
-    // available, but never replace the screen port with the stock LilyGO binary.
-    if (request["cp"].as<String>() != "controller") {
-        updateOTAStatus("K718 display updates require a K718 build installed over USB.");
+    if (!FirmwareOtaPolicy::installationAllowed) {
+        updateOTAStatus(ota->getCurrentVersion());
         return;
     }
-#endif
     updating = true;
     if (request["cp"].is<String>()) {
         updateComponent = request["cp"].as<String>();
@@ -660,6 +657,8 @@ void WebUIPlugin::updateOTAStatus(const String &version) {
     doc["tp"] = "res:ota-settings";
     doc["displayUpdateAvailable"] = ota->isUpdateAvailable(false);
     doc["controllerUpdateAvailable"] = ota->isUpdateAvailable(true);
+    doc["otaAllowed"] = FirmwareOtaPolicy::installationAllowed;
+    doc["otaDisabledReason"] = FirmwareOtaPolicy::disabledReason;
     doc["displayVersion"] = BUILD_GIT_VERSION;
     doc["controllerVersion"] = controller->getSystemInfo().version;
     doc["hardware"] = controller->getSystemInfo().hardware;
