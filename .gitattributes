@@ -1,2 +1,3 @@
 *.patch -whitespace
 src/display/drivers/Waveshare/I2C_Driver.cpp whitespace=cr-at-eol
+port/tools/nanopb/LICENSE.txt -whitespace

@@ -58,3 +58,5 @@ python scripts/package_release.py dist/release --out dist/publish
 Upload only the resulting bundle. It contains firmware files, minimal source/compatibility metadata and checksums; local audit logs, device identities and tool/cache paths are omitted. Source archives are supplied by the GitHub tag.
 
 Artifact inspection recognizes build paths only from hash-verified vendor libraries and distinguishes TLS parser delimiters from key material. It never rewrites firmware bytes.
+
+Nanopb first-use generation is prepared from a pinned descriptor input. Both pristine and prepared package identities are verified; source-file mismatches are not ignored.

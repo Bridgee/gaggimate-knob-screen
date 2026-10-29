@@ -160,5 +160,17 @@
       "owner": "espressif",
       "manifest_sha256": "40b436b30848b52f0a66cb28b4a6c0118afb7ee242558078f4c2460b3bd70f8d"
     }
+  },
+  "prepared_libraries": {
+    "Nanopb": {
+      "pristine_source_sha256": "936d1924e2d79e17363205e912e2f863261963686fff82407a6fed82af8043a3",
+      "inputs": [
+        {
+          "source": "port/tools/nanopb/nanopb_pb2.py",
+          "target": "generator/proto/nanopb_pb2.py",
+          "sha256": "fe72409165c1973e05a41dbeee1292246d02fe1a0f05c4424270e771e2b4dbb4"
+        }
+      ]
+    }
   }
 }

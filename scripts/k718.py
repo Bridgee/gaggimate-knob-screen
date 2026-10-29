@@ -13,7 +13,7 @@ import struct
 import subprocess
 import sys
 import uuid
-from k718_lock import digest, hydrate, verify_libraries
+from k718_lock import digest, hydrate, verify_libraries, prepare_libraries
 from k718_web import gzip_assets
 from k718_repro import prepare_tool, compare_releases
 
@@ -102,6 +102,7 @@ def deps(audit, cache=None):
     lock=json.loads((ROOT/'port/dependencies.lock.json').read_text())
     if cache: hydrate(ROOT,Path(cache).resolve(),lock)
     audit.run('dependencies',[sys.executable,'-m','platformio','pkg','install','-e','display-knob'])
+    prepare_libraries(ROOT,lock)
     verify_libraries(ROOT,lock)
 
 def check_generated():

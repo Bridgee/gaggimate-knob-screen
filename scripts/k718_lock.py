@@ -40,6 +40,32 @@ def library_identity(folder):
     identity['source_sha256'] = tree_digest(folder, is_git)
     return identity
 
+def prepare_libraries(root, lock):
+    """Materialize only explicitly locked generated inputs in pristine packages."""
+    import shutil
+    root = Path(root).resolve()
+    for name, preparation in lock.get('prepared_libraries', {}).items():
+        library = root / '.pio/libdeps/display-knob' / name
+        inputs = []
+        for entry in preparation['inputs']:
+            source = (root / entry['source']).resolve()
+            target = (library / entry['target']).resolve()
+            if not source.is_relative_to(root) or not target.is_relative_to(library.resolve()) or not source.is_file() or digest(source) != entry['sha256']:
+                raise RuntimeError('Generated dependency input mismatch: ' + name)
+            inputs.append((source, target))
+        expected = lock['libraries'][name]
+        actual = library_identity(library)
+        if actual == expected:
+            continue
+        pristine = dict(expected, source_sha256=preparation['pristine_source_sha256'])
+        if actual != pristine:
+            raise RuntimeError('Dependency content/version mismatch before preparation: ' + name)
+        for source, target in inputs:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(source, target)
+        if library_identity(library) != expected:
+            raise RuntimeError('Prepared dependency identity mismatch: ' + name)
+
 def verify_libraries(root, lock, require_local=True):
     folder = Path(root) / '.pio/libdeps/display-knob'
     expected_names=set(lock['libraries']) | {'NayrodPID'}
