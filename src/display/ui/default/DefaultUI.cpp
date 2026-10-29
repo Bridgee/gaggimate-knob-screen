@@ -1,4 +1,12 @@
 #include "DefaultUI.h"
+#include "NativeResolution.h"
+#include "BrightnessPolicy.h"
+#include "StandbyDisplay.h"
+#ifdef GAGGIMATE_KNOB
+#include "KnobMenuBattery.h"
+#include "KnobLedGauges.h"
+#include <display/drivers/GuitionKnob/Hardware.h>
+#endif
 
 #include <WiFi.h>
 #include <display/core/Controller.h>
@@ -23,8 +31,8 @@ static EffectManager effect_mgr;
 
 static constexpr uint32_t STARTUP_FADE_MS = 1000; // standby fade-in duration on power-up
 
-static constexpr int32_t GAUGE_TICK_LONG = 25;      // meter tick length on most screens
-static constexpr int32_t GAUGE_TICK_SHORT = 10;     // shortened tick length on profile / new-menu screens
+static constexpr int32_t GAUGE_TICK_LONG = uiPixel(25);
+static constexpr int32_t GAUGE_TICK_SHORT = uiPixel(10);
 static constexpr uint32_t GAUGE_TICK_ANIM_MS = 300; // tick length transition duration
 
 // Profile and the new menu screen show shortened meter ticks.
@@ -262,6 +270,7 @@ void DefaultUI::loop() {
         currentScreen = static_cast<ScreensEnum>(eez_flow_get_current_screen());
         effect_mgr.evaluate_all();
 
+#ifndef GAGGIMATE_KNOB
         if (currentScreen == SCREEN_ID_STANDBY_SCREEN) {
             if (standbyEnterTime > 0) {
                 const Settings &settings = controller->getSettings();
@@ -271,10 +280,52 @@ void DefaultUI::loop() {
                 }
             }
         }
+#endif
     }
 
+#ifdef GAGGIMATE_KNOB
+    const auto &brightnessSettings = controller->getSettings();
+    setBrightness(gaggimate_ui::brightnessForState(
+        eez_flow_get_current_screen() == SCREEN_ID_STANDBY_SCREEN,
+        static_cast<uint32_t>(millis()), static_cast<uint32_t>(standbyEnterTime),
+        brightnessSettings.getStandbyBrightnessTimeout(), brightnessSettings.getMainBrightness(),
+        brightnessSettings.getStandbyBrightness()));
+#endif
     ui_tick();
+    if(eez_flow_get_current_screen()==SCREEN_ID_STANDBY_SCREEN) {
+        const auto appearance=controller->getSettings().getStandbyAppearance();
+        gaggimate_ui::updateStandbyDisplay(objects.standby_screen,objects.obj3,objects.time,appearance,
+            lv_label_get_text(objects.time),lv_color_hex(theme_colors[eez_flow_get_selected_theme_index()][0]));
+    }
+#ifdef GAGGIMATE_KNOB
+    lv_obj_update_layout(lv_scr_act());
+    if(!knobCalibrated) { knobAdjustment.calibrate(1,-1);knobCalibrated=true; }
+    const auto knobHardware=guition_knob::Hardware::instance().snapshot();
+    const bool knobEnabled=knobHardware.encoderReady && controller->getClientController()->isConnected() &&
+        controller->isReady() && !controller->getSystemInfo().protocolMismatch && !controller->isErrorState() && !brewConfirmVisible;
+    const int knobScreen=eez_flow_get_current_screen();
+    knobAdjustment.update(knobScreen,knobHardware.encoderDetents,knobEnabled,
+        gaggimate_ui::visibleKnobTargets(knobScreen),
+        lv_color_hex(eez_flow_get_selected_theme_index()==1?0x0069ad:0x80cfff));
+    const auto batteryScreen = eez_flow_get_current_screen();
+    lv_obj_t *batteryStatusRow = batteryScreen == SCREEN_ID_MENU_SCREEN_NEW ? objects.status_icons
+        : batteryScreen == SCREEN_ID_STANDBY_SCREEN ? objects.standby_icons : nullptr;
+    if (batteryStatusRow) {
+        const auto hardware = guition_knob::Hardware::instance().snapshot();
+        updateKnobStatusBattery(batteryStatusRow, hardware.powerSource, hardware.batteryPercent);
+    }
+#endif
     lv_task_handler();
+#ifdef GAGGIMATE_KNOB
+    static uint32_t lastLedPublish = 0;
+    const uint32_t ledNow = millis();
+    if (ledNow - lastLedPublish >= 100) {
+        lastLedPublish = ledNow;
+        const bool active = eez_flow_get_current_screen() != SCREEN_ID_STANDBY_SCREEN &&
+            controller->getClientController()->isConnected() && !controller->isErrorState();
+        guition_knob::Hardware::instance().publishLedGauges(guition_knob::captureLedGauges(lv_scr_act(), active));
+    }
+#endif
 }
 
 void DefaultUI::loopProfiles() {
@@ -428,7 +479,7 @@ void DefaultUI::setupState() {
                           &wifiConnected, &apActive);
     effect_mgr.use_effect([this]() { return currentScreen == SCREEN_ID_MENU_SCREEN_NEW; },
                           [this]() {
-                              int radius = 135;
+                              int radius = uiPixel(135);
                               int count = grindAvailable ? 4 : 3;
                               int step = 360 / (grindAvailable ? 4 : 3);
                               int iconOffset = grindAvailable ? 1 : 0;
@@ -765,7 +816,15 @@ void DefaultUI::applyTheme() {
 
     if (newThemeMode != currentThemeMode) {
         currentThemeMode = newThemeMode;
+#ifdef GAGGIMATE_KNOB
+        // Also update EEZ's selected index, so newly created widgets and
+        // flow-provided colors use the same theme as existing widgets.
+        eez_flow_set_theme(currentThemeMode == THEME_ID_LIGHT ? "Light"
+            : currentThemeMode == THEME_ID_AMOLED_DARK ? "AmoledDark" : "Dark");
+        lv_obj_report_style_change(nullptr);
+#else
         change_color_theme(currentThemeMode);
+#endif
     }
 }
 

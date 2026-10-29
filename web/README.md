@@ -1,17 +1,11 @@
-# `create-preact`
+# Embedded web interface
 
-<h3 align="center">Get started using Preact and Vite!</h3>
+The upstream Preact/Vite application is served by the display firmware.
 
-## Getting Started
-
-This project uses Node.js 22. If you're using a Node version manager:
-
-```bash
-nvm use  # or fnm use
+```sh
+npm ci
+npm run dev
+npm run build
 ```
 
-- `npm run dev` - Starts a dev server at http://localhost:5173/
-
-- `npm run build` - Builds for production, emitting to `dist/`
-
-- `npm run preview` - Starts a server at http://localhost:4173/ to test production build locally
+For firmware, use `python scripts/k718.py build` from the repository root. It builds, compresses and validates the web assets before embedding them in the application image.

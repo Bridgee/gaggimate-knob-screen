@@ -8,6 +8,8 @@
 #include <display/core/constants.h>
 #include <display/core/utils.h>
 #include <vector>
+#include <mutex>
+#include <display/ui/default/StandbyDisplayPolicy.h>
 
 #define PREFERENCES_KEY "controller"
 
@@ -214,6 +216,9 @@ class Settings {
     void setWarnTemperature(int level);
     void setTimezone(String timezone);
     void setClockFormat(bool format_24h);
+    gaggimate_ui::StandbyAppearance getStandbyAppearance() const;
+    void setStandbyContent(const String &content);
+    void setStandbyText(const String &text);
     void setSelectedProfile(String selected_profile);
     void setStartupProfile(String startup_profile);
     void setFavoritedProfiles(std::vector<String> favorited_profiles);
@@ -312,6 +317,9 @@ class Settings {
     Property<int> standbyBrightnessTimeout{registry, "standby_bt", 60000}; // 60 seconds default
     Property<int> wifiApTimeout{registry, "wifi_apt", DEFAULT_WIFI_AP_TIMEOUT_MS};
     Property<int> themeMode{registry, "theme", 0};
+    mutable std::mutex standbyAppearanceMutex;
+    Property<String> standbyContent{registry, "sb_content", "logo"};
+    Property<String> standbyText{registry, "sb_text", "GaggiMate"};
 
     // Warning levels (WarningLevel)
     Property<int> warnWaterLevel{registry, "wl_water", WARNING_LEVEL_WARN};

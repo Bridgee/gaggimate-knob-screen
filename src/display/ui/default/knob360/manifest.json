@@ -1,0 +1,399 @@
+{
+  "resolution": [
+    360,
+    360
+  ],
+  "pages": 10,
+  "widgets": 2,
+  "font_map": {
+    "14": 10,
+    "16": 12,
+    "18": 14,
+    "20": 16,
+    "24": 18,
+    "34": 26
+  },
+  "geometry_calls": {
+    "lv_obj_set_pos": 239,
+    "lv_obj_set_size": 239,
+    "lv_obj_set_style_pad_left": 56,
+    "lv_obj_set_style_pad_top": 56,
+    "lv_obj_set_style_pad_right": 56,
+    "lv_obj_set_style_pad_bottom": 56,
+    "lv_obj_set_style_border_width": 63,
+    "lv_obj_set_style_radius": 57,
+    "lv_obj_set_style_pad_row": 4,
+    "lv_obj_set_style_pad_column": 4,
+    "lv_obj_set_style_shadow_width": 5,
+    "lv_qrcode_create": 1,
+    "lv_obj_set_style_text_letter_space": 1,
+    "lv_meter_set_scale_ticks": 3,
+    "lv_meter_set_scale_major_ticks": 3,
+    "lv_meter_add_needle_img": 3,
+    "lv_meter_add_scale_lines": 3
+  },
+  "baked_zoom_sites": 20,
+  "dynamic_profile_image_sites": 4,
+  "label_height_fixes": 2,
+  "resources": {
+    "img_angle_down_40x40": {
+      "width": 30,
+      "height": 30,
+      "format": "LV_IMG_CF_ALPHA_8BIT",
+      "bytes": 900
+    },
+    "img_angle_left_40x40": {
+      "width": 30,
+      "height": 30,
+      "format": "LV_IMG_CF_ALPHA_8BIT",
+      "bytes": 900
+    },
+    "img_angle_right_40x40": {
+      "width": 30,
+      "height": 30,
+      "format": "LV_IMG_CF_ALPHA_8BIT",
+      "bytes": 900
+    },
+    "img_angle_up_40x40": {
+      "width": 30,
+      "height": 30,
+      "format": "LV_IMG_CF_ALPHA_8BIT",
+      "bytes": 900
+    },
+    "img_battery_exclamation_20x20": {
+      "width": 15,
+      "height": 15,
+      "format": "LV_IMG_CF_ALPHA_8BIT",
+      "bytes": 225
+    },
+    "img_bluetooth_alt_20x20": {
+      "width": 15,
+      "height": 15,
+      "format": "LV_IMG_CF_ALPHA_8BIT",
+      "bytes": 225
+    },
+    "img_check_40x40": {
+      "width": 30,
+      "height": 30,
+      "format": "LV_IMG_CF_ALPHA_8BIT",
+      "bytes": 900
+    },
+    "img_clock_40x40": {
+      "width": 30,
+      "height": 30,
+      "format": "LV_IMG_CF_TRUE_COLOR_ALPHA",
+      "bytes": 2700
+    },
+    "img_clock_40x40_z120": {
+      "width": 14,
+      "height": 14,
+      "format": "LV_IMG_CF_TRUE_COLOR_ALPHA",
+      "bytes": 588
+    },
+    "img_clock_40x40_z150": {
+      "width": 18,
+      "height": 18,
+      "format": "LV_IMG_CF_TRUE_COLOR_ALPHA",
+      "bytes": 972
+    },
+    "img_clock_40x40_z200": {
+      "width": 23,
+      "height": 23,
+      "format": "LV_IMG_CF_TRUE_COLOR_ALPHA",
+      "bytes": 1587
+    },
+    "img_clock_future_past_40x40": {
+      "width": 30,
+      "height": 30,
+      "format": "LV_IMG_CF_ALPHA_8BIT",
+      "bytes": 900
+    },
+    "img_coffee_bean_80x80": {
+      "width": 60,
+      "height": 60,
+      "format": "LV_IMG_CF_ALPHA_8BIT",
+      "bytes": 3600
+    },
+    "img_disk_30x30": {
+      "width": 23,
+      "height": 23,
+      "format": "LV_IMG_CF_ALPHA_8BIT",
+      "bytes": 529
+    },
+    "img_dropdown_bar_40x40": {
+      "width": 30,
+      "height": 30,
+      "format": "LV_IMG_CF_ALPHA_8BIT",
+      "bytes": 900
+    },
+    "img_equality_40x40": {
+      "width": 30,
+      "height": 30,
+      "format": "LV_IMG_CF_TRUE_COLOR_ALPHA",
+      "bytes": 2700
+    },
+    "img_equality_40x40_z120": {
+      "width": 14,
+      "height": 14,
+      "format": "LV_IMG_CF_TRUE_COLOR_ALPHA",
+      "bytes": 588
+    },
+    "img_equality_40x40_z150": {
+      "width": 18,
+      "height": 18,
+      "format": "LV_IMG_CF_TRUE_COLOR_ALPHA",
+      "bytes": 972
+    },
+    "img_floppy_disks_30x30": {
+      "width": 23,
+      "height": 23,
+      "format": "LV_IMG_CF_ALPHA_8BIT",
+      "bytes": 529
+    },
+    "img_flowmeter": {
+      "width": 30,
+      "height": 30,
+      "format": "LV_IMG_CF_ALPHA_8BIT",
+      "bytes": 900
+    },
+    "img_gallery": {
+      "width": 24,
+      "height": 24,
+      "format": "LV_IMG_CF_ALPHA_8BIT",
+      "bytes": 576
+    },
+    "img_high_temperature_alert_20x20": {
+      "width": 15,
+      "height": 15,
+      "format": "LV_IMG_CF_ALPHA_8BIT",
+      "bytes": 225
+    },
+    "img_indicator_small": {
+      "width": 6,
+      "height": 11,
+      "format": "LV_IMG_CF_TRUE_COLOR_ALPHA",
+      "bytes": 198
+    },
+    "img_info_40x40": {
+      "width": 30,
+      "height": 30,
+      "format": "LV_IMG_CF_ALPHA_8BIT",
+      "bytes": 900
+    },
+    "img_light_switch_off_20x20": {
+      "width": 15,
+      "height": 15,
+      "format": "LV_IMG_CF_ALPHA_8BIT",
+      "bytes": 225
+    },
+    "img_link_slash_alt_20x20": {
+      "width": 15,
+      "height": 15,
+      "format": "LV_IMG_CF_ALPHA_8BIT",
+      "bytes": 225
+    },
+    "img_list": {
+      "width": 24,
+      "height": 24,
+      "format": "LV_IMG_CF_ALPHA_8BIT",
+      "bytes": 576
+    },
+    "img_logo": {
+      "width": 294,
+      "height": 40,
+      "format": "LV_IMG_CF_ALPHA_8BIT",
+      "bytes": 11760
+    },
+    "img_minus_small_40x40": {
+      "width": 30,
+      "height": 30,
+      "format": "LV_IMG_CF_ALPHA_8BIT",
+      "bytes": 900
+    },
+    "img_mug_hot_alt_80x80": {
+      "width": 60,
+      "height": 60,
+      "format": "LV_IMG_CF_ALPHA_8BIT",
+      "bytes": 3600
+    },
+    "img_pause_40x40": {
+      "width": 30,
+      "height": 30,
+      "format": "LV_IMG_CF_ALPHA_8BIT",
+      "bytes": 900
+    },
+    "img_play_40x40": {
+      "width": 30,
+      "height": 30,
+      "format": "LV_IMG_CF_ALPHA_8BIT",
+      "bytes": 900
+    },
+    "img_plus_small_40x40": {
+      "width": 30,
+      "height": 30,
+      "format": "LV_IMG_CF_ALPHA_8BIT",
+      "bytes": 900
+    },
+    "img_power_40x40": {
+      "width": 30,
+      "height": 30,
+      "format": "LV_IMG_CF_ALPHA_8BIT",
+      "bytes": 900
+    },
+    "img_raindrops_80x80": {
+      "width": 60,
+      "height": 60,
+      "format": "LV_IMG_CF_ALPHA_8BIT",
+      "bytes": 3600
+    },
+    "img_raindrops_filled_20x20": {
+      "width": 15,
+      "height": 15,
+      "format": "LV_IMG_CF_ALPHA_8BIT",
+      "bytes": 225
+    },
+    "img_refresh_20x20": {
+      "width": 15,
+      "height": 15,
+      "format": "LV_IMG_CF_ALPHA_8BIT",
+      "bytes": 225
+    },
+    "img_settings_40x40": {
+      "width": 30,
+      "height": 30,
+      "format": "LV_IMG_CF_ALPHA_8BIT",
+      "bytes": 900
+    },
+    "img_settings_80x80": {
+      "width": 60,
+      "height": 60,
+      "format": "LV_IMG_CF_ALPHA_8BIT",
+      "bytes": 3600
+    },
+    "img_tachometer_fast_40x40": {
+      "width": 30,
+      "height": 30,
+      "format": "LV_IMG_CF_TRUE_COLOR_ALPHA",
+      "bytes": 2700
+    },
+    "img_tachometer_fast_40x40_z150": {
+      "width": 18,
+      "height": 18,
+      "format": "LV_IMG_CF_TRUE_COLOR_ALPHA",
+      "bytes": 972
+    },
+    "img_tap_48x48": {
+      "width": 36,
+      "height": 36,
+      "format": "LV_IMG_CF_ALPHA_8BIT",
+      "bytes": 1296
+    },
+    "img_thermometer_half_40x40": {
+      "width": 30,
+      "height": 30,
+      "format": "LV_IMG_CF_TRUE_COLOR_ALPHA",
+      "bytes": 2700
+    },
+    "img_thermometer_half_40x40_z120": {
+      "width": 14,
+      "height": 14,
+      "format": "LV_IMG_CF_TRUE_COLOR_ALPHA",
+      "bytes": 588
+    },
+    "img_thermometer_half_40x40_z150": {
+      "width": 18,
+      "height": 18,
+      "format": "LV_IMG_CF_TRUE_COLOR_ALPHA",
+      "bytes": 972
+    },
+    "img_thermometer_half_40x40_z200": {
+      "width": 23,
+      "height": 23,
+      "format": "LV_IMG_CF_TRUE_COLOR_ALPHA",
+      "bytes": 1587
+    },
+    "img_tint_slash_20x20": {
+      "width": 15,
+      "height": 15,
+      "format": "LV_IMG_CF_ALPHA_8BIT",
+      "bytes": 225
+    },
+    "img_wifi_20x20": {
+      "width": 15,
+      "height": 15,
+      "format": "LV_IMG_CF_ALPHA_8BIT",
+      "bytes": 225
+    },
+    "img_wind_40x40": {
+      "width": 30,
+      "height": 30,
+      "format": "LV_IMG_CF_ALPHA_8BIT",
+      "bytes": 900
+    },
+    "img_wind_80x80": {
+      "width": 60,
+      "height": 60,
+      "format": "LV_IMG_CF_ALPHA_8BIT",
+      "bytes": 3600
+    }
+  },
+  "flow_metadata_patch": [
+    48,
+    52
+  ],
+  "inputs": {
+    "scripts/generate_knob_ui.py": "b996303ee9f883116bd4de194009a244fb3409cbeb520c5bcd6ddd2e5ad4d8ab",
+    "eez-ui/gaggimate.eez-project": "3ad08ed92a31d92e171efa597e3b878d0d035fcc5ed9518a84284a0bb021cd10",
+    "src/display/ui/default/eez/screens.c": "ccb131f834a4bffd3ee9dfceaee041ef79d265cce31e84695a5ed01ee8975ed5",
+    "src/display/ui/default/eez/ui.c": "9ff053786aa600db95f19118a2d32dd0edfd17a570bf279ffb339404d8e45b0f",
+    "src/display/ui/default/eez/images.c": "792d4dc704149a3db780d6d13abc21d1db2c103a7b9b8dc506817de535f84f25",
+    "src/display/ui/default/eez/images/ui_image_angle_down_40x40.c": "ce6ce099ca06558f423176541b336b82453a4fb9395985845160649c4a3b27ad",
+    "src/display/ui/default/eez/images/ui_image_angle_left_40x40.c": "83b168e2c5bc897e80ac627317657c167a9f86167966ff93bc9b41ce73f1ab4d",
+    "src/display/ui/default/eez/images/ui_image_angle_right_40x40.c": "9ed6ba4a94ebe9a3a12b89d05e0676b19047f382e50174161777a6ec07502106",
+    "src/display/ui/default/eez/images/ui_image_angle_up_40x40.c": "37b8690d2b8ae54850d97c093b7b790ccf8451bb3430e5bb30f31feed30f86cf",
+    "src/display/ui/default/eez/images/ui_image_battery_exclamation_20x20.c": "82c7d56621ad85348a75b2390657307d43f954e30456e4b87ce8a32e66d59879",
+    "src/display/ui/default/eez/images/ui_image_bluetooth_alt_20x20.c": "3178fa6942af8e855addb4d41df8f635c68cad72c4cfc96c98aae68afca57477",
+    "src/display/ui/default/eez/images/ui_image_check_40x40.c": "5ce0409025d850ec59af85ba3c9ca2455433b1bc00aa0cbf0972d07b2e562ea4",
+    "src/display/ui/default/eez/images/ui_image_clock_40x40.c": "d00eec5c9f76368b243045f6e8a89c5d04ec2f1925454634c7d47136dba81db5",
+    "src/display/ui/default/eez/images/ui_image_clock_future_past_40x40.c": "3e7c33db8710817c7d184ed2533716b6bc77a1508fd519ad42cf63d3ed7200fe",
+    "src/display/ui/default/eez/images/ui_image_coffee_bean_80x80.c": "a47f6c07c1a335abfac72bccdece646d76523c4271370ee3588350abb90e1fa0",
+    "src/display/ui/default/eez/images/ui_image_disk_30x30.c": "3300447ad32ffa645cf228130dc8e84bb1b7c9ec48110ab27359328613862e78",
+    "src/display/ui/default/eez/images/ui_image_dropdown_bar_40x40.c": "dae2c258f1fde8d9fa473b948202b1dbd95ca52d14f265005ad9f3c5272fb7f7",
+    "src/display/ui/default/eez/images/ui_image_equality_40x40.c": "7789bb9507f363774006d654775011bac2f379f7e4ef2c67f49e09e4b1ec7dcb",
+    "src/display/ui/default/eez/images/ui_image_floppy_disks_30x30.c": "e0772b8b4e6da1b08cd340ab5f4fdad68f3b7a54794f18e748e132c887635966",
+    "src/display/ui/default/eez/images/ui_image_flowmeter.c": "8b4365d75036391f6e47fdd5fb9288b49157ffd287831ffe88d4bf42689606b7",
+    "src/display/ui/default/eez/images/ui_image_gallery.c": "df35b18ac857f0611927f0f291553fe76e7e8c745e6614d3c0dc0a754879570d",
+    "src/display/ui/default/eez/images/ui_image_high_temperature_alert_20x20.c": "d229d9dc5de3ff0dd492d19b455aa7ea8269c7517bd18a8d3a2fde0a9ea96a1b",
+    "src/display/ui/default/eez/images/ui_image_indicator_small.c": "562b792f0da21146157e3f1ba41ea6d9c36b21db7bd1b24ba26c0f73a1e0b3b2",
+    "src/display/ui/default/eez/images/ui_image_info_40x40.c": "f12b35aa0c356ee2b21028981471198621e34f4d4f6ab840b995a5abaa94809e",
+    "src/display/ui/default/eez/images/ui_image_light_switch_off_20x20.c": "82b9f930f075e6a84fa4acdfca61118334a405e3698b66372e03006ec839f0f0",
+    "src/display/ui/default/eez/images/ui_image_link_slash_alt_20x20.c": "29a93b8d598c638b4684051324251b8492c93f42faf9fc821c7b8442c893643e",
+    "src/display/ui/default/eez/images/ui_image_list.c": "d9559986f10e13b9a48e20eae976e98655853d9cd4a1bcc3a1e8a2faba2e465c",
+    "src/display/ui/default/eez/images/ui_image_logo.c": "e79cdf20824806fea9f760a8cf18d12a153399ee1163b613e751708a5752d499",
+    "src/display/ui/default/eez/images/ui_image_minus_small_40x40.c": "fae177cf093afa6cc4d3ba7b2b90cc2c9eaa8f0530b9b670ca4434f0757efdd5",
+    "src/display/ui/default/eez/images/ui_image_mug_hot_alt_80x80.c": "3bbd508d34bc15ae6dd69677074ba48fe86e9a2411828020b3ba2a9b1efaaffc",
+    "src/display/ui/default/eez/images/ui_image_pause_40x40.c": "a6334fd33f3c6b076cf140f2cc4eb0ff37b5fdb382e4377fbae80d11b7f08e56",
+    "src/display/ui/default/eez/images/ui_image_play_40x40.c": "7d64afefe1432fa4ece1b2b85e3b1c44aef0941b6773d462d1cf14575ed74854",
+    "src/display/ui/default/eez/images/ui_image_plus_small_40x40.c": "3235b46577225a41f25071e1e4cb5fdb7d78d118d00036d3b88dd88d3fc52ec2",
+    "src/display/ui/default/eez/images/ui_image_power_40x40.c": "24f318c300df212ef5810a8241ee303378baf6001d3b4055bfa12253c1ed076d",
+    "src/display/ui/default/eez/images/ui_image_raindrops_80x80.c": "0aa5f22bbb2d130275ae6df528ba3b5080f64f854c3c274d5cf327c01702fe05",
+    "src/display/ui/default/eez/images/ui_image_raindrops_filled_20x20.c": "b06accac59da4966d719e5b3f4a01ba760445c44bbcdfaf428f661101902e2a5",
+    "src/display/ui/default/eez/images/ui_image_refresh_20x20.c": "5d45fccbd5a7a84d6819496e71a8b2c7388ae6172b1573c757cc12e5b762fb80",
+    "src/display/ui/default/eez/images/ui_image_settings_40x40.c": "18c8865b7fc662fe8c20a5b67e8414f0b7e28e7ffc852da8b3052a4efc2c0c48",
+    "src/display/ui/default/eez/images/ui_image_settings_80x80.c": "a227a35aa8d6923bc52efd816a2fb5be4b354db1d493e892110dcfe48dfd7f23",
+    "src/display/ui/default/eez/images/ui_image_tachometer_fast_40x40.c": "ad9f1f24bc6a90c78f47522a6a8bbbe5c36b73f49f2f95d794360500c35057e9",
+    "src/display/ui/default/eez/images/ui_image_tap_48x48.c": "0a8b6a98722f04e150551b5ad1ad8ba4896c3f7a8b083778d9b5980fe998c931",
+    "src/display/ui/default/eez/images/ui_image_thermometer_half_40x40.c": "a9da3a51fc22186ffcbc91da6cf46ca40282798e50a652a3bc7d68b318d9b9f0",
+    "src/display/ui/default/eez/images/ui_image_tint_slash_20x20.c": "7bc83915a4fcc8c1da923dec56221cdcae9d08cbbb571841c05adbea412bd4f2",
+    "src/display/ui/default/eez/images/ui_image_wifi_20x20.c": "6d71f5ae8df3ddc2f05cfa2a566fad8affcf0581c27085380b933da142cb8bc7",
+    "src/display/ui/default/eez/images/ui_image_wind_40x40.c": "c8c2d3d0bc44426c4e70e5cfd894891ec12eecec164a88675bb5e2700b163f8f",
+    "src/display/ui/default/eez/images/ui_image_wind_80x80.c": "837e552da36711d24e20a34b9744ac4fe4ee2347a1229a3fc8e487064f2d36cb"
+  },
+  "outputs": {
+    "src/display/ui/default/knob360/screens.c": "e509825641638fbd43e033564c8e9addb982964341d34824dab8a5998dbe11fc",
+    "src/display/ui/default/knob360/ui.c": "ddbb21b5ff2e1e66278e772e3b2b01720c187af47846d6e170a0082e7d4065f0",
+    "src/display/ui/default/knob360/images.c": "d35d8b3ccd0df659c18bac7211f450161a1516ca65be9185a9b648640f192cfe",
+    "src/display/ui/default/knob360/images.h": "2bc090bf5bc1b0b5c4d337a50f344f12c95eaff01279f0bb1e08c08042d0368b",
+    "eez-ui/gaggimate-knob360.eez-project": "f90b01f5a0d962ce1494b46b37b03c22abca5724a8b6cf977f0a8ce31774cef9"
+  }
+}

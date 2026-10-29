@@ -10,6 +10,9 @@
 #include <display/ui/default/eez/screens.h>
 #include <display/ui/default/eez/structs.h>
 #include <mutex>
+#ifdef GAGGIMATE_KNOB
+#include "KnobAdjustment.h"
+#endif
 
 class Controller;
 
@@ -41,6 +44,10 @@ class DefaultUI {
     void onProfileSelect();
     void setBrightness(int brightness) {
         if (panelDriver) {
+#ifdef GAGGIMATE_KNOB
+            if (brightness == appliedBrightness) return;
+            appliedBrightness = brightness;
+#endif
             panelDriver->setBrightness(brightness);
         }
     };
@@ -96,6 +103,10 @@ class DefaultUI {
     int heatingFlashTick = 0;
     void reloadProfiles();
 
+#ifdef GAGGIMATE_KNOB
+    gaggimate_ui::KnobAdjustment knobAdjustment;
+    bool knobCalibrated = false;
+#endif
     Driver *panelDriver = nullptr;
     Controller *controller;
     PluginManager *pluginManager;
@@ -154,6 +165,7 @@ class DefaultUI {
 
     // Standby brightness control
     unsigned long standbyEnterTime = 0;
+    int appliedBrightness = -1;
 
     xTaskHandle taskHandle;
     static void loopTask(void *arg);

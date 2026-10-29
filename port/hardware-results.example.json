@@ -1,0 +1,26 @@
+{
+  "firmware_sha256": "REPLACE_WITH_THE_ACTUALLY_TESTED_BINARY_SHA256",
+  "screen_mac": "REPLACE_WITH_ACTUAL_SCREEN_MAC",
+  "controller_identity": "REPLACE_WITH_MODEL_FIRMWARE_AND_DEVICE_ID",
+  "controller_protocol": 5,
+  "checks": {
+    "display": false,
+    "touch": false,
+    "brightness": false,
+    "standby_wake": false,
+    "ble_protocol_reconnect": false,
+    "web": false,
+    "battery_power_source": false,
+    "encoder": false,
+    "rgb": false,
+    "speaker": false,
+    "microphone_samples": false,
+    "dark_light": false,
+    "responsive_no_serial": false,
+    "qr": false,
+    "led_ui_sync": false,
+    "rotary_adjustment": false,
+    "standby_customization": false
+  },
+  "notes": "Record observations, both themes, reader-free responsiveness, QR/web, limitations and date. Set true only after testing this exact binary."
+}

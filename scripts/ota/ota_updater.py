@@ -204,7 +204,7 @@ def is_valid_address(value: str = None) -> bool:
 if __name__ == "__main__":
     print(header)
     # Check if the user has entered enough arguments
-    # sys.argv.append("C8:C9:A3:D2:60:8E")
+    # sys.argv.append("AA:BB:CC:DD:EE:FF")
     # sys.argv.append("firmware.bin")
 
     if len(sys.argv) < 3:
@@ -215,7 +215,7 @@ if __name__ == "__main__":
             __file__), '.pio', 'build', 'esp32doit-devkit-v1', 'firmware.bin')
         filename = filename if os.path.exists(filename) else "firmware.bin"
         print(
-            f"$ {sys.executable} \"{__file__}\" \"C8:C9:A3:D2:60:8E\" \"{filename}\"")
+            f"$ {sys.executable} \"{__file__}\" \"AA:BB:CC:DD:EE:FF\" \"{filename}\"")
         exit(1)
 
     print("Trying to start OTA update")

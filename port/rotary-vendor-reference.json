@@ -1,0 +1,6 @@
+{
+  "source": "JC3636K718 official Arduino demo ST77916_LVGL_DEMO/bidi_switch_knob.c",
+  "sha256": "7bb672600102ab372359fc557b04fc102757a86864f18ef6cc1163011859abdb",
+  "semantics": "GPIO2/A right; GPIO1/B left; independent released low pulses;3ms timer, two low samples",
+  "verified_on_hardware": false
+}

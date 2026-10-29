@@ -36,6 +36,9 @@
 #include <SdlDriver.h> // desktop SDL panel stands in for the hardware drivers
 #else
 #include <Preferences.h>
+#ifdef GAGGIMATE_KNOB
+#include <display/drivers/GuitionKnobDriver.h>
+#endif
 #include <display/drivers/AmoledDisplayDriver.h>
 #include <display/drivers/LilyGoDriver.h>
 #include <display/drivers/WaveshareDriver.h>
@@ -155,6 +158,10 @@ enum PanelModel : uint8_t { PANEL_UNKNOWN = 0, PANEL_LILYGO = 1, PANEL_AMOLED = 
 void Controller::setupPanel() {
 #ifdef GAGGIMATE_SIM
     driver = SdlDriver::getInstance(); // desktop SDL panel
+    driver->init();
+#elif defined(GAGGIMATE_KNOB)
+    // A dedicated target avoids probing unrelated LilyGO GPIOs on this board.
+    driver = GuitionKnobDriver::getInstance();
     driver->init();
 #else
     // The panel can't change after flashing, so cache the detection result in NVS

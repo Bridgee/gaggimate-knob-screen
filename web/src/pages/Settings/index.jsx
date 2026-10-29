@@ -121,6 +121,8 @@ function transformFetchedSettings(fetchedSettings) {
   const settingsWithToggle = {
     ...fetchedSettings,
     ...buttonFields,
+    standbyContent: fetchedSettings.standbyContent ?? 'logo',
+    standbyText: fetchedSettings.standbyText ?? 'GaggiMate',
     standbyDisplayEnabled:
       fetchedSettings.standbyDisplayEnabled !== undefined
         ? fetchedSettings.standbyDisplayEnabled

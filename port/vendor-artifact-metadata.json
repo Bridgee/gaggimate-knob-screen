@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "package": "toolchain-xtensa-esp32s3",
+  "purpose": "Verify vendor build-path provenance during artifact publication; never alter firmware bytes.",
+  "libraries": [
+    {
+      "path": "xtensa-esp32s3-elf/lib/no-rtti/libg.a",
+      "sha256": "b8b1e4a6c23f42c32bbf48dbc50b35cbd8e7d62afdcbb497096280b2c6826d58"
+    },
+    {
+      "path": "xtensa-esp32s3-elf/lib/no-rtti/libstdc++.a",
+      "sha256": "46cbd877255439cee2b048b42b1fda0612e54180d88ede86f489e61a5cec103c"
+    },
+    {
+      "path": "xtensa-esp32s3-elf/lib/libm_nano.a",
+      "sha256": "eacdc019b0e0a41c46ae65c4f3fd042c49e3997ad0dbcbd47296e4e3cf098b7a"
+    },
+    {
+      "path": "lib/gcc/xtensa-esp32s3-elf/8.4.0/no-rtti/libgcc.a",
+      "sha256": "c07c00fdc56ce449f8051f3bbaa4e5b870e7dea7bf433b67609e0d06edaa6150"
+    }
+  ]
+}

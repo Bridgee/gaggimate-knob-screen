@@ -1,0 +1,57 @@
+{
+  "schema": 1,
+  "port_version": "0.3.5",
+  "upstream": {
+    "url": "https://github.com/jniebuhr/gaggimate.git",
+    "ref": "v1.9.0",
+    "version": "v1.9.0",
+    "commit": "43d2a7ba2299c196fd67c001f455985e07e57a49"
+  },
+  "target": "display-knob",
+  "board": "Guition-K718",
+  "chip": "ESP32-S3",
+  "resolution": [
+    360,
+    360
+  ],
+  "flash_bytes": 16777216,
+  "application_offset": 65536,
+  "application_size": 6553600,
+  "filesystem_offset": 13172736,
+  "controller_protocol": 5,
+  "tested_controller": "GaggiMate Pro Rev1.1 v1.9.0, protocol5",
+  "tools": {
+    "platformio": "6.2.0",
+    "pillow": "12.3.0",
+    "node": "v24.22.1",
+    "npm": "11.6.2"
+  },
+  "migration_layers": [
+    "01-bsp",
+    "02-native-ui",
+    "03-diagnostics",
+    "04-extensions",
+    "05-build-validation",
+    "06-maintenance"
+  ],
+  "required_hardware_checks": [
+    "display",
+    "touch",
+    "brightness",
+    "standby_wake",
+    "ble_protocol_reconnect",
+    "web",
+    "battery_power_source",
+    "encoder",
+    "rgb",
+    "speaker",
+    "microphone_samples",
+    "dark_light",
+    "responsive_no_serial",
+    "qr",
+    "led_ui_sync",
+    "rotary_adjustment",
+    "standby_customization"
+  ],
+  "release_channel": "development"
+}

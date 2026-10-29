@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "tool": "mklittlefs-k718-repro1",
+  "upstream": {
+    "url": "https://github.com/earlephilhower/mklittlefs",
+    "commit": "943d2f76736eef6630edd4933e42c3016194770b",
+    "patched_commit": "57d6927826f3d2ddaf1cf1281d66ad80f62f5ade",
+    "littlefs_commit": "abd90cb84c818a663b584575b019258d01d0065e"
+  },
+  "source": {
+    "path": "port/tools/mklittlefs/source.tar.gz",
+    "sha256": "fac9591cb072b363a7e05cca16d2d4b2ba311a924d63ab251fc0f725547dc7d8"
+  },
+  "patch": {
+    "path": "port/tools/mklittlefs/reproducible.patch",
+    "sha256": "088276dc8f5873c69c34b83f7fbbe281356d5a71ea6c2d31ee56c5eb620fc369"
+  },
+  "platforms": {
+    "darwin-arm64": {
+      "path": "port/tools/mklittlefs/darwin-arm64.tar.gz",
+      "sha256": "43c9f63c42a2a88ce089c4611c234ec2aedf278d7081c4b48979614d03ddc59e",
+      "member": "mklittlefs",
+      "binary_sha256": "372343280677389a33665b2e08540c9afdc72819d0715619ec2cc7cff5a9170e",
+      "binary_bytes": 143448
+    }
+  },
+  "policy": {
+    "epoch": "Git author timestamp, uint32, also in compiler signature",
+    "project_path": "/k718/src",
+    "tools_path": "/k718/tools",
+    "timezone": "UTC",
+    "locale": "C",
+    "python_hash_seed": "0"
+  },
+  "host_tool_build": {
+    "compiler": "Apple clang version21.0.0 (clang-2100.3.34.2)",
+    "command": "make VERSION=0.2.3-k718-repro1 LITTLEFS_VERSION=v2.0.5"
+  }
+}

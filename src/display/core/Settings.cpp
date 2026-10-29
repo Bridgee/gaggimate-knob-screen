@@ -188,6 +188,26 @@ void Settings::setTimezone(String timezone) { this->timezone.set(timezone); }
 
 void Settings::setClockFormat(bool clock_24h_format) { clock24hFormat.set(clock_24h_format); }
 
+gaggimate_ui::StandbyAppearance Settings::getStandbyAppearance() const {
+    std::lock_guard<std::mutex> guard(standbyAppearanceMutex);
+    gaggimate_ui::StandbyAppearance result;
+    const auto &mode=standbyContent.get();
+    result.content=mode=="text"?gaggimate_ui::StandbyContent::Text:mode=="clock"?gaggimate_ui::StandbyContent::Clock:gaggimate_ui::StandbyContent::Logo;
+    const auto &text=standbyText.get();
+    if(gaggimate_ui::validStandbyText(text.c_str())) {
+        std::strncpy(result.text,text.c_str(),sizeof(result.text)-1);result.text[sizeof(result.text)-1]=0;
+    }
+    return result;
+}
+void Settings::setStandbyContent(const String &content) {
+    if(content.length()!=std::strlen(content.c_str()) || !gaggimate_ui::validStandbyContent(content.c_str()))return;
+    std::lock_guard<std::mutex> guard(standbyAppearanceMutex);standbyContent.set(content);
+}
+void Settings::setStandbyText(const String &text) {
+    if(text.length()!=std::strlen(text.c_str()) || !gaggimate_ui::validStandbyText(text.c_str()))return;
+    std::lock_guard<std::mutex> guard(standbyAppearanceMutex);standbyText.set(text);
+}
+
 void Settings::setSelectedProfile(String selected_profile) { selectedProfile.set(selected_profile); }
 
 void Settings::setStartupProfile(String startup_profile) { startupProfile.set(startup_profile); }
@@ -291,6 +311,8 @@ void Settings::setMaxPumpPower(float max_pump_power) { maxPumpPower.set(max_pump
 void Settings::doSave() {
     bool dirty = false;
     for (auto *property : registry) {
+        std::unique_lock<std::mutex> appearanceGuard(standbyAppearanceMutex,std::defer_lock);
+        if(property==&standbyContent || property==&standbyText)appearanceGuard.lock();
         if (property->isDirty()) {
             dirty = true;
             break;
@@ -302,6 +324,8 @@ void Settings::doSave() {
     ESP_LOGI("Settings", "Saving changed settings");
     preferences.begin(PREFERENCES_KEY, false);
     for (auto *property : registry) {
+        std::unique_lock<std::mutex> appearanceGuard(standbyAppearanceMutex,std::defer_lock);
+        if(property==&standbyContent || property==&standbyText)appearanceGuard.lock();
         property->store(preferences);
     }
     preferences.end();

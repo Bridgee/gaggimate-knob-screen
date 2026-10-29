@@ -1,4 +1,5 @@
 #include "BLEScalePlugin.h"
+#include <display/drivers/GuitionKnob/Diagnostics.h>
 #include "remote_scales.h"
 #include "remote_scales_plugin_registry.h"
 #include <cmath> // For isfinite()
@@ -293,7 +294,7 @@ void BLEScalePlugin::establishConnection() {
 
             scale->setLogCallback([](std::string message) {
                 if (!message.empty()) {
-                    Serial.print(message.c_str());
+                    knobDiagnosticPrintf("%s", message.c_str());
                 }
             });
 

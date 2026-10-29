@@ -1,0 +1,6 @@
+{
+  "name": "k718-asset-tools",
+  "private": true,
+  "version": "0.1.0",
+  "dependencies": {"@fortawesome/free-solid-svg-icons": "7.0.0", "sharp": "0.35.5"}
+}

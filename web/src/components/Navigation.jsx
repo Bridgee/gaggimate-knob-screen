@@ -380,6 +380,20 @@ export function Navigation({ collapsed = false, onToggleCollapsed }) {
                     Caffinnova S.r.l.
                   </a>
                 </span>
+                <div className='mt-3'>
+                  <div>GaggiMate Screen firmware for Knob Screen</div>
+                  <div>
+                    Adapted and maintained by{' '}
+                    <a
+                      className='text-primary hover:text-primary/80 font-medium transition'
+                      href='https://github.com/Bridgee/gaggimate-knob-screen'
+                      target='_blank'
+                      rel='noopener noreferrer'
+                    >
+                      Bridgee
+                    </a>
+                  </div>
+                </div>
               </div>
             </>
           )}

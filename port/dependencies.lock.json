@@ -1,0 +1,164 @@
+{
+  "schema": 1,
+  "platform": "espressif32@6.12.0",
+  "libraries": {
+    "ADS1X15": {
+      "name": "ADS1X15",
+      "version": "0.5.4",
+      "kind": "registry",
+      "owner": "robtillaart",
+      "source_sha256": "0fe749fa0420f38a1b2086465651e1b298c647920e56ba03f0acc565b00d93d4"
+    },
+    "ArduinoJson": {
+      "name": "ArduinoJson",
+      "version": "7.4.3",
+      "kind": "registry",
+      "owner": "bblanchon",
+      "source_sha256": "4df0d6a9fd8554f7abdd73f9c88fdd9d965942622c34e4417b35ad7896611ef6"
+    },
+    "AsyncDelay": {
+      "name": "AsyncDelay",
+      "version": "1.1.2",
+      "kind": "registry",
+      "owner": "stevemarple",
+      "source_sha256": "c738ec96fae72060699824df07ea0e999b788d3c72223be149970325486bdf15"
+    },
+    "AsyncTCP": {
+      "name": "AsyncTCP",
+      "version": "3.5.0",
+      "kind": "registry",
+      "owner": "esp32async",
+      "source_sha256": "4e2f324d7f2720616088d59f5d1cd99f0dc92d57dc57690404cec879717ae18b"
+    },
+    "ESPAsyncWebServer": {
+      "name": "ESPAsyncWebServer",
+      "version": "3.12.0",
+      "kind": "registry",
+      "owner": "esp32async",
+      "source_sha256": "06628360e79bcc3cca06a181907db210752c6f66f21698181fcf2d2ccda7c15a"
+    },
+    "GFX Library for Arduino": {
+      "name": "GFX Library for Arduino",
+      "version": "1.5.9",
+      "kind": "registry",
+      "owner": "moononournation",
+      "source_sha256": "cc4e714f0e3ae1ebc754504bc132de38e11f5ede065e5ab1677778ef99736d5a"
+    },
+    "HomeSpan": {
+      "name": "HomeSpan",
+      "version": "1.9.1",
+      "kind": "registry",
+      "owner": "homespan",
+      "source_sha256": "ad6403c1a098f95649cabb26042e3bb0e38aec4b91e3dffaf6a5de8523ff5b5c"
+    },
+    "Improv WiFi Library": {
+      "name": "Improv WiFi Library",
+      "version": "0.0.4",
+      "kind": "registry",
+      "owner": "jnthas",
+      "source_sha256": "f428addb037bbb9352bf4f4249a1e65a05dd84cadf556d7d9ca68415de05a77e"
+    },
+    "MAX31855": {
+      "name": "MAX31855",
+      "version": "0.6.2",
+      "kind": "registry",
+      "owner": "robtillaart",
+      "source_sha256": "548349c148434666b77c3c675ab88d86a2994c3179a1cbb7901d3b89615beeac"
+    },
+    "MQTT": {
+      "name": "MQTT",
+      "version": "2.5.3",
+      "kind": "registry",
+      "owner": "256dpi",
+      "source_sha256": "80c27f3d50934fbd7f76a19655cd7dc5bae651b723a38b77956c47836247ca16"
+    },
+    "Nanopb": {
+      "name": "Nanopb",
+      "version": "0.4.92",
+      "kind": "registry",
+      "owner": "nanopb",
+      "source_sha256": "ef51596d716dc171b7a3238503edf496e643680e319cc6e6e68acdd324547612"
+    },
+    "NimBLE-Arduino": {
+      "name": "NimBLE-Arduino",
+      "version": "1.4.3",
+      "kind": "registry",
+      "owner": "h2zero",
+      "source_sha256": "0e924426ace1bbaa5c906ffd23bd523828fc9123b7e105fcbec03a0d33c5f6f6"
+    },
+    "PSM": {
+      "name": "PSM",
+      "kind": "git",
+      "commit": "ae3718cb72392ea5781fce6fe4c7cf3aa288f363",
+      "url": "https://github.com/gaggimate/PSM.Library.git",
+      "source_sha256": "403faf88bf0400f191bf50654b831d9c383e0adde15dc8c1a25993e5d4d09651"
+    },
+    "SensorLib": {
+      "name": "SensorLib",
+      "version": "0.2.3",
+      "kind": "registry",
+      "owner": "lewisxhe",
+      "source_sha256": "f0fd2796b371ebff1ebccdcadeb7b2d0f8cc22c5b0a3794a92930c249fa56a35"
+    },
+    "SoftWire": {
+      "name": "SoftWire",
+      "version": "2.0.10",
+      "kind": "registry",
+      "owner": "stevemarple",
+      "source_sha256": "0643535d178b2f2731d6dc0595c0548e29b8efb50ff03e1210934a9638ee2e9f"
+    },
+    "esp-arduino-ble-scales": {
+      "name": "esp-arduino-ble-scales",
+      "kind": "git",
+      "commit": "7fa8589ab6cde389789dbb8708fef21d87c76cca",
+      "url": "https://github.com/gaggimate/esp-arduino-ble-scales",
+      "source_sha256": "f7a4a510db83e6f9127fc55cd6626e4959feb0d5eb76039c1b1daca264d0282e"
+    },
+    "lvgl": {
+      "name": "lvgl",
+      "version": "8.4.0",
+      "kind": "registry",
+      "owner": "lvgl",
+      "source_sha256": "ee4a1597195ad9a0695912789c0e1f11f537a6eae0e85d1714bd6bf444239e9f"
+    },
+    "Unity": {
+      "name": "Unity",
+      "version": "2.6.1",
+      "kind": "registry",
+      "owner": "throwtheswitch",
+      "source_sha256": "b6f8132a69bf15fbc5a12ea044fef082e6b61b188ab490160ce4e9e3b0ae8393"
+    }
+  },
+  "packages": {
+    "framework-arduinoespressif32": {
+      "version": "3.20017.241212+sha.dcc1105b",
+      "owner": "platformio",
+      "manifest_sha256": "f35415c75f6f43755df92bbbf7ef10c9e65c2edb2569d512636a0477be64d5bf"
+    },
+    "tool-esptoolpy": {
+      "version": "2.40900.250804",
+      "owner": "platformio",
+      "manifest_sha256": "606ce873b776d28d58e779bc776e676b34edb54469aaf43ab1076c54d82866f0"
+    },
+    "tool-mklittlefs": {
+      "version": "1.203.210628",
+      "owner": "platformio",
+      "manifest_sha256": "8f28458942e93bd9c69251c76d97d1fcf1e1b03a4321371ce65044287de256e4"
+    },
+    "tool-scons": {
+      "version": "4.41101.0",
+      "owner": "platformio",
+      "manifest_sha256": "e4c25069254659e84a0d150348e7b08b215577fad7a9d8843c58f64ad22ddbbf"
+    },
+    "toolchain-riscv32-esp": {
+      "version": "8.4.0+2021r2-patch5",
+      "owner": "espressif",
+      "manifest_sha256": "25f9cab3e7e13b496195cfc9611a7870143de55b55412fb2d6fb12168c139fae"
+    },
+    "toolchain-xtensa-esp32s3": {
+      "version": "8.4.0+2021r2-patch5",
+      "owner": "espressif",
+      "manifest_sha256": "40b436b30848b52f0a66cb28b4a6c0118afb7ee242558078f4c2460b3bd70f8d"
+    }
+  }
+}

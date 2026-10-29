@@ -1,0 +1,18 @@
+{
+  "scripts/generate_knob_battery.mjs": "b01e121336dd24073fd90e68adb378c5566512fe92c3d6c683d001148c37b4e3",
+  "port/tools/package-lock.json": "3879f9dd029cd6505bd5727ff5936d3e01671365244507a231692ac70487090d",
+  "src/display/ui/default/KnobBatteryImages.c": "cb0d0140508de81f78efb53628d2ea6cd692dbc8ba100c3ba034214dfd098d30",
+  "src/display/ui/default/KnobBatteryImages.h": "c3e683f081ba0ad917923f908a40bf532512cacdec79a5ff94ab1ffc27cc83dd",
+  "assets/k718-battery/battery-charging.svg": "2308edc7b6acea1b052b20b71f97f3965e7590634dda6dad9a12bc9afb789c6c",
+  "assets/k718-battery/battery-empty.svg": "0dc2742be71b00981ae1f0e35991a9ff68a236c1aa406fa126a37be45726ebf4",
+  "assets/k718-battery/battery-full.svg": "44e562c7e6d416d065b53664fd881bcb37517583ae083fd13dbd19964d20269b",
+  "assets/k718-battery/battery-half.svg": "5c0a43b13e7a865727159740dc040eff3ea6c73ecfbf361dd42454b79347c858",
+  "assets/k718-battery/battery-quarter.svg": "659a4419c7b6dca49df0c0b2bdecf52b81a3130fe47e00427696631156842f0e",
+  "assets/k718-battery/battery-three-quarters.svg": "ef43d182ae9345a5344a13ded06950acccd051fd7de3032f2f6eb4ab72edaa2f",
+  "assets/k718-battery/battery-charging-20x15.png": "5643d5564bc2cf2afba158519e211f14da9dc95698a660b0d4b8c3e88c3a53a1",
+  "assets/k718-battery/battery-empty-20x15.png": "f9e266bf54b1a49c362bc3eb24ebd91319d679471ba52b9255c243359268ae15",
+  "assets/k718-battery/battery-full-20x15.png": "9d368174b21c1bc3207cd1ba95a39d991769343eb54d402122810b48faee7fb3",
+  "assets/k718-battery/battery-half-20x15.png": "ea4fd1e830fc6a809e960c92c93fe2477d98dde59139755e7b0f232a69df634d",
+  "assets/k718-battery/battery-quarter-20x15.png": "079935848f7e9346730f94fef5d87a6927905672e54f63bbf835be1910416bd3",
+  "assets/k718-battery/battery-three-quarters-20x15.png": "d489e98647c0aa02e80b4fe2cf2c85684b6bbcf72f68e44dcb2be01d8fcf3b22"
+}

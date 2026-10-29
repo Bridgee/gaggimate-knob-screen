@@ -1,0 +1,42 @@
+{
+  "schema": 1,
+  "repository": "Bridgee/gaggimate-knob-screen",
+  "upstream": "https://github.com/jniebuhr/gaggimate",
+  "upstream_commit": "43d2a7ba2299c196fd67c001f455985e07e57a49",
+  "allowed_roots": [
+    ".github",
+    "assets",
+    "boards",
+    "data",
+    "docs",
+    "eez-ui",
+    "icons",
+    "include",
+    "lib",
+    "port",
+    "schema",
+    "scripts",
+    "sim",
+    "src",
+    "test",
+    "web"
+  ],
+  "allowed_root_files": [
+    ".clang-format",
+    ".editorconfig",
+    ".gitignore",
+    ".nvmrc",
+    "CHANGELOG.md",
+    "CONTRIBUTING.md",
+    "LICENSE.md",
+    "NOTICE.md",
+    "README.md",
+    "platformio.ini",
+    "tailwind.config.js",
+    ".gitattributes"
+  ],
+  "archives": [
+    "port/tools/mklittlefs/source.tar.gz",
+    "port/tools/mklittlefs/darwin-arm64.tar.gz"
+  ]
+}

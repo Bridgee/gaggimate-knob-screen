@@ -1,4 +1,5 @@
 #include "WebUIPlugin.h"
+#include <cstring>
 #include <DNSServer.h>
 #include <LittleFS.h>
 #include <SD_MMC.h>
@@ -17,6 +18,9 @@
 #include <mbedtls/platform.h>
 #include <vector>
 #include <version.h>
+#ifdef GAGGIMATE_KNOB
+#include <display/drivers/GuitionKnob/Hardware.h>
+#endif
 
 static WebUIPlugin *g_webUIPlugin = nullptr;
 
@@ -153,6 +157,9 @@ void WebUIPlugin::serveWebAsset(AsyncWebServerRequest *request) {
 }
 
 void WebUIPlugin::setupServer() {
+#ifdef GAGGIMATE_KNOB
+    guition_knob::Hardware::instance().bindWeb(server);
+#endif
     server.on("/connecttest.txt", [](AsyncWebServerRequest *request) {
         request->redirect("http://logout.net");
     }); // windows 11 captive portal workaround
@@ -284,6 +291,14 @@ void WebUIPlugin::handleOTASettings(JsonDocument &request) {
 }
 
 void WebUIPlugin::handleOTAStart(JsonDocument &request) {
+#ifdef GAGGIMATE_KNOB
+    // Upstream releases do not contain this panel driver. Keep board-only OTA
+    // available, but never replace the screen port with the stock LilyGO binary.
+    if (request["cp"].as<String>() != "controller") {
+        updateOTAStatus("K718 display updates require a K718 build installed over USB.");
+        return;
+    }
+#endif
     updating = true;
     if (request["cp"].is<String>()) {
         updateComponent = request["cp"].as<String>();
@@ -299,6 +314,12 @@ static bool parseBoolArg(const String &value) {
 
 void WebUIPlugin::handleSettings(AsyncWebServerRequest *request) const {
     if (request->method() == HTTP_POST) {
+        if ((request->hasArg("standbyContent") && (request->arg("standbyContent").length()!=std::strlen(request->arg("standbyContent").c_str()) || !gaggimate_ui::validStandbyContent(request->arg("standbyContent").c_str()))) ||
+            (request->hasArg("standbyText") && (request->arg("standbyText").length()!=std::strlen(request->arg("standbyText").c_str()) || !gaggimate_ui::validStandbyText(request->arg("standbyText").c_str())))) {
+            request->send(400,"text/plain","Standby content must be logo/text/clock; text allows at most24 printable ASCII characters.");return;
+        }
+        const bool appearanceOnly=(request->hasArg("standbyContent") || request->hasArg("standbyText")) &&
+            request->args()==int(request->hasArg("standbyContent"))+int(request->hasArg("standbyText"));
         controller->getSettings().batchUpdate([request](Settings *settings) {
             if (request->hasArg("startupMode"))
                 settings->setStartupMode(request->arg("startupMode") == "brew" ? MODE_BREW : MODE_STANDBY);
@@ -380,6 +401,8 @@ void WebUIPlugin::handleSettings(AsyncWebServerRequest *request) const {
                 settings->setTimezone(request->arg("timezone"));
             if (request->hasArg("clock24hFormat"))
                 settings->setClockFormat(parseBoolArg(request->arg("clock24hFormat")));
+            if(request->hasArg("standbyContent"))settings->setStandbyContent(request->arg("standbyContent"));
+            if(request->hasArg("standbyText"))settings->setStandbyText(request->arg("standbyText"));
             if (request->hasArg("standbyTimeout"))
                 settings->setStandbyTimeout(request->arg("standbyTimeout").toInt() * 1000);
             if (request->hasArg("mainBrightness"))
@@ -469,8 +492,10 @@ void WebUIPlugin::handleSettings(AsyncWebServerRequest *request) const {
             settings->save(true);
         });
         pluginManager->trigger("settings:changed");
-        controller->setTargetTemp(controller->getTargetTemp());
-        controller->setPumpModelCoeffs();
+        if(!appearanceOnly) {
+            controller->setTargetTemp(controller->getTargetTemp());
+            controller->setPumpModelCoeffs();
+        }
     }
 
     AsyncResponseStream *response = request->beginResponseStream("application/json");
@@ -516,6 +541,9 @@ void WebUIPlugin::handleSettings(AsyncWebServerRequest *request) const {
     doc["delayAdjust"] = settings.isDelayAdjust();
     doc["timezone"] = settings.getTimezone();
     doc["clock24hFormat"] = settings.isClock24hFormat();
+    const auto standbyAppearance=settings.getStandbyAppearance();
+    doc["standbyContent"]=gaggimate_ui::standbyContentName(standbyAppearance.content);
+    doc["standbyText"]=standbyAppearance.text;
     doc["standbyTimeout"] = settings.getStandbyTimeout() / 1000;
     doc["mainBrightness"] = settings.getMainBrightness();
     doc["standbyBrightness"] = settings.getStandbyBrightness();

@@ -1,6 +1,7 @@
 #include "actions.h"
 #include "screens.h"
 #include "ui.h"
+#include "../NativeResolution.h"
 #include <Arduino.h>
 #include <display/main.h>
 #include <display/plugins/BLEScalePlugin.h>
@@ -125,7 +126,7 @@ void action_on_meter_draw(lv_event_t *e) {
     const lv_coord_t cx = content.x1 + r_edge;
     const lv_coord_t cy = content.y1 + r_edge;
     // Pull the ring in 2px so round cap/dot tips clear the meter's outer radius (else they look shaved).
-    const lv_coord_t r_out = r_edge - 2;
+    const lv_coord_t r_out = r_edge - uiPixel(2);
     const lv_coord_t r_in = r_out - scale->tick_length;
     const lv_coord_t cap = scale->tick_width / 2;
     const bool pill = scale->tick_length > scale->tick_width; // collapses to a dot once shorter than wide
@@ -235,7 +236,7 @@ void applyClickArea(lv_obj_t *obj, lv_coord_t size) {
     if (obj == nullptr) {
         return;
     }
-    lv_obj_set_ext_click_area(obj, size);
+    lv_obj_set_ext_click_area(obj, uiPixel(size));
 }
 
 // Stop lv_meter drawing its own ticks (action_on_meter_draw takes over): stash the design count in the

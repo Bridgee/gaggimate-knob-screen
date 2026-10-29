@@ -1,0 +1,6 @@
+{
+  "name": "NayrodPID",
+  "version": "1.0.0",
+  "description": "Project-local PID sources; resolved from the current checkout.",
+  "build": {"srcDir": "src", "includeDir": "src"}
+}

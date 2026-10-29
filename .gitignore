@@ -1,17 +1,39 @@
-.pio
+# Local tools and dependencies
+.pio/
+.tools/
+.tooling/
+.venv/
+venv/
 env/
-pcb/**/Gaggimate-backups
-pcb/**/*.kicad_sch_old
-.vscode
-.idea
 node_modules/
-__pycache__
-data/w
-.codebuddy
+__pycache__/
+*.pyc
+.DS_Store
+.vscode/
+.idea/
+.env
+.env.*
+!.env.example
+
+# Generated firmware, web bundles and local build records
+dist/
+.port/
 src/version.h
-src/display/ui/default/lvgl/project.info
-# Generated web UI bundle embedded into firmware flash (scripts/embed_webui.py)
 src/display/webassets/
-# Desktop simulator runtime data (settings/profiles/shots) and screenshots
+src/display/ui/default/lvgl/project.info
+data/w/
 sim_data/
 *.bmp
+
+# Device state and personal working material never belong in this repository
+backups/
+baselines/
+hardware-tests/
+references/
+replays/
+releases/
+context.json
+AGENTS.md
+
+# Local EEZ editor state
+*.eez-project-ui-state
