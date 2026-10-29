@@ -6,6 +6,7 @@
 - Battery/power status, optional LED gauge mirror with persistent enable/brightness controls, and rotary parameter adjustment.
 - Custom standby text/clock and hardware audio interfaces.
 - English firmware repository, source reconstruction and reproducible-build tooling.
+- Matched-package preparation with our screen image and a hash-pinned, unmodified official controller image.
 
 ## Next
 
@@ -15,7 +16,8 @@
 
 ## Proposed directions
 
-- A K718-compatible OTA delivery path with image/target checks.
+- OTA discovery from our matched releases, with separate component versions, compatibility/target checks and verified installation/recovery.
+- Reproducible controller self-builds compared against official release binaries.
 - Pinned build-tool packages for more host platforms.
 - Better battery estimation and power-source reporting where hardware permits.
 - Optional knob/audio interactions without changing the original touch workflow.

@@ -30,6 +30,26 @@ python scripts/k718.py bind-upstream   --version NEW_OFFICIAL_VERSION --controll
 Update the port version, adapt code/locks/resources, commit, then export/replay and build a new candidate. Update housekeeping filters if upstream adds necessary firmware paths.
 An upstream update can require focused manual adaptation; the replay process preserves a traceable starting point.
 
+## Matched firmware pairs
+
+The first delivery stage pairs our K718 application with the **unmodified official controller release**, rather than rebuilding the controller for distribution. `port/controller-release.json` pins the official repository/tag/commit, release/asset IDs, size, SHA-256 and controller protocol. The digest was checked against GitHub's release asset metadata and the downloaded original file.
+
+After preparing the normal display package:
+
+```sh
+python scripts/package_pair.py dist/publish --out dist/paired
+```
+
+The tool downloads only the pinned controller asset. For offline use, add `--controller PATH_TO_ORIGINAL_BOARD_FIRMWARE`; the same hash checks apply. It rejects altered/truncated images, incompatible upstream commits/protocols and existing output directories.
+
+The output contains `display-knob-firmware.bin`, `board-firmware.bin`, `pair.json`, `SHA256SUMS` and notices. Both application images remain byte-for-byte unchanged. Keep the separate display USB bundle for installation; the pair contains application images, not first-install images.
+
+`pair.json` records independent screen/controller versions, the display source commit/tree and partition bounds, official controller provenance, and package validation scope. Preparing a pair does not certify an on-device OTA transfer or enable installation. The current device still checks official releases; separate pair discovery/installation remains future work.
+
+For a new official version, review and update the controller pin together with the selected upstream base/protocol, verify the downloaded asset against its official digest, and test the intended hardware combination. Do not automatically adopt the newest official asset. Never replace a published pair in place.
+
+Controller self-builds remain a separate reproducibility investigation. Use a clean official checkout with its original tag and recorded tools/dependencies; compare the actual application SHA-256 against the official release. A differing hash is not proof of equivalent behavior. Do not silently substitute a self-built controller image for the pinned official binary.
+
 ## Reproducible builds
 
 Tool/dependency versions and the filesystem tool are locked under `port/`. Build timestamps use the committed author epoch, compiler paths are normalized, and filesystem metadata is fixed.

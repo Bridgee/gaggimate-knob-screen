@@ -4,6 +4,7 @@
 
 - Add LED-ring enable/brightness controls in Settings → General. Saved preferences apply immediately and return after reboot.
 - Keep LED-only saves separate from coffee-machine parameter updates.
+- Prepare matched firmware packages with the original, hash-pinned official controller application and independent component metadata. OTA installation remains disabled.
 
 ## 0.3.5-rc.2 — candidate
 

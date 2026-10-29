@@ -93,6 +93,8 @@ It is a **pre-release**: software/build checks do not imply hardware acceptance 
 
 Successful CI runs provide development firmware bundles under Actions. Versioned public packages are published under [Releases](https://github.com/Bridgee/gaggimate-knob-screen/releases).
 
+CI also prepares a [matched firmware pair](docs/MAINTAINING.md#matched-firmware-pairs): our K718 application plus the unmodified official controller application, with pinned source identities, separate versions and SHA-256 checksums. This prepares distribution inputs; OTA installation remains disabled.
+
 ## Build
 
 The pinned full-build tool package currently supports **Apple Silicon with macOS 26 or later**.
