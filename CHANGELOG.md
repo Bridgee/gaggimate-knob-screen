@@ -1,9 +1,9 @@
 # Changelog
 
-## 0.3.5 — development
+## 0.3.5-rc.1 — pre-release
 
 - Remove the hardware-test page while retaining callable hardware APIs.
-- Prepare the firmware-only repository, English documentation and publication checks.
+- Prepare the firmware-only repository, English porting/hardware/roadmap documentation and publication checks.
 - Preserve upstream web credits and add knob-screen attribution.
 
 ## Earlier port work

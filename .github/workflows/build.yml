@@ -33,3 +33,10 @@ jobs:
         run: python scripts/check_public.py
       - name: Build and verify firmware
         run: python scripts/k718.py build --out dist/release
+      - name: Prepare shareable firmware package
+        run: python scripts/package_release.py dist/release --out dist/publish
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gaggimate-knob-screen-${{ github.sha }}
+          path: dist/publish/
+          if-no-files-found: error
