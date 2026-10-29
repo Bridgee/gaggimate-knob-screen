@@ -13,6 +13,8 @@
 #include <cstdlib>
 
 void checkUiExtensions(const char *,int,void(*)(const char *,const char *));
+void applyPreviewMenuLayout(bool);
+void renderDocumentationFrames(const char *, int, void(*)(const char *, const char *));
 static uint32_t ticks;
 void advancePreviewTicks(uint32_t amount){ticks+=amount;}
 extern "C" uint32_t millis(void) { return ticks; }
@@ -118,6 +120,7 @@ int main(int argc, char **argv) {
         eez_flow_set_screen(screen, LV_SCR_LOAD_ANIM_NONE, 0, 0);
         for (int i = 0; i < 12; ++i) {
             ticks += 30; ui_tick();
+            if (screen == 4) applyPreviewMenuLayout(true);
             if (screen == 1 || screen == 4) updateKnobStatusBattery(screen == 1 ? objects.standby_icons : objects.status_icons, guition_knob::PowerSource::External, -1);
             lv_timer_handler();
         }
@@ -236,5 +239,7 @@ int main(int argc, char **argv) {
     assert(lv_color_to32(lv_obj_get_style_bg_color(objects.standby_screen, LV_PART_MAIN)) == lv_color_to32(lv_color_hex(theme_colors[theme][1])));
     assert(transfers > 0);
     checkUiExtensions(argv[1],theme,saveFrame);
+    publish();
+    renderDocumentationFrames(argv[1],theme,saveFrame);
     return 0;
 }

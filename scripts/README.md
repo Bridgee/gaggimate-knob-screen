@@ -3,6 +3,7 @@
 - `k718.py`: verify dependencies, check, build, export/replay the port and compare reproducible builds.
 - `k718_flash.py`: inspect packages, back up and update a compatible screen application.
 - `generate_knob_ui.py`, `generate_knob_battery.mjs`: generate native UI resources.
+- `generate_doc_previews.py`: render/check the feature illustrations in the README.
 - `check_public.py`: check the tracked publication boundary.
 
 Start with [Building](../docs/BUILDING.md) and [Maintaining](../docs/MAINTAINING.md).

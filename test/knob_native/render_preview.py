@@ -23,26 +23,42 @@ config = re.sub(r'#define LV_MEM_SIZE\s+.*', '#define LV_MEM_SIZE (8 * 1024 * 10
 actions = (EEZ / 'actions.cpp').read_text()
 names = re.findall(r'extern void (action_\w+)\(', (EEZ / 'actions.h').read_text())
 
-def function(name):
-    match = re.search(r'(?:static )?void ' + name + r'\([^)]*\)\s*\{', actions)
+def function(name, source=actions):
+    match = re.search(r'(?:static )?void ' + re.escape(name) + r'\([^)]*\)\s*\{', source)
+    if not match: raise RuntimeError('Preview source function changed: ' + name)
     start = match.start(); end = match.end(); depth = 1
     while depth:
-        if actions[end] == '{': depth += 1
-        elif actions[end] == '}': depth -= 1
+        if source[end] == '{': depth += 1
+        elif source[end] == '}': depth -= 1
         end += 1
-    return actions[start:end] + '\n'
+    return source[start:end] + '\n'
 
 stubs = '#include "actions.h"\n#include "screens.h"\n#include "NativeResolution.h"\n#include <cmath>\n'
 stubs += function('applyClickArea') + function('suppressMeterTicks')
 for name in names:
     stubs += function(name) if name in ('action_on_meter_draw', 'action_on_screen_load') else 'void ' + name + '(lv_event_t *) {}\n'
+# EEZ design coordinates are replaced by this runtime effect on the device.
+# Compile the exact production helper and effect body rather than recreating
+# their geometry in the preview or exporting the unfinished design positions.
+runtime = (EEZ.parent / 'DefaultUI.cpp').read_text()
+stubs += function('DefaultUI::positionMenuIcon', runtime).replace('DefaultUI::', '')
+match = re.search(
+    r'effect_mgr\.use_effect\(\[this\]\(\) \{ return currentScreen == SCREEN_ID_MENU_SCREEN_NEW; \},'
+    r'\s*\[this\]\(\) (\{)', runtime)
+if not match: raise RuntimeError('Menu runtime effect changed; review preview integration')
+start = match.start(1); end = start + 1; depth = 1
+while depth:
+    if runtime[end] == '{': depth += 1
+    elif runtime[end] == '}': depth -= 1
+    end += 1
+stubs += 'void applyPreviewMenuLayout(bool grindAvailable) ' + runtime[start:end] + '\n'
 (BUILD / 'actions.cpp').write_text(stubs)
 flags = ['-O1', '-g', '-DGAGGIMATE_KNOB', '-DLV_CONF_INCLUDE_SIMPLE', '-DLV_LVGL_H_INCLUDE_SIMPLE',
          '-I' + str(INC), '-I' + str(LVGL), '-I' + str(EEZ), '-I' + str(EEZ.parent), '-I' + str(ROOT / 'src'), '-Wno-unknown-warning-option']
 sources = sorted((LVGL / 'src').rglob('*.c')) + [NATIVE / x for x in ('screens.c', 'ui.c', 'images.c')]
 sources += [EEZ / 'styles.c', EEZ / 'images.c', EEZ / 'eez-flow.cpp', BUILD / 'actions.cpp', ROOT / 'test/knob_native/preview.cpp']
 sources += [EEZ.parent / 'KnobMenuBattery.cpp']
-sources += [EEZ.parent / 'KnobBatteryImages.c', EEZ.parent / 'KnobAdjustment.cpp', EEZ.parent / 'StandbyDisplay.cpp', ROOT / 'test/knob_native/check_ui_extensions.cpp']
+sources += [EEZ.parent / 'KnobBatteryImages.c', EEZ.parent / 'KnobAdjustment.cpp', EEZ.parent / 'StandbyDisplay.cpp', ROOT / 'test/knob_native/check_ui_extensions.cpp', ROOT / 'test/knob_native/doc_scenes.cpp']
 config_key = hashlib.sha256(config.encode()).hexdigest()
 
 def compile_source(source):

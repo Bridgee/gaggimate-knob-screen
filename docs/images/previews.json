@@ -1,0 +1,49 @@
+{
+  "kind": "native-ui-render",
+  "physical_capture": false,
+  "simulated_values": true,
+  "resolution": [
+    360,
+    360
+  ],
+  "generator": "scripts/generate_doc_previews.py",
+  "renderer": "test/knob_native/render_preview.py",
+  "images": {
+    "menu-charging.png": {
+      "scene": "doc-menu-charging.png",
+      "theme": "Dark",
+      "purpose": "External power: lightning icon",
+      "sha256": "3cc7ded7d757d6f8a3702a4aefda17d471389b5febbb9992a528457023bbce29"
+    },
+    "menu-battery.png": {
+      "scene": "doc-menu-battery.png",
+      "theme": "Dark",
+      "purpose": "Battery power: 60 percent fixture, fill-level icon",
+      "sha256": "f5763c1d24acaa28b540fd1a970f477c7ce0c87589a0cd014fdccea5ab7f4535"
+    },
+    "knob-single.png": {
+      "scene": "doc-knob-single.png",
+      "theme": "Light",
+      "purpose": "Single temperature field selected automatically",
+      "sha256": "4a2aa78bf6d09b531dd58056ecc342cebaca360f55db0233912cb80f68194a95"
+    },
+    "knob-multiple.png": {
+      "scene": "doc-knob-multiple.png",
+      "theme": "Light",
+      "purpose": "Temperature selected by touch among multiple fields",
+      "sha256": "fb583a3ca33c4bff48980254c75f083612f096c1cdbab1ebe56688c6918f3c00"
+    },
+    "standby-text.png": {
+      "scene": "doc-standby-text.png",
+      "theme": "Dark",
+      "purpose": "Custom standby text: MY COFFEE",
+      "sha256": "fb0fff4662a88b9aec8ca6dadb63efb27c0519629f72d47dc3255f1f09d0acc9"
+    },
+    "standby-clock.png": {
+      "scene": "doc-standby-clock.png",
+      "theme": "Light",
+      "purpose": "Centered clock without logo or custom text",
+      "sha256": "d4eeec44001714f93cf7bc36dedf7b5960e55f46004149048a45e9bb8052e5c6"
+    }
+  }
+}

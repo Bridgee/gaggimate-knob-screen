@@ -7,8 +7,6 @@ Based on official [GaggiMate v1.9.0](https://github.com/jniebuhr/gaggimate/tree/
 
 This is an independent port maintained by [Bridgee](https://github.com/Bridgee). It preserves the upstream coffee-control logic, page flows and original touch buttons, then adds the hardware adaptation and optional knob-screen extensions below.
 
-<img src="docs/images/menu.png" alt="Knob screen menu" width="240" /> <img src="docs/images/standby.png" alt="Knob screen standby" width="240" />
-
 ## What this port adds
 
 - Native display, touch and backlight support; upstream Wi-Fi/web and Bluetooth controller communication remain available.
@@ -18,6 +16,36 @@ This is an independent port maintained by [Bridgee](https://github.com/Bridgee).
 - Custom standby text or a centered clock, with both themes and touch wake.
 - Callable speaker and microphone interfaces. The temporary hardware-test page has been removed.
 - Locked build inputs, official-base patch replay and reproducible firmware builds.
+
+## Feature previews
+
+Native 360 × 360 UI renders with simulated values, not device photographs. Each pair illustrates one knob-screen extension; both themes are shown across the examples.
+
+### Power status
+
+| External power | Battery power |
+| :---: | :---: |
+| <img src="docs/images/menu-charging.png" alt="Four-button menu with a lightning symbol in the battery icon" width="260" /> | <img src="docs/images/menu-battery.png" alt="The same menu with battery fill level instead of the lightning symbol" width="260" /> |
+
+Menu examples have the optional grinder enabled. The lightning symbol indicates external power. On battery, the icon shows estimated fill level, turning yellow at 25% or below and red at 10% or below.
+
+### Rotary adjustment
+
+| Single field: turn directly | Multiple fields: tap a value, then turn |
+| :---: | :---: |
+| <img src="docs/images/knob-single.png" alt="Steam temperature automatically selected with a blue outline" width="260" /> | <img src="docs/images/knob-multiple.png" alt="Profile temperature selected with a blue outline while the weight field remains unselected" width="260" /> |
+
+The blue outline identifies the field controlled by the knob. Original +/− touch buttons remain available.
+
+### Custom standby content
+
+| Your text | Centered clock only |
+| :---: | :---: |
+| <img src="docs/images/standby-text.png" alt="Dark standby screen with MY COFFEE replacing the GaggiMate logo" width="260" /> | <img src="docs/images/standby-clock.png" alt="Light standby screen with a centered clock and no logo or custom text" width="260" /> |
+
+Choose the layout in **Settings → General → Standby Content**. Status icons and touch wake remain available.
+
+[Image sources and regeneration](docs/images/README.md).
 
 ## Hardware
 
