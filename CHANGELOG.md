@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.0-rc.6
+
+- Prepare a distinct forward OTA target for the shared-network-worker candidate. Normal display/controller installation remains disabled pending hardware qualification.
+
 ## 0.4.0-rc.5
 
 - Share one preallocated background HTTPS worker between release checks and screen installation, reducing internal stack memory and serializing network work. Screen install jobs take priority over queued discovery checks.
