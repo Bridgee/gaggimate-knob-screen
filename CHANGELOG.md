@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.0-rc.8
+
+- Prepare a separate forward OTA target with the shared network worker and incremental erasure. Normal display/controller installation remains disabled pending qualification.
+
 ## 0.4.0-rc.7
 
 - Erase the inactive OTA image incrementally during sequential writes, keeping controller telemetry live. Retain exact manifest length/hash limits, SDK validation and complete flash readback before boot selection.

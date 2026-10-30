@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "port_version": "0.4.0-rc.7",
+  "port_version": "0.4.0-rc.8",
   "upstream": {
     "url": "https://github.com/jniebuhr/gaggimate.git",
     "ref": "v1.9.0",
