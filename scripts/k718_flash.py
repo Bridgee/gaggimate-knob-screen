@@ -9,6 +9,8 @@ from pathlib import Path
 import site
 import sys
 from types import SimpleNamespace
+import io
+from k718_otadata import layout, inspect, selected, trial
 from k718_lock import digest
 from k718 import partition_entries, write_json, tool_env
 
@@ -46,13 +48,16 @@ def qualification(folder, results, output):
     return output
 
 
-def flash(folder,port,expected_mac,backup,validation=False,receipt=None):
+def flash(folder,port,expected_mac,backup,validation=False,receipt=None,mode='update'):
     folder,manifest,parts=verified_release(folder)
+    if mode not in ('update','trial','recover'):raise RuntimeError('Unknown USB operation')
     if not validation:
         if not receipt:raise RuntimeError('Use a SHA-bound hardware qualification, or explicitly --validation for bench testing')
         evidence=json.loads(Path(receipt).read_text())
         if evidence.get('release_sha256')!=digest(folder/'release.json') or evidence.get('status')!='hardware-verified':
             raise RuntimeError('Qualification does not match release')
+    layout(parts)
+    if mode=='trial' and not validation:raise RuntimeError('USB trial requires explicit --validation')
     # No controller auto-discovery; the operator must name the screen's port/MAC.
     if not port or not expected_mac or not backup:raise RuntimeError('Writing requires --port, --expected-mac and a new external --backup directory')
     backup=Path(backup).resolve()
@@ -72,43 +77,66 @@ def flash(folder,port,expected_mac,backup,validation=False,receipt=None):
         partition=bytes(esp.read_flash(0x8000,0x1000))
         if partition[:len((folder/'partitions.bin').read_bytes())]!=(folder/'partitions.bin').read_bytes():
             raise RuntimeError('Device partition table differs; explicit migration required')
-        ota=parts.get('otadata')
-        if not ota:raise RuntimeError('No OTA selection partition')
+        ota=parts['otadata']
         current_ota=bytes(esp.read_flash(ota['offset'],ota['size']))
-        # OTA selection/CRC semantics are intentionally not guessed. This updater
-        # supports the known app0 baseline; other boot selections require review.
-        if current_ota!=(folder/'boot_app0.bin').read_bytes():
-            raise RuntimeError('OTA selection differs from known app0 baseline; no write performed')
+        entries=inspect(current_ota)
+        metadata=None
+        if mode=='recover':
+            target='app0'
+            metadata=(folder/'boot_app0.bin').read_bytes()
+            if selected(metadata)['slot']!='app0':raise RuntimeError('Recovery package must select settled app0')
+            metadata_offset=ota['offset']
+            final_ota=metadata
+        else:
+            target=selected(current_ota)['slot']
+            final_ota=current_ota
+            if mode=='trial':
+                # The exact reviewed SDK bootloader is required for NEW/PENDING rollback.
+                if 'bootloader.bin' not in manifest['artifacts']:raise RuntimeError('Missing reviewed bootloader')
+                loader=(folder/'bootloader.bin').read_bytes()
+                if bytes(esp.read_flash(0,len(loader)))!=loader:raise RuntimeError('Bootloader differs; no USB trial written')
+                target,relative,metadata,final_ota=trial(current_ota)
+                metadata_offset=ota['offset']+relative
+        address,size=parts[target]['offset'],parts[target]['size']
         backup.mkdir(parents=True,mode=0o700)
-        receipt_data={'screen_mac':mac,'port':port,'release_sha256':digest(folder/'release.json'),'firmware_sha256':manifest['artifacts']['firmware.bin']['sha256'],'validation_only':validation,'scope':'app0 only','backups':{},'written':False}
+        receipt_data={'screen_mac':mac,'port':port,'release_sha256':digest(folder/'release.json'),'firmware_sha256':manifest['artifacts']['firmware.bin']['sha256'],'validation_only':validation,'operation':mode,'scope':target+(' + explicit boot selection' if metadata is not None else ' only'),'selected_entries':entries,'backups':{},'written':False}
         snapshots={}
-        for name,address,size in [('partition-table',0x8000,0x1000),('otadata',ota['offset'],ota['size']),('nvs',parts['nvs']['offset'],parts['nvs']['size']),('app0',manifest['application_offset'],manifest['application_size'])]:
+        regions=[('partition-table',0x8000,0x1000),('otadata',ota['offset'],ota['size']),('nvs',parts['nvs']['offset'],parts['nvs']['size'])]
+        for name in (('app0','app1') if mode!='update' else (target,)):
+            regions.append((name,parts[name]['offset'],parts[name]['size']))
+        for name,offset,count in regions:
             data=bytearray()
-            for cursor in range(0,size,128*1024):
-                count=min(128*1024,size-cursor);chunk=bytes(esp.read_flash(address+cursor,count))
-                if len(chunk)!=count or esp.flash_md5sum(address+cursor,count)!=hashlib.md5(chunk).hexdigest():raise RuntimeError('Backup read verification failed: '+name)
+            for cursor in range(0,count,128*1024):
+                length=min(128*1024,count-cursor);chunk=bytes(esp.read_flash(offset+cursor,length))
+                if len(chunk)!=length or esp.flash_md5sum(offset+cursor,length)!=hashlib.md5(chunk).hexdigest():raise RuntimeError('Backup read verification failed: '+name)
                 data.extend(chunk)
             snapshots[name]=bytes(data);path=backup/(name+'.bin');path.write_bytes(data)
-            receipt_data['backups'][name]={'offset':address,'bytes':size,'sha256':digest(path)}
+            receipt_data['backups'][name]={'offset':offset,'bytes':count,'sha256':digest(path)}
             write_json(backup/'flash.json',receipt_data)
-        binary=(folder/'firmware.bin').read_bytes()
-        receipt_data['write_attempted']=True
-        write_json(backup/'flash.json',receipt_data)
-        with (folder/'firmware.bin').open('rb') as stream:
-            write_flash(esp,SimpleNamespace(addr_filename=[(manifest['application_offset'],stream)],compress=True,no_compress=False,no_stub=False,force=False,encrypt=False,encrypt_files=None,ignore_flash_encryption_efuse_setting=False,erase_all=False,flash_size='keep',flash_mode='keep',flash_freq='keep',chip='esp32s3'))
-        written=True
-        # esptool 4.9 retries mutate the caller's IS_STUB to False, then replace
-        # only their local loader. The device still runs the stub. Rebind its
-        # transport without resetting/running the app before preserved-region reads.
-        if not esp.IS_STUB:
-            esp=esp.STUB_CLASS(esp)
-        if esp.flash_md5sum(manifest['application_offset'],len(binary))!=hashlib.md5(binary).hexdigest():raise RuntimeError('Independent application readback failed')
-        for name in ('partition-table','otadata','nvs'):
+        def write_region(offset,data):
+            nonlocal esp,written
+            receipt_data['write_attempted']=True
+            write_json(backup/'flash.json',receipt_data)
+            write_flash(esp,SimpleNamespace(addr_filename=[(offset,io.BytesIO(data))],compress=True,no_compress=False,no_stub=False,force=False,encrypt=False,encrypt_files=None,ignore_flash_encryption_efuse_setting=False,erase_all=False,flash_size='keep',flash_mode='keep',flash_freq='keep',chip='esp32s3'))
+            written=True
+            # esptool 4.9 retries can replace their local loader only.
+            if not esp.IS_STUB:esp=esp.STUB_CLASS(esp)
+            if esp.flash_md5sum(offset,len(data))!=hashlib.md5(data).hexdigest():raise RuntimeError('Independent flash readback failed')
+        write_region(address,(folder/'firmware.bin').read_bytes())
+        # Commit selection only AFTER the entire application passes readback.
+        if metadata is not None:
+            receipt_data['application_readback_verified']=True
+            write_json(backup/'flash.json',receipt_data)
+            write_region(metadata_offset,metadata)
+        if bytes(esp.read_flash(ota['offset'],ota['size']))!=final_ota:raise RuntimeError('OTA selection readback differs')
+        preserved=['partition-table','nvs']+(['otadata'] if metadata is None else [])
+        if mode in ('trial','recover'):preserved.append('app1' if target=='app0' else 'app0')
+        for name in preserved:
             region=receipt_data['backups'][name]
-            if bytes(esp.read_flash(region['offset'],region['bytes']))!=snapshots[name]:raise RuntimeError('Unexpected change outside app0: '+name)
+            if esp.flash_md5sum(region['offset'],region['bytes'])!=hashlib.md5(snapshots[name]).hexdigest():raise RuntimeError('Unexpected change outside write scope: '+name)
         receipt_data.update(written=True,readback_verified=True,completed_at=datetime.datetime.now(datetime.timezone.utc).isoformat())
         write_json(backup/'flash.json',receipt_data)
-        print('Application verified; settings, pairing, OTA selection and filesystem were not written.')
+        print('Application verified; settings, pairing and filesystems were not written. Operation: '+mode)
     finally:
         if connected:
             try:esp._port.setDTR(False);esp.hard_reset()
@@ -120,14 +148,14 @@ def main():
     parser=argparse.ArgumentParser(description=__doc__);sub=parser.add_subparsers(dest='command',required=True)
     p=sub.add_parser('plan');p.add_argument('release')
     p=sub.add_parser('qualify');p.add_argument('release');p.add_argument('--results',required=True);p.add_argument('--out',required=True)
-    p=sub.add_parser('update');p.add_argument('release');p.add_argument('--write',action='store_true');p.add_argument('--port');p.add_argument('--expected-mac');p.add_argument('--backup');p.add_argument('--validation',action='store_true');p.add_argument('--qualification')
+    p=sub.add_parser('update');p.add_argument('release');p.add_argument('--write',action='store_true');p.add_argument('--port');p.add_argument('--expected-mac');p.add_argument('--backup');p.add_argument('--validation',action='store_true');p.add_argument('--qualification');p.add_argument('--mode',choices=['update','trial','recover'],default='update')
     args=parser.parse_args()
     try:
         if args.command=='qualify':print(qualification(args.release,args.results,args.out))
         elif args.command=='plan' or not args.write:
             folder,m,parts=verified_release(args.release)
-            print(json.dumps({'release':str(folder),'firmware_sha256':m['artifacts']['firmware.bin']['sha256'],'upstream':m['upstream'],'controller_protocol':m['controller_protocol'],'write_region':parts['app0'],'hardware_qualified':False,'device_contacted':False},indent=2))
-        else:flash(args.release,args.port,args.expected_mac,args.backup,args.validation,args.qualification)
+            print(json.dumps({'release':str(folder),'firmware_sha256':m['artifacts']['firmware.bin']['sha256'],'upstream':m['upstream'],'controller_protocol':m['controller_protocol'],'write_regions':{name:parts.get(name) for name in ('app0','app1')},'selection':'resolved from device only; recover explicitly selects app0','hardware_qualified':False,'device_contacted':False},indent=2))
+        else:flash(args.release,args.port,args.expected_mac,args.backup,args.validation,args.qualification,args.mode)
     except (RuntimeError,KeyError,ValueError,OSError) as error:print('STOP:',error,file=sys.stderr);return 1
     return 0
 if __name__=='__main__':sys.exit(main())

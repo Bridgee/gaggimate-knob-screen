@@ -59,7 +59,11 @@ void PreferencesCodec<std::vector<AutoWakeupSchedule>>::write(Preferences &prefs
 }
 
 Settings::Settings() {
+#ifdef GAGGIMATE_KNOB
+    bootLoadOk = preferences.begin(PREFERENCES_KEY, true);
+#else
     preferences.begin(PREFERENCES_KEY, true);
+#endif
     for (auto *property : registry) {
         property->load(preferences);
     }

@@ -38,6 +38,7 @@
 #include <Preferences.h>
 #ifdef GAGGIMATE_KNOB
 #include <display/drivers/GuitionKnobDriver.h>
+#include <display/drivers/GuitionKnob/BootHealth.h>
 #endif
 #include <display/drivers/AmoledDisplayDriver.h>
 #include <display/drivers/LilyGoDriver.h>
@@ -56,7 +57,13 @@ void Controller::setup() {
     // async_tcp task for every request, which under a multi-tab load burst
     // pegged CPU0 for >5s and tripped the task watchdog (reboot). LittleFS
     // lookups are O(path). maxOpenFiles 16 for concurrent asset serving. [GM-90]
+#ifdef GAGGIMATE_KNOB
+    // An unconfirmed update must never format retained data to pass startup.
+    const bool bootStorageOk = LittleFS.begin(false, "/littlefs", 16);
+    if (!bootStorageOk) {
+#else
     if (!LittleFS.begin(true, "/littlefs", 16)) {
+#endif
         Serial.println(F("An Error has occurred while mounting LittleFS"));
     }
 
@@ -126,6 +133,9 @@ void Controller::setup() {
     ui->init();
 #endif
     this->onScreenReady();
+#ifdef GAGGIMATE_KNOB
+    guition_knob::bootHealthSetup(bootStorageOk, settings.bootSettingsLoaded());
+#endif
 
     updateLastAction();
     xTaskCreatePinnedToCore(loopLogicTask, "Controller::loopLogic", configMINIMAL_STACK_SIZE * 6, this, 3, &logicTaskHandle, 0);
@@ -1447,6 +1457,9 @@ void Controller::loopLogicTask(void *arg) {
     auto *controller = static_cast<Controller *>(arg);
     while (true) {
         controller->loopLogic();
+#ifdef GAGGIMATE_KNOB
+        guition_knob::bootHealthLogicPulse();
+#endif
         xTaskDelayUntil(&lastWake, pdMS_TO_TICKS(controller->getMode() == MODE_STANDBY ? 1000 : PROGRESS_INTERVAL));
     }
 }

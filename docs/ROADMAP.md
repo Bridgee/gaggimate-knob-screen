@@ -26,7 +26,7 @@ Implemented does not mean that every new binary has completed hardware acceptanc
 
 ## Next development stage: screen OTA
 
-Read-only preflight and separate disabled component permissions are implemented in development. No download or installation endpoint is enabled.
+Read-only preflight, separate disabled permissions, two-slot USB recovery/trials and local startup-health confirmation are implemented in development. Recovery/health still need hardware qualification. No download or installation endpoint is enabled.
 
 1. Bind installation requests to a freshly validated own-repository release and exact manifest/image hashes.
 2. Support USB recovery from either application slot and application health-gated boot confirmation.

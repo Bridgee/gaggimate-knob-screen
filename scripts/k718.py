@@ -116,7 +116,7 @@ def checks(audit):
     audit.run('workflow-failure-cases',[sys.executable,'-m','unittest','discover','-s','test/knob_workflow'])
     audit.run('native-ui',[sys.executable,'test/knob_native/check_ui.py'])
     audit.run('diagnostic-nonblocking',[sys.executable,'test/knob_native/check_diagnostics.py'])
-    for name,source in [('geometry','test/knob_geometry/check.cpp'),('brightness','test/knob_native/check_brightness.cpp'),('hardware-policy','test/knob_native/check_hardware.cpp'),('led-gauges','test/knob_native/check_led_gauges.cpp'),('led-wire','test/knob_native/check_led_encoding.cpp'),('led-preferences','test/knob_native/check_led_preferences.cpp'),('rotary-standby','test/knob_native/check_rotary_policy.cpp'),('official-check-queue','test/knob_native/check_official_release.cpp')]:
+    for name,source in [('boot-health','test/knob_native/check_boot_health.cpp'),('geometry','test/knob_geometry/check.cpp'),('brightness','test/knob_native/check_brightness.cpp'),('hardware-policy','test/knob_native/check_hardware.cpp'),('led-gauges','test/knob_native/check_led_gauges.cpp'),('led-wire','test/knob_native/check_led_encoding.cpp'),('led-preferences','test/knob_native/check_led_preferences.cpp'),('rotary-standby','test/knob_native/check_rotary_policy.cpp'),('official-check-queue','test/knob_native/check_official_release.cpp')]:
         binary=audit.path/name
         audit.run(name+'-compile',['c++','-std=c++17','-Wall','-Wextra','-Werror','-fsanitize=address,undefined','-Isrc',source,'-o',binary])
         audit.run(name,[binary])

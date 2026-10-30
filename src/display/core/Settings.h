@@ -75,6 +75,7 @@ class Settings {
   public:
     Settings();
 #ifdef GAGGIMATE_KNOB
+    bool bootSettingsLoaded() const { return bootLoadOk; }
     guition_knob::LedPreferences getKnobLedPreferences() const;
     void setKnobLedPreferences(const guition_knob::LedPreferences &value);
 #endif
@@ -268,6 +269,9 @@ class Settings {
 
   private:
     Preferences preferences;
+#ifdef GAGGIMATE_KNOB
+    bool bootLoadOk = false;
+#endif
     PropertyRegistry registry; // must precede the properties, they register themselves here
 
     Property<String> selectedProfile{registry, "sp", ""};

@@ -37,7 +37,25 @@ python scripts/k718_flash.py update dist/release   --write --validation   --port
 ```
 
 Replace the placeholders with the actual screen identity and a new local backup directory. Never select a controller port by accident.
-The updater rejects incompatible partitions/boot selection and verifies the application after writing. Keep backups private.
+The updater accepts the reviewed two-slot partition layout and settled app0/app1 selections. It backs up the selected application, partition table, NVS and boot metadata, then updates only that application. It refuses pending trials and unknown metadata. Keep backups private.
+
+Development recovery commands (hardware qualification must be recorded separately):
+
+```sh
+# Restore a compatible package to app0, including its reviewed boot selection.
+python scripts/k718_flash.py update PREVIOUS_PACKAGE --write --validation --mode recover \
+  --port SERIAL_PORT --expected-mac SCREEN_MAC --backup NEW_PRIVATE_BACKUP_DIRECTORY
+
+# Stage a candidate in the inactive slot, retaining the current application.
+python scripts/k718_flash.py update CANDIDATE_PACKAGE --write --validation --mode trial \
+  --port SERIAL_PORT --expected-mac SCREEN_MAC --backup NEW_PRIVATE_BACKUP_DIRECTORY
+```
+
+Recovery explicitly changes boot selection; normal updates preserve it. Recovery and trials back up both application slots before writing. A trial requires the exact packaged bootloader on the device, writes only the inactive application, verifies it, then commits a `NEW` selector in the other metadata sector. Bootloader, partition table, settings, pairing and filesystems are not written. Recovery writes app0 and restores the package's settled app0 selector only after application readback; app1 remains available in its backup.
+
+If application writing fails, boot selection is not committed. Interrupted operations retain their private receipt/backups; do not treat an incomplete receipt as success. Unknown layouts/states require review rather than an automatic erase.
+
+K718 trial boots defer framework acceptance until local startup remains healthy for 20 seconds. Missing controller/Wi-Fi alone is not a failure. Local startup failure within the 120-second trial deadline requests bootloader rollback when a valid fallback exists; USB recovery remains necessary if no fallback can boot. These checks establish local software progress, not physical pixel quality or brewing qualification.
 
 `first-install.bin` is a merged image written at address `0x0`; it includes the filesystem and partition table. It is for a first installation, not a normal update. Back up factory firmware before using it.
 

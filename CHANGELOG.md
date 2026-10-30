@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.0-rc.2 — USB recovery and startup health
+
+- Recognize settled app0/app1 boot selections in the checked USB updater. Add explicit, backed-up app0 recovery and inactive-slot USB trials; commit boot selection only after application readback.
+- Defer Arduino's early OTA acceptance. Confirm a trial only after local display/touch initialization, a completed frame, settings/filesystem access and 20 seconds of live UI/main/logic loops. Controller or Wi-Fi absence alone does not fail screen health.
+- Expose read-only startup health, pending state and running-slot diagnostics. Keep both OTA installers disabled pending hardware qualification and download verification.
+
 ## 0.4.0-rc.1 — OTA groundwork
 
 - Add read-only screen OTA preflight with immutable own-release asset binding, version/channel/controller checks, busy-state guards and reviewed A/B partition bounds. Expose separate screen/controller installation permissions, both disabled. No installer or download endpoint is enabled.

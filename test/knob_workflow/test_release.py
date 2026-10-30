@@ -11,11 +11,12 @@ sys.path.insert(0,str(Path(__file__).resolve().parents[2]/'scripts'))
 from k718 import write_json
 from k718_lock import digest
 from k718_flash import verified_release, qualification, flash
+from k718_otadata import record
 
 class ReleaseTest(unittest.TestCase):
     def setUp(self):
         self.tmp=tempfile.TemporaryDirectory();self.addCleanup(self.tmp.cleanup);self.root=Path(self.tmp.name)
-        for name,data in [('firmware.bin',b'example app'),('boot_app0.bin',b'\xff'*8192),('partitions.bin',struct.pack('<HBBII16sI',0x50aa,0,0x10,0x10000,0x640000,b'app0',0))]:
+        for name,data in [('firmware.bin',b'example app'),('boot_app0.bin',b'\xff'*8192),('partitions.bin',struct.pack('<HBBII16sI',0x50aa,0,0x10,0x10000,0x640000,b'app0',0)+struct.pack('<HBBII16sI',0x50aa,0,0x11,0x650000,0x640000,b'app1',0))]:
             (self.root/name).write_bytes(data)
         self.manifest={'schema':1,'target':'display-knob','chip':'ESP32-S3','source_tree':'test-tree','controller_protocol':5,'required_hardware_checks':['display','touch'],'application_offset':0x10000,'application_size':0x640000,'artifacts':{p.name:{'sha256':digest(p),'bytes':p.stat().st_size} for p in self.root.glob('*.bin')}}
         self.save()

@@ -6,6 +6,9 @@
 #include "KnobMenuBattery.h"
 #include "KnobLedGauges.h"
 #include "GrindKnobPolicy.h"
+#ifndef GAGGIMATE_SIM
+#include <display/drivers/GuitionKnob/BootHealth.h>
+#endif
 #include <display/drivers/GuitionKnob/Hardware.h>
 #endif
 
@@ -332,6 +335,9 @@ void DefaultUI::loop() {
     }
 #endif
     lv_task_handler();
+#if defined(GAGGIMATE_KNOB) && !defined(GAGGIMATE_SIM)
+    guition_knob::bootHealthUiPulse();
+#endif
 #ifdef GAGGIMATE_KNOB
     static uint32_t lastLedPublish = 0;
     const uint32_t ledNow = millis();

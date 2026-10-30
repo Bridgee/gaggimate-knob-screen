@@ -2,6 +2,7 @@
 #include "drivers/GuitionKnob/Diagnostics.h"
 #ifdef GAGGIMATE_KNOB
 #include "drivers/GuitionKnob/Hardware.h"
+#include "drivers/GuitionKnob/BootHealth.h"
 #endif
 
 #ifndef GAGGIMATE_HEADLESS
@@ -14,6 +15,7 @@ void setup() {
     Serial.begin(115200);
 #ifdef GAGGIMATE_KNOB
     knobDiagnosticBegin();
+    guition_knob::bootHealthBegin();
     knobDiagnosticPrintf("K718 display: starting original UI; nonblocking diagnostics\n");
 #endif
     controller.setup();
@@ -25,6 +27,7 @@ void setup() {
 void loop() {
     controller.loop();
 #ifdef GAGGIMATE_KNOB
+    guition_knob::bootHealthMainPulse();
     static unsigned long lastDiagnostic = 0;
     if (millis() - lastDiagnostic >= 30000) {
         lastDiagnostic = millis();

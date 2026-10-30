@@ -1,6 +1,7 @@
 #include "GuitionKnobDriver.h"
 #include "GuitionKnob/Diagnostics.h"
 #include "GuitionKnob/Hardware.h"
+#include "GuitionKnob/BootHealth.h"
 #include <SD_MMC.h>
 #include <esp_heap_caps.h>
 #include <algorithm>
@@ -12,6 +13,7 @@ void GuitionKnobDriver::init() {
         knobDiagnosticPrintf("K718: panel initialization failed\n");
         while (true) delay(1000);
     }
+    bootHealthPanel(panel.hasTouch());
     Hardware::instance().begin();
     lv_init();
     static_assert(sizeof(lv_color_t) == sizeof(uint16_t), "K718 requires RGB565");
@@ -55,6 +57,7 @@ void GuitionKnobDriver::flush(lv_disp_drv_t *driver, const lv_area_t *area, lv_c
     // QSPI copies into its DMA buffer and waits before reusing pixels.
     self->panel.display().draw16bitRGBBitmap(area->x1, area->y1, reinterpret_cast<uint16_t *>(pixels), width, height);
     self->sentPixels += width * height;
+    bootHealthFrame();
     lv_disp_flush_ready(driver);
 }
 

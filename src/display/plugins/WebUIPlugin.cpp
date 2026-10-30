@@ -23,6 +23,7 @@
 #include <display/drivers/GuitionKnob/Hardware.h>
 #include <Protocol.h>
 #include "ScreenOtaPolicy.h"
+#include <display/drivers/GuitionKnob/BootHealth.h>
 #include <esp_ota_ops.h>
 #endif
 
@@ -789,6 +790,9 @@ void WebUIPlugin::updateOTAStatus(const String &version) {
     doc["screenOtaInstallationAllowed"] = screen_ota::screenInstallationAllowed;
     doc["controllerOtaInstallationAllowed"] = screen_ota::controllerInstallationAllowed;
     doc["screenOtaPreflight"] = preflight.state;
+    doc["screenBootHealth"] = guition_knob::bootHealthState();
+    doc["screenBootPending"] = guition_knob::bootHealthPending();
+    doc["screenBootSlot"] = guition_knob::bootHealthSlot();
 
 #endif
     // LittleFS usage metrics
