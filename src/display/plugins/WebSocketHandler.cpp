@@ -1,4 +1,7 @@
 #include "WebSocketHandler.h"
+#ifdef GAGGIMATE_KNOB
+#include "ScreenOtaPolicy.h"
+#endif
 #include <algorithm>
 #include <display/core/Controller.h>
 #include <display/core/ProfileManager.h>
@@ -170,6 +173,13 @@ void WebSocketHandler::handleWebSocketData(AsyncWebSocket *server, AsyncWebSocke
                 String msgType = doc["tp"].as<String>();
                 // Storage-backed requests run on the AsyncTCP task, which the task watchdog polices; while an update
                 // hammers flash, SD I/O crawls and has blown that deadline (field coredumps). Refuse them meanwhile.
+#ifdef GAGGIMATE_KNOB
+                if (controller->isUpdating() && !screen_ota::readOnlyDuringUpdate(msgType.c_str())) {
+                    JsonDocument response(&psramAllocator);
+                    response["tp"] = "res:update-in-progress"; response["error"] = "Screen update in progress";
+                    client->text(toWsBuffer(response));
+                } else
+#endif
                 if (controller->isUpdating() && (msgType.startsWith("req:profiles:") || msgType.startsWith("req:history"))) {
                     JsonDocument resp(&psramAllocator);
                     resp["tp"] = String("res:") + msgType.substring(4);
@@ -181,6 +191,10 @@ void WebSocketHandler::handleWebSocketData(AsyncWebSocket *server, AsyncWebSocke
                 } else if (msgType == "req:ota-settings") {
                     if (otaSettingsHandler)
                         otaSettingsHandler(doc);
+#ifdef GAGGIMATE_KNOB
+                } else if (msgType == "req:screen-ota-start") {
+                    if (screenOtaStartHandler) screenOtaStartHandler(doc);
+#endif
                 } else if (msgType == "req:ota-start") {
                     if (otaStartHandler)
                         otaStartHandler(doc);

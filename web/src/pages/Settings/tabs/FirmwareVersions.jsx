@@ -38,7 +38,7 @@ export function MatchedVersions({ settings, onCheckPair }) {
           <button
             type='button'
             className='btn btn-secondary btn-sm'
-            disabled={checking}
+            disabled={checking || Boolean(settings.updating)}
             onClick={onCheckPair}
           >
             {checking ? 'Checking…' : 'Check matched releases'}
@@ -49,9 +49,7 @@ export function MatchedVersions({ settings, onCheckPair }) {
             <a href={settings.pairReleaseUrl} target='_blank' rel='noreferrer' className='link'>
               {settings.pairReleaseTag}
             </a>
-            {settings.pairPrerelease && (
-              <span className='badge badge-warning'>Pre-release</span>
-            )}
+            {settings.pairPrerelease && <span className='badge badge-warning'>Pre-release</span>}
             <span className='text-base-content/70 text-sm'>Protocol {settings.pairProtocol}</span>
           </div>
         ) : (
@@ -97,7 +95,9 @@ export function MatchedVersions({ settings, onCheckPair }) {
       })}
       {ready && (
         <div role='status' className='text-base-content/70 text-sm md:col-span-2'>
-          {compatibility[settings.pairCompatibility] || compatibility.unknown}
+          {settings.updating
+            ? 'Screen update in progress.'
+            : compatibility[settings.pairCompatibility] || compatibility.unknown}
         </div>
       )}
       {(settings.displayUpdateAvailable || settings.controllerUpdateAvailable) && (
@@ -108,12 +108,18 @@ export function MatchedVersions({ settings, onCheckPair }) {
           </p>
         </div>
       )}
+      {settings.screenOtaPhase && settings.screenOtaPhase !== 'idle' && (
+        <div role='status' className='text-sm md:col-span-2'>
+          Screen update test: {settings.screenOtaPhase} ({settings.screenOtaProgress || 0}%).
+          {settings.screenOtaError && ` ${settings.screenOtaError}`}
+        </div>
+      )}
       <div id='ota-installation-notice' role='note' className='alert alert-info md:col-span-2'>
         <div>
           <p className='font-semibold'>USB installation required</p>
           <p>
-            Matched release checks are read-only. Display and controller OTA installation remains
-            disabled.
+            Matched release checks are read-only. Normal display and controller updates remain
+            disabled while screen OTA is being tested.
           </p>
         </div>
       </div>

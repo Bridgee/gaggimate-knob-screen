@@ -32,6 +32,9 @@ class WebSocketHandler {
     // OTA is driven by WebUIPlugin; the two OTA requests are routed back to it.
     void onOtaSettings(RequestHandler handler) { otaSettingsHandler = std::move(handler); }
     void onOtaStart(RequestHandler handler) { otaStartHandler = std::move(handler); }
+#ifdef GAGGIMATE_KNOB
+    void onScreenOtaStart(RequestHandler handler) { screenOtaStartHandler = std::move(handler); }
+#endif
     void setUpdateAvailableProvider(std::function<bool()> provider) { updateAvailableProvider = std::move(provider); }
 
   private:
@@ -52,6 +55,9 @@ class WebSocketHandler {
     ProfileManager *profileManager = nullptr;
     RequestHandler otaSettingsHandler;
     RequestHandler otaStartHandler;
+#ifdef GAGGIMATE_KNOB
+    RequestHandler screenOtaStartHandler;
+#endif
     std::function<bool()> updateAvailableProvider; // OTA state for the `up` status field
 
     long lastStatus = 0;

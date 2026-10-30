@@ -85,13 +85,13 @@ See [Port architecture and migration](docs/PORTING.md) for the implementation ma
 
 ## Releases and compatibility
 
-The current development version is **0.4.0-rc.2**, with USB recovery and startup-health groundwork. The latest USB stable release is [0.3.8](https://github.com/Bridgee/gaggimate-knob-screen/releases/tag/v0.3.8), based on GaggiMate v1.9.0 / protocol 5. Available versioned packages are listed under [Releases](https://github.com/Bridgee/gaggimate-knob-screen/releases). Each package has its own source identity, artifact checksums and validation scope.
+The current development version is **0.4.0-rc.3**, with a candidate-only screen OTA test interface. The latest USB stable release is [0.3.8](https://github.com/Bridgee/gaggimate-knob-screen/releases/tag/v0.3.8), based on GaggiMate v1.9.0 / protocol 5. Available versioned packages are listed under [Releases](https://github.com/Bridgee/gaggimate-knob-screen/releases). Each package has its own source identity, artifact checksums and validation scope.
 
 Stable builds check only stable matched releases; pre-releases are excluded. Candidate builds also include explicitly labelled pre-releases.
 
 **Validation limit:** real brewing dynamics, including changing temperature/pressure and LED following during a shot, remain unverified and are excluded from the USB validation scope. This does not block the USB stable build. No brewing or OTA qualification is implied.
 
-- Update the display over **USB using a K718 build**. OTA installation for both the display and controller is disabled in the knob-screen firmware. Official update checks and notifications remain enabled; update notices do not confirm port compatibility.
+- Update the display over **USB using a K718 build**. Development candidates may include an explicitly enabled bench-test interface for our own screen releases; it is not enabled in stable builds or ordinary update buttons. Normal OTA installation for both the display and controller is disabled in the knob-screen firmware. Official update checks and notifications remain enabled; update notices do not confirm port compatibility.
 - Battery percentage is uncalibrated. The lightning symbol means external power, not measured charging current.
 - LED-ring preferences are saved on the screen. The ring remains off in standby and while the controller is disconnected.
 - Speaker/microphone interfaces have been exercised; continuous audio, audio quality and optional haptics are not qualified.

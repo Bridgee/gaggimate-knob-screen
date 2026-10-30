@@ -41,7 +41,7 @@ def package(source, output):
     metadata = {name: manifest[name] for name in (
         'upstream', 'port_version', 'release_channel', 'source_commit', 'source_tree',
         'target', 'chip', 'controller_protocol', 'application_offset', 'application_size')}
-    metadata.update(schema=1, qualification=manifest.get('qualification', 'software-verified'),
+    metadata.update(schema=1, screen_ota_qualification=bool(manifest.get('screen_ota_qualification', False)), qualification=manifest.get('qualification', 'software-verified'),
                     hardware_verified=bool(manifest.get('hardware_verified', False)),
                     artifacts={name: manifest['artifacts'][name] for name in sorted(ARTIFACTS)})
     payload = (json.dumps(metadata, indent=2) + '\n').encode()

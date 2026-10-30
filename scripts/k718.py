@@ -15,6 +15,7 @@ import sys
 import uuid
 from k718_lock import digest, hydrate, verify_libraries, prepare_libraries
 from k718_web import gzip_assets
+from k718_ota_config import qualification_enabled
 from k718_repro import prepare_tool, compare_releases
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -34,6 +35,7 @@ def require_clean():
     if git('status', '--porcelain'): raise RuntimeError('Tracked or untracked source changes must be committed before export/build')
 def guard_source():
     cfg = config()
+    qualification_enabled(cfg)
     if protocol() != cfg['controller_protocol']:
         raise RuntimeError('Controller protocol changed; do not renumber it to bypass compatibility review')
     subprocess.run(['git','-C',str(ROOT),'merge-base','--is-ancestor',cfg['upstream']['commit'],'HEAD'],check=True)
@@ -116,7 +118,7 @@ def checks(audit):
     audit.run('workflow-failure-cases',[sys.executable,'-m','unittest','discover','-s','test/knob_workflow'])
     audit.run('native-ui',[sys.executable,'test/knob_native/check_ui.py'])
     audit.run('diagnostic-nonblocking',[sys.executable,'test/knob_native/check_diagnostics.py'])
-    for name,source in [('boot-health','test/knob_native/check_boot_health.cpp'),('geometry','test/knob_geometry/check.cpp'),('brightness','test/knob_native/check_brightness.cpp'),('hardware-policy','test/knob_native/check_hardware.cpp'),('led-gauges','test/knob_native/check_led_gauges.cpp'),('led-wire','test/knob_native/check_led_encoding.cpp'),('led-preferences','test/knob_native/check_led_preferences.cpp'),('rotary-standby','test/knob_native/check_rotary_policy.cpp'),('official-check-queue','test/knob_native/check_official_release.cpp')]:
+    for name,source in [('screen-update-gate','test/knob_native/check_screen_update_gate.cpp'),('boot-health','test/knob_native/check_boot_health.cpp'),('geometry','test/knob_geometry/check.cpp'),('brightness','test/knob_native/check_brightness.cpp'),('hardware-policy','test/knob_native/check_hardware.cpp'),('led-gauges','test/knob_native/check_led_gauges.cpp'),('led-wire','test/knob_native/check_led_encoding.cpp'),('led-preferences','test/knob_native/check_led_preferences.cpp'),('rotary-standby','test/knob_native/check_rotary_policy.cpp'),('official-check-queue','test/knob_native/check_official_release.cpp')]:
         binary=audit.path/name
         audit.run(name+'-compile',['c++','-std=c++17','-Wall','-Wextra','-Werror','-fsanitize=address,undefined','-Isrc',source,'-o',binary])
         audit.run(name,[binary])
@@ -236,7 +238,7 @@ def build(destination=None,cache=None):
     for preview in (ROOT/'dist/preview').rglob('*.png'):
         target=output/'preview'/preview.relative_to(ROOT/'dist/preview')
         target.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(preview,target)
-    manifest={'schema':1,'qualification':'software-verified','hardware_verified':False,'upstream':cfg['upstream'],'port_version':cfg['port_version'],'release_channel':cfg.get('release_channel','development'),'source_commit':git('rev-parse','HEAD'),'source_tree':git('rev-parse','HEAD^{tree}'),'source_date_epoch':tool_env()['SOURCE_DATE_EPOCH'],'target':cfg['target'],'chip':cfg['chip'],'required_hardware_checks':cfg['required_hardware_checks'],'controller_protocol':cfg['controller_protocol'],'application_offset':cfg['application_offset'],'application_size':cfg['application_size'],'environment':environment,'reproducibility':environment['reproducible_filesystem'],'dependency_lock_sha256':digest(ROOT/'port/dependencies.lock.json'),'npm_lock_sha256':digest(ROOT/'web/package-lock.json'),'audit':'audit/report.json','audit_report_sha256':digest(output/'audit/report.json'),'artifacts':{p.name:{'bytes':p.stat().st_size,'sha256':digest(p)} for p in sorted(output.iterdir()) if p.is_file() and p.suffix in {'.bin','.elf'}}}
+    manifest={'schema':1,'screen_ota_qualification':qualification_enabled(cfg),'qualification':'software-verified','hardware_verified':False,'upstream':cfg['upstream'],'port_version':cfg['port_version'],'release_channel':cfg.get('release_channel','development'),'source_commit':git('rev-parse','HEAD'),'source_tree':git('rev-parse','HEAD^{tree}'),'source_date_epoch':tool_env()['SOURCE_DATE_EPOCH'],'target':cfg['target'],'chip':cfg['chip'],'required_hardware_checks':cfg['required_hardware_checks'],'controller_protocol':cfg['controller_protocol'],'application_offset':cfg['application_offset'],'application_size':cfg['application_size'],'environment':environment,'reproducibility':environment['reproducible_filesystem'],'dependency_lock_sha256':digest(ROOT/'port/dependencies.lock.json'),'npm_lock_sha256':digest(ROOT/'web/package-lock.json'),'audit':'audit/report.json','audit_report_sha256':digest(output/'audit/report.json'),'artifacts':{p.name:{'bytes':p.stat().st_size,'sha256':digest(p)} for p in sorted(output.iterdir()) if p.is_file() and p.suffix in {'.bin','.elf'}}}
     write_json(output/'release.json',manifest);print('Release:',output)
     return output
 

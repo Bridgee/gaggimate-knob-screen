@@ -2,7 +2,7 @@
 #include "MatchedReleasePolicy.h"
 #include <cstdint>
 
-// Read-only preflight for the future own-repository installer. It neither
+// Shared preflight for the own-repository screen installer. It neither
 // downloads nor writes flash. These permissions must not enable the legacy OTA path.
 namespace screen_ota {
 constexpr bool screenInstallationAllowed = false;
@@ -14,11 +14,14 @@ struct Context {
     unsigned localProtocol = 0, controllerProtocol = 0;
     uint32_t runningOffset = 0, runningBytes = 0, updateOffset = 0, updateBytes = 0;
     bool controllerReady = false, activeProcess = false, updating = false;
+    bool bootHealthy = false, standby = false, bootSelectionCurrent = false;
 };
 struct Plan {
     std::string tag, sourceTree;
     matched_release::Asset manifest, image;
     unsigned protocol = 0;
+    uint32_t runningOffset = 0, updateOffset = 0;
+    std::string controllerVersion;
 };
 struct Preflight {
     const char *state = "metadata-unavailable";
@@ -27,7 +30,11 @@ struct Preflight {
 };
 struct Request {
     std::string component, tag, manifestSha, imageSha;
+    bool qualification = false, verifyOnly = false;
 };
+inline bool metadataFresh(uint32_t checkedAt, uint32_t now) {
+    return checkedAt != 0 && uint32_t(now - checkedAt) <= 300000;
+}
 inline bool ownAsset(const matched_release::Asset &a, const std::string &tag,
                      const char *name, size_t minimum, size_t maximum) {
     return a.name == name && a.url == std::string(matched_release::ReleaseRoot) + "download/" + tag + "/" + name &&
@@ -45,17 +52,21 @@ inline Preflight inspect(bool metadataValidated, const matched_release::Release 
     const bool preview = release.preview || release.tag.substr(0, release.tag.find('+')).find('-') != std::string::npos;
     if (preview && !previews) return {"preview-excluded", {}};
     if (matched_release::order(pair.screenVersion, local.portVersion) <= 0) return {"not-newer", {}};
+    if (local.activeProcess || local.updating) return {"busy", {}};
     if (!pair.protocol || pair.protocol != local.localProtocol ||
         !matched_release::version(pair.controllerVersion) || pair.controllerVersion != pair.upstreamVersion ||
         std::strcmp(matched_release::compatibility(pair, local.localProtocol, local.controllerProtocol,
             local.controllerReady, local.controllerVersion), "matched") != 0)
         return {"incompatible-controller", {}};
-    if (local.activeProcess || local.updating) return {"busy", {}};
+    if (!local.bootHealthy) return {"startup-unverified", {}};
+    if (!local.bootSelectionCurrent) return {"restart-required", {}};
+    if (!local.standby) return {"standby-required", {}};
     const bool slots = (local.runningOffset == 0x10000 && local.updateOffset == 0x650000) ||
                        (local.runningOffset == 0x650000 && local.updateOffset == 0x10000);
     if (!slots || local.runningBytes != SlotBytes || local.updateBytes != SlotBytes)
         return {"unsupported-partitions", {}};
-    return {"metadata-ready", {release.tag, pair.sourceTree, release.manifest, release.screen, pair.protocol}};
+    return {"metadata-ready", {release.tag, pair.sourceTree, release.manifest, release.screen, pair.protocol,
+        local.runningOffset, local.updateOffset, pair.controllerVersion}};
 }
 // Recompute preflight from the live server snapshot at request time. A request
 // for an old tag/manifest/image is rejected; clients cannot provide a download URL.
@@ -66,5 +77,12 @@ inline bool matchesRequest(const Preflight &current, const Request &request) {
 }
 inline bool mayInstall(const Preflight &current, const Request &request) {
     return screenInstallationAllowed && matchesRequest(current, request);
+}
+inline bool mayQualify(const Preflight &current, const Request &request, bool compiledPermission) {
+    return compiledPermission && request.qualification && matchesRequest(current, request);
+}
+// While flash is being staged, only update/status queries are accepted here.
+inline bool readOnlyDuringUpdate(const std::string &type) {
+    return type == "req:ota-settings" || type == "req:screen-ota-start";
 }
 } // namespace screen_ota

@@ -86,6 +86,7 @@ def package(source, output, controller=None, policy=None):
             'version': screen['port_version'], 'upstream_version': screen['upstream']['version'],
             'target': screen['target'], 'board': 'Guition-K718', 'chip': screen['chip'],
             'source_commit': screen['source_commit'], 'source_tree': screen['source_tree'],
+            'qualification_interface': bool(screen.get('screen_ota_qualification', False)),
             'application_offset': screen['application_offset'], 'application_size': screen['application_size'],
             'asset': dict(screen['artifacts']['firmware.bin'], name=screen_name),
         },

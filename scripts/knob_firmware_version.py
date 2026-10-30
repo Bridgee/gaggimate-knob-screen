@@ -2,14 +2,18 @@
 import datetime
 import json
 import os
+import sys
 from pathlib import Path
 import subprocess
 
 Import('env')
 root = Path(env.subst('$PROJECT_DIR'))
+sys.path.insert(0, str(root / 'scripts'))
+from k718_ota_config import qualification_enabled
 def git(*args):
     return subprocess.check_output(['git', '-C', str(root), *args], text=True).strip()
 config = json.loads((root / 'port/config.json').read_text())
+bench_ota = qualification_enabled(config)
 tree = git('rev-parse', 'HEAD^{tree}')[:8]
 dirty = bool(git('status', '--porcelain'))
 version = f"{config['upstream']['version']}-k718.{config['port_version']}+{tree}"
@@ -21,6 +25,7 @@ timestamp = datetime.datetime.fromtimestamp(epoch, datetime.timezone.utc).strfti
     f'#define BUILD_UPSTREAM_VERSION "{config["upstream"]["version"]}"\n'
     f'#define BUILD_PORT_VERSION "{config["port_version"]}"\n'
     f'#define BUILD_RELEASE_CHANNEL "{config.get("release_channel", "development")}"\n'
+    f'#define BUILD_SCREEN_OTA_QUALIFICATION {int(bench_ota)}\n'
     f'#define BUILD_TIMESTAMP "{timestamp}"\n'
 )
 print('K718 build version:', version)

@@ -15,6 +15,8 @@ class OtaPolicyTest(unittest.TestCase):
             root = Path(folder)
             (root / 'src').mkdir()
             (root / 'port').mkdir()
+            (root / 'scripts').mkdir()
+            (root / 'scripts/k718_ota_config.py').write_text((ROOT / 'scripts/k718_ota_config.py').read_text())
             (root / 'port/config.json').write_text((ROOT / 'port/config.json').read_text())
 
             class Env:
@@ -24,7 +26,7 @@ class OtaPolicyTest(unittest.TestCase):
             def inject(name):
                 namespace['env'] = Env()
 
-            namespace = {'Import': inject}
+            namespace = {'Import': inject, '__file__': str(ROOT / 'scripts/knob_firmware_version.py')}
             with patch('subprocess.check_output', side_effect=['12345678abcdef', '', '1700000000']):
                 exec(compile((ROOT / 'scripts/knob_firmware_version.py').read_text(), 'knob_firmware_version.py', 'exec'), namespace)
             header = (root / 'src/version.h').read_text()

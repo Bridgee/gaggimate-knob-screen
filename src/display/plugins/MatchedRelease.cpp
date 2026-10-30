@@ -104,7 +104,7 @@ Snapshot Discovery::check() {
     if (deserializeJson(document, static_cast<const uint8_t *>(body.data.get()), body.size) || !parsePair(document.as<JsonVariantConst>(), release, result.pair)) {
         result.message = "Matched release target, schema or asset metadata does not match."; return result;
     }
-    result.release = release; result.status = "ready";
+    result.release = release; result.status = "ready"; result.validatedAt = millis();
     result.message = "Manifest and published asset metadata checked. OTA installation is unverified and disabled.";
     return result;
 }

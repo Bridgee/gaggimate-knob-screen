@@ -13,6 +13,7 @@ int main() {
     release.screen = {"display-knob-firmware.bin", std::string(matched_release::ReleaseRoot) + "download/" + release.tag + "/display-knob-firmware.bin", std::string(64, 'b'), 4000000};
     matched_release::Pair pair{"0.4.0-rc.1", "v1.9.0", "v1.9.0", std::string(40, 'c'), 5};
     Context local{"0.3.8", "v1.9.0", 5, 5, 0x10000, SlotBytes, 0x650000, SlotBytes, true, false, false};
+    local.bootHealthy = local.standby = local.bootSelectionCurrent = true;
     const auto ready = inspect(true, release, pair, local, true);
     state(ready, "metadata-ready");
     Request request{"display", release.tag, release.manifest.sha, release.screen.sha};
@@ -20,6 +21,17 @@ int main() {
     assert(!screenInstallationAllowed && !controllerInstallationAllowed);
     assert(!mayInstall(ready, request)); // metadata readiness must never authorize an installer
     assert(!matchesRequest({}, request));
+    assert(!mayQualify(ready, request, true));
+    auto bench = request; bench.qualification = true;
+    assert(!mayQualify(ready, bench, false)); assert(mayQualify(ready, bench, true));
+    assert(ready.plan.runningOffset == 0x10000 && ready.plan.updateOffset == 0x650000);
+    for (const char *type : {"req:grind:activate", "req:process:activate", "req:change-mode", "req:raise-temp", "req:profiles:save"})
+        assert(!readOnlyDuringUpdate(type));
+    assert(readOnlyDuringUpdate("req:ota-settings"));
+    auto unready = local; unready.bootHealthy = false;
+    state(inspect(true, release, pair, unready, true), "startup-unverified");
+    unready = local; unready.standby = false;
+    state(inspect(true, release, pair, unready, true), "standby-required");
     for (const char *component : {"controller", "both", "", "DISPLAY"}) {
         auto bad = request; bad.component = component; assert(!matchesRequest(ready, bad));
         assert(!mayInstall(ready, bad));
@@ -75,6 +87,10 @@ int main() {
     state(inspect(true, release, pair, busy, true), "busy");
     busy = local; busy.updating = true;
     state(inspect(true, release, pair, busy, true), "busy");
+    assert(!metadataFresh(0, 1)); assert(metadataFresh(1, 300001)); assert(!metadataFresh(1, 300002));
+    assert(metadataFresh(0xfffffff0, 100));
+    auto restart = local; restart.bootSelectionCurrent = false;
+    state(inspect(true, release, pair, restart, true), "restart-required");
     auto otherSlot = local; otherSlot.runningOffset = 0x650000; otherSlot.updateOffset = 0x10000;
     state(inspect(true, release, pair, otherSlot, true), "metadata-ready");
     for (int kind = 0; kind < 4; ++kind) {

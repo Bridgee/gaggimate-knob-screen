@@ -62,6 +62,10 @@ class Controller {
     bool isGrindActive() const;
     bool isBrewActive() const;
     bool isUpdating() const;
+#ifdef GAGGIMATE_KNOB
+    bool tryBeginScreenUpdate();
+    bool canCommitScreenUpdate(unsigned protocol, const char *version) const;
+#endif
     bool isAutotuning() const;
     bool isReady() const;
     bool isVolumetricAvailable() const;
@@ -249,7 +253,12 @@ class Controller {
     unsigned long lastProgress = 0;
     unsigned long lastAction = 0;
     bool loaded = false;
+#ifdef GAGGIMATE_KNOB
+    std::atomic<bool> updating{false};
+    unsigned screenControlEntries = 0; // guarded by processMutex
+#else
     bool updating = false;
+#endif
     bool autotuning = false;
     bool isApConnection = false;
     // WiFi up/down is signalled (flag only) from the Arduino WiFi event task and

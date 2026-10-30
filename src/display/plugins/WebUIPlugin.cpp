@@ -41,7 +41,8 @@ static void mbedtlsPsramFree(void *p) { heap_caps_free(p); } // NOSONAR
 
 WebUIPlugin::WebUIPlugin()
 #ifdef GAGGIMATE_KNOB
-    : matchedReleases(std::strcmp(BUILD_RELEASE_CHANNEL, "candidate") == 0), server(80)
+    : matchedReleases(std::strcmp(BUILD_RELEASE_CHANNEL, "candidate") == 0),
+      screenInstaller(BUILD_SCREEN_OTA_QUALIFICATION != 0), server(80)
 #else
     : server(80)
 #endif
@@ -102,10 +103,33 @@ void WebUIPlugin::setup(Controller *_controller, PluginManager *_pluginManager) 
     wsHandler.onOtaStart([this](JsonDocument &request) { handleOTAStart(request); });
     wsHandler.setUpdateAvailableProvider([this] { return anyUpdateAvailable(); });
 
+#ifdef GAGGIMATE_KNOB
+    wsHandler.onScreenOtaStart([this](JsonDocument &request) { handleScreenOTAStart(request); });
+#endif
     setupServer();
 }
 
 void WebUIPlugin::loop() {
+#ifdef GAGGIMATE_KNOB
+    screen_ota::InstallJob screenJob;
+    if (screenInstaller.takeQueued(screenJob)) {
+        const bool healthy = !guition_knob::bootHealthPending() &&
+            (std::strcmp(guition_knob::bootHealthState(), "healthy") == 0 ||
+             std::strcmp(guition_knob::bootHealthState(), "confirmed") == 0);
+        if (!healthy || !controller->tryBeginScreenUpdate()) screenInstaller.fail("standby-or-readiness-changed");
+        else {
+            screenUpdateActive = true;
+            pluginManager->trigger("ota:update:start", "component", "display");
+            screenInstaller.start(screenJob, [this, protocol = screenJob.plan.protocol, version = screenJob.plan.controllerVersion] {
+                return controller->canCommitScreenUpdate(protocol, version.c_str());
+            });
+        }
+    }
+    if (screenUpdateActive && !screenInstaller.snapshot().busy) {
+        pluginManager->trigger("ota:update:end"); screenUpdateActive = false;
+    }
+    if (screenInstaller.takeChanged()) updateOTAStatus(ota->getCurrentVersion());
+#endif
     if (updating) {
         // Pass which component is being flashed: a controller update streams the
         // firmware over BLE (wants a low-latency link), a display update is over
@@ -122,7 +146,11 @@ void WebUIPlugin::loop() {
     const unsigned long now = millis();
     // HTTPS must not stall controller initialization, telemetry or UI state.
     // Only scheduling happens here on K718; both release sources use workers.
-    if (!controller->isActive() && (lastUpdateCheck == 0 || now - lastUpdateCheck > UPDATE_CHECK_INTERVAL)) {
+    bool mayCheck = !controller->isActive();
+#ifdef GAGGIMATE_KNOB
+    mayCheck = mayCheck && !controller->isUpdating();
+#endif
+    if (mayCheck && (lastUpdateCheck == 0 || now - lastUpdateCheck > UPDATE_CHECK_INTERVAL)) {
 #ifdef GAGGIMATE_KNOB
         officialRefreshRequested = true;
         matchedReleases.request();
@@ -134,9 +162,9 @@ void WebUIPlugin::loop() {
         updateOTAStatus(ota->getCurrentVersion());
     }
 #ifdef GAGGIMATE_KNOB
-    if (!controller->isActive() && officialRefreshRequested.exchange(false))
+    if (!controller->isUpdating() && !controller->isActive() && officialRefreshRequested.exchange(false))
         officialReleases.request(controller->getSettings().getOTAChannel().c_str(), controller->getSystemInfo().version.c_str());
-    if (!controller->isActive() && pairRefreshRequested.exchange(false)) matchedReleases.request();
+    if (!controller->isUpdating() && !controller->isActive() && pairRefreshRequested.exchange(false)) matchedReleases.request();
     const bool pairChanged = matchedReleases.takeChanged();
     const bool officialChanged = officialReleases.takeChanged();
     if (pairChanged || officialChanged) {
@@ -322,6 +350,9 @@ void WebUIPlugin::stop() {
 
 void WebUIPlugin::handleOTASettings(JsonDocument &request) {
 #ifdef GAGGIMATE_KNOB
+    if (controller->isUpdating()) { updateOTAStatus(ota->getCurrentVersion()); return; }
+#endif
+#ifdef GAGGIMATE_KNOB
     if (request["refreshPair"].as<bool>()) pairRefreshRequested = true;
 #endif
     if (request["update"].as<bool>()) {
@@ -357,6 +388,11 @@ static bool parseBoolArg(const String &value) {
 }
 
 void WebUIPlugin::handleSettings(AsyncWebServerRequest *request) const {
+#ifdef GAGGIMATE_KNOB
+    if (controller->isUpdating() && request->method() != HTTP_GET) {
+        request->send(503, "application/json", "{\"error\":\"Screen update in progress\"}"); return;
+    }
+#endif
     if (request->method() == HTTP_POST) {
 #ifdef GAGGIMATE_KNOB
         const auto validLedArg = [request](const char *name, bool (*validate)(const char *)) {
@@ -729,6 +765,57 @@ void WebUIPlugin::handleBLEScaleInfo(AsyncWebServerRequest *request) {
     request->send(response);
 }
 
+#ifdef GAGGIMATE_KNOB
+screen_ota::Preflight WebUIPlugin::screenPreflight() const {
+    const auto pair = matchedReleases.snapshot();
+    if (pair.status != "ready") return {};
+    if (!screen_ota::metadataFresh(pair.validatedAt, millis())) return {"refresh-required", {}};
+    const auto system = controller->getSystemInfo();
+    screen_ota::Context local;
+    local.portVersion = BUILD_PORT_VERSION; local.controllerVersion = system.version.c_str();
+    local.localProtocol = gm_proto::PROTOCOL_VERSION; local.controllerProtocol = system.protocolVersion;
+    local.controllerReady = controller->getSystemState() == SYSTEM_READY;
+    local.activeProcess = controller->isActive() || controller->isGrindActive();
+    local.updating = updating || controller->isUpdating() || screenInstaller.snapshot().busy;
+    local.bootHealthy = !guition_knob::bootHealthPending() &&
+        (std::strcmp(guition_knob::bootHealthState(), "healthy") == 0 ||
+         std::strcmp(guition_knob::bootHealthState(), "confirmed") == 0);
+    local.standby = controller->getMode() == MODE_STANDBY;
+    const auto *running = esp_ota_get_running_partition();
+    const auto *next = esp_ota_get_next_update_partition(nullptr);
+    const auto *boot = esp_ota_get_boot_partition();
+    if (running) { local.runningOffset = running->address; local.runningBytes = running->size; }
+    if (next) { local.updateOffset = next->address; local.updateBytes = next->size; }
+    esp_ota_img_states_t runningState;
+    local.bootSelectionCurrent = running && boot && running->address == boot->address &&
+        esp_ota_get_state_partition(running, &runningState) == ESP_OK &&
+        (runningState == ESP_OTA_IMG_VALID || runningState == ESP_OTA_IMG_UNDEFINED);
+    return screen_ota::inspect(true, pair.release, pair.pair, local,
+        std::strcmp(BUILD_RELEASE_CHANNEL, "candidate") == 0);
+}
+void WebUIPlugin::handleScreenOTAStart(JsonDocument &request) {
+    const auto preflight = screenPreflight();
+    screen_ota::Request selected;
+    selected.component = matched_release::text(request["component"]);
+    selected.tag = matched_release::text(request["tag"]);
+    selected.manifestSha = matched_release::text(request["manifestSha256"]);
+    selected.imageSha = matched_release::text(request["imageSha256"]);
+    bool valid = request["url"].isNull() && request["downloadUrl"].isNull();
+    for (const char *key : {"qualification", "verifyOnly"})
+        if (!request[key].isNull() && !request[key].is<bool>()) valid = false;
+    selected.qualification = request["qualification"].is<bool>() && request["qualification"].as<bool>();
+    selected.verifyOnly = request["verifyOnly"].is<bool>() && request["verifyOnly"].as<bool>();
+    const bool accepted = valid && screenInstaller.queue(preflight, selected);
+    JsonDocument response(&psramAllocator);
+    response["tp"] = "res:screen-ota-start";
+    response["accepted"] = accepted;
+    response["state"] = accepted ? "queued" : (!valid ? "invalid-request" :
+        (preflight.ready() ? "installation-disabled-or-selection-changed" : preflight.state));
+    wsHandler.broadcastJson(response);
+    updateOTAStatus(ota->getCurrentVersion());
+}
+#endif
+
 void WebUIPlugin::updateOTAStatus(const String &version) {
     if (!wsHandler.hasClients())
         return;
@@ -773,26 +860,24 @@ void WebUIPlugin::updateOTAStatus(const String &version) {
     doc["pairControllerState"] = ready ? matched_release::componentState(system.version.c_str(), pair.pair.controllerVersion) : "unknown";
     doc["pairCompatibility"] = ready ? matched_release::compatibility(pair.pair, gm_proto::PROTOCOL_VERSION,
         system.protocolVersion, controller->getSystemState() == SYSTEM_READY, system.version.c_str()) : "unknown";
-    screen_ota::Context otaContext;
-    otaContext.portVersion = BUILD_PORT_VERSION;
-    otaContext.controllerVersion = system.version.c_str();
-    otaContext.localProtocol = gm_proto::PROTOCOL_VERSION;
-    otaContext.controllerProtocol = system.protocolVersion;
-    otaContext.controllerReady = controller->getSystemState() == SYSTEM_READY;
-    otaContext.activeProcess = controller->isActive() || controller->isGrindActive();
-    otaContext.updating = updating || controller->isUpdating();
-    const auto *runningSlot = esp_ota_get_running_partition();
-    const auto *updateSlot = esp_ota_get_next_update_partition(nullptr);
-    if (runningSlot) { otaContext.runningOffset = runningSlot->address; otaContext.runningBytes = runningSlot->size; }
-    if (updateSlot) { otaContext.updateOffset = updateSlot->address; otaContext.updateBytes = updateSlot->size; }
-    const auto preflight = screen_ota::inspect(ready, pair.release, pair.pair, otaContext,
-        std::strcmp(BUILD_RELEASE_CHANNEL, "candidate") == 0);
+    const auto preflight = screenPreflight();
     doc["screenOtaInstallationAllowed"] = screen_ota::screenInstallationAllowed;
     doc["controllerOtaInstallationAllowed"] = screen_ota::controllerInstallationAllowed;
     doc["screenOtaPreflight"] = preflight.state;
     doc["screenBootHealth"] = guition_knob::bootHealthState();
     doc["screenBootPending"] = guition_knob::bootHealthPending();
     doc["screenBootSlot"] = guition_knob::bootHealthSlot();
+    const auto screenStatus = screenInstaller.snapshot();
+    doc["screenOtaQualificationAvailable"] = BUILD_SCREEN_OTA_QUALIFICATION != 0;
+    doc["screenOtaSelectionTag"] = ready ? pair.release.tag : "";
+    doc["screenOtaManifestSha256"] = ready ? pair.release.manifest.sha : "";
+    doc["screenOtaImageSha256"] = ready ? pair.release.screen.sha : "";
+    doc["screenOtaPhase"] = screenStatus.phase;
+    doc["screenOtaProgress"] = screenStatus.progress;
+    doc["screenOtaError"] = screenStatus.error;
+    doc["screenOtaVerified"] = screenStatus.verified;
+    doc["screenOtaVerifiedSha256"] = screenStatus.verifiedSha;
+    doc["updating"] = updating || screenStatus.busy || controller->isUpdating();
 
 #endif
     // LittleFS usage metrics

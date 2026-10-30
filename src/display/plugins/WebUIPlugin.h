@@ -9,6 +9,7 @@
 #ifdef GAGGIMATE_KNOB
 #include "MatchedRelease.h"
 #include "OfficialRelease.h"
+#include "ScreenOtaInstaller.h"
 #endif
 #include <ArduinoJson.h>
 #include <ESPAsyncWebServer.h>
@@ -69,6 +70,10 @@ class WebUIPlugin : public Plugin {
 #ifdef GAGGIMATE_KNOB
     matched_release::Discovery matchedReleases;
     official_release::Discovery officialReleases;
+    screen_ota::Installer screenInstaller;
+    bool screenUpdateActive = false;
+    screen_ota::Preflight screenPreflight() const;
+    void handleScreenOTAStart(JsonDocument &);
     std::atomic<bool> officialRefreshRequested{true};
     std::atomic<bool> pairRefreshRequested{true};
 #endif

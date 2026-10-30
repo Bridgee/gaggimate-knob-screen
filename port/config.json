@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "port_version": "0.4.0-rc.2",
+  "port_version": "0.4.0-rc.3",
   "upstream": {
     "url": "https://github.com/jniebuhr/gaggimate.git",
     "ref": "v1.9.0",
@@ -53,5 +53,6 @@
     "rotary_adjustment",
     "standby_customization"
   ],
-  "release_channel": "candidate"
+  "release_channel": "candidate",
+  "screen_ota_qualification": true
 }

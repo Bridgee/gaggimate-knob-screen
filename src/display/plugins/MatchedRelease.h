@@ -11,6 +11,7 @@ struct Snapshot {
     std::string status = "not-checked", message;
     Release release;
     Pair pair;
+    uint32_t validatedAt = 0;
 };
 class Discovery {
   public:

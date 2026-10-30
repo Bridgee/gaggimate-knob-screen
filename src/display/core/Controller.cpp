@@ -39,6 +39,7 @@
 #ifdef GAGGIMATE_KNOB
 #include <display/drivers/GuitionKnobDriver.h>
 #include <display/drivers/GuitionKnob/BootHealth.h>
+#include <display/drivers/GuitionKnob/ScreenUpdateGate.h>
 #endif
 #include <display/drivers/AmoledDisplayDriver.h>
 #include <display/drivers/LilyGoDriver.h>
@@ -660,6 +661,18 @@ void Controller::loopControl() {
 }
 
 bool Controller::isUpdating() const { return updating; }
+#ifdef GAGGIMATE_KNOB
+bool Controller::tryBeginScreenUpdate() {
+    std::lock_guard<std::recursive_mutex> guard(processMutex);
+    if (getSystemState() != SYSTEM_READY || mode != MODE_STANDBY || currentProcess != nullptr || screenControlEntries != 0) return false;
+    updating = true; return true;
+}
+bool Controller::canCommitScreenUpdate(unsigned protocol, const char *version) const {
+    std::lock_guard<std::recursive_mutex> guard(processMutex);
+    return updating && mode == MODE_STANDBY && currentProcess == nullptr && screenControlEntries == 0 && comms.isConnected() &&
+        !systemInfo.protocolMismatch && systemInfo.protocolVersion == protocol && systemInfo.version == version;
+}
+#endif
 
 bool Controller::isAutotuning() const { return autotuning; }
 
@@ -1005,6 +1018,10 @@ void Controller::updateControl() {
 }
 
 void Controller::activate(bool ignoreWarnings) {
+#ifdef GAGGIMATE_KNOB
+    guition_knob::ActionReservation updateGuard(processMutex, screenControlEntries, updating);
+    if (!updateGuard) return;
+#endif
     // Never create a process while startup is incomplete or the controller is
     // absent. The UI can be reached by tapping through the startup screen, and
     // previously its Start action ran against a half-initialized BLE session.
@@ -1120,6 +1137,10 @@ void Controller::clearLocked(std::vector<const char *> &events) {
 }
 
 void Controller::activateGrind() {
+#ifdef GAGGIMATE_KNOB
+    guition_knob::ActionReservation updateGuard(processMutex, screenControlEntries, updating);
+    if (!updateGuard) return; // Before smart-grinder relay events, not only process creation.
+#endif
     pluginManager->trigger("controller:grind:start");
     if (isGrindActive())
         return;
@@ -1166,6 +1187,10 @@ bool Controller::isBrewActive() const {
 int Controller::getMode() const { return mode; }
 
 void Controller::setMode(int newMode) {
+#ifdef GAGGIMATE_KNOB
+    guition_knob::ActionReservation updateGuard(processMutex, screenControlEntries, updating);
+    if (!updateGuard) return;
+#endif
     Event modeEvent = pluginManager->trigger("controller:mode:change", "value", newMode);
     const int previousMode = mode;
     mode = modeEvent.getInt("value");

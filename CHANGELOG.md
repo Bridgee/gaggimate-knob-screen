@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.0-rc.3 — screen OTA candidate testing
+
+- Add an isolated own-repository screen downloader/installer with complete length/SHA-256 checks, SDK image validation and flash readback before boot selection. Reuse the upstream resumable HTTPS transport.
+- Add an explicit candidate-only test permission and verification-only staging. Normal screen/controller buttons and the legacy K718 installer remain disabled.
+- Require a fresh matched selection, healthy settled boot and an idle standby state. Exclude concurrent control actions without holding the process mutex across callbacks.
+- USB recovery and health-gated trial boot have been exercised on a development build. Network-install qualification remains separate from software checks.
+
 ## 0.4.0-rc.2 — USB recovery and startup health
 
 - Recognize settled app0/app1 boot selections, including the vendor sequence-zero placeholder, in the checked USB updater. Normal updates stage in the inactive slot and retain the current application. Add explicit, backed-up app0 recovery and inactive-slot USB trials; commit boot selection only after application readback.
