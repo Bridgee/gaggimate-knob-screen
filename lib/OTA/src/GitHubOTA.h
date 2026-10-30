@@ -25,6 +25,10 @@ class GitHubOTA {
               const String &firmware_name = "firmware.bin", const String &filesystem_name = "filesystem.bin",
               const String &controller_firmware_name = "controller.bin");
 
+    ~GitHubOTA();
+    GitHubOTA(const GitHubOTA &) = delete;
+    GitHubOTA &operator=(const GitHubOTA &) = delete;
+    void setCheckHandshakeTimeout(unsigned long seconds) { _wifi_client.setHandshakeTimeout(seconds); }
     void init();
     void checkForUpdates();
     bool isUpdateAvailable(bool controller = false) const;

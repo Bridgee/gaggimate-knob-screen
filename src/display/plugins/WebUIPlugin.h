@@ -8,6 +8,7 @@
 #include "GitHubOTA.h"
 #ifdef GAGGIMATE_KNOB
 #include "MatchedRelease.h"
+#include "OfficialRelease.h"
 #endif
 #include <ArduinoJson.h>
 #include <ESPAsyncWebServer.h>
@@ -67,6 +68,8 @@ class WebUIPlugin : public Plugin {
     bool anyUpdateAvailable() const;
 #ifdef GAGGIMATE_KNOB
     matched_release::Discovery matchedReleases;
+    official_release::Discovery officialReleases;
+    std::atomic<bool> officialRefreshRequested{true};
     std::atomic<bool> pairRefreshRequested{true};
 #endif
     GitHubOTA *ota = nullptr;

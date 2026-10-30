@@ -2,6 +2,8 @@
 
 ## 0.3.7 — USB stable
 
+- Isolate official update checks on a background worker so slow HTTPS cannot stall controller initialization or telemetry. Preserve official sources/channels and discard stale channel results.
+
 - Use the final port identity and stable channel; matched-release checks exclude pre-releases while preserving independent screen/controller versions and official notices.
 - Retain native K718 hardware support, rotary adjustments, persistent LED controls and standby customization. Both OTA installers remain disabled.
 - Fix the checked USB updater's post-write verification after an automatic USB reconnect.

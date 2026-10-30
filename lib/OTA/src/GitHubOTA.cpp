@@ -32,6 +32,12 @@ GitHubOTA::GitHubOTA(const String &display_version, const String &controller_ver
     _wifi_client.setCACertBundle(x509_crt_imported_bundle_bin_start);
 }
 
+GitHubOTA::~GitHubOTA() {
+    semver_free(&_version);
+    semver_free(&_controller_version);
+    semver_free(&_latest_version);
+}
+
 void GitHubOTA::init() {
     _controller_ota.init([this](int progress) { _progress_callback(PHASE_CONTROLLER_FW, progress); });
 }

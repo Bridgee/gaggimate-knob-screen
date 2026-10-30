@@ -50,8 +50,11 @@ bool WebUIPlugin::anyUpdateAvailable() const {
     if (pair.status == "ready" &&
         (matched_release::order(pair.pair.screenVersion, BUILD_PORT_VERSION) > 0 ||
          matched_release::order(pair.pair.controllerVersion, controller->getSystemInfo().version.c_str()) > 0)) return true;
-#endif
+    const auto official = officialReleases.snapshot();
+    return official.displayUpdate || official.controllerUpdate;
+#else
     return ota->isUpdateAvailable() || ota->isUpdateAvailable(true);
+#endif
 }
 
 void WebUIPlugin::setup(Controller *_controller, PluginManager *_pluginManager) {
@@ -87,6 +90,9 @@ void WebUIPlugin::setup(Controller *_controller, PluginManager *_pluginManager) 
     pluginManager->on("controller:ready", [this](Event const &) {
         ota->setControllerVersion(controller->getSystemInfo().version);
         ota->init();
+#ifdef GAGGIMATE_KNOB
+        officialRefreshRequested = true;
+#endif
     });
     wsHandler.setup(controller, pluginManager);
     wsHandler.onOtaSettings([this](JsonDocument &request) { handleOTASettings(request); });
@@ -111,24 +117,26 @@ void WebUIPlugin::loop() {
         return;
     }
     const unsigned long now = millis();
-    // Skip the (blocking, TLS) update check while a process is active: a brew/steam/grind
-    // must not have the control loop stalled for the duration of the handshake, nor compete
-    // with it for memory. isActive() is the reliable "a process is running" signal. Subtraction
-    // (not now > last + interval) keeps the interval check millis()-rollover-safe.
+    // HTTPS must not stall controller initialization, telemetry or UI state.
+    // Only scheduling happens here on K718; both release sources use workers.
     if (!controller->isActive() && (lastUpdateCheck == 0 || now - lastUpdateCheck > UPDATE_CHECK_INTERVAL)) {
-        ota->checkForUpdates();
 #ifdef GAGGIMATE_KNOB
+        officialRefreshRequested = true;
         matchedReleases.request();
-        pluginManager->trigger("ota:update:status", "value", anyUpdateAvailable());
 #else
+        ota->checkForUpdates();
         pluginManager->trigger("ota:update:status", "value", ota->isUpdateAvailable());
 #endif
         lastUpdateCheck = now;
         updateOTAStatus(ota->getCurrentVersion());
     }
 #ifdef GAGGIMATE_KNOB
+    if (!controller->isActive() && officialRefreshRequested.exchange(false))
+        officialReleases.request(controller->getSettings().getOTAChannel().c_str(), controller->getSystemInfo().version.c_str());
     if (!controller->isActive() && pairRefreshRequested.exchange(false)) matchedReleases.request();
-    if (matchedReleases.takeChanged()) {
+    const bool pairChanged = matchedReleases.takeChanged();
+    const bool officialChanged = officialReleases.takeChanged();
+    if (pairChanged || officialChanged) {
         pluginManager->trigger("ota:update:status", "value", anyUpdateAvailable());
         updateOTAStatus(ota->getCurrentVersion());
     }
@@ -316,8 +324,12 @@ void WebUIPlugin::handleOTASettings(JsonDocument &request) {
     if (request["update"].as<bool>()) {
         if (!request["channel"].isNull()) {
             controller->getSettings().setOTAChannel(request["channel"].as<String>() == "latest" ? "latest" : "nightly");
+#ifdef GAGGIMATE_KNOB
+            officialRefreshRequested = true;
+#else
             ota->setReleaseUrl(RELEASE_URL + (controller->getSettings().getOTAChannel() == "latest" ? "latest" : "tag/nightly"));
             lastUpdateCheck = 0;
+#endif
         }
     }
     updateOTAStatus("Checking...");
@@ -719,16 +731,24 @@ void WebUIPlugin::updateOTAStatus(const String &version) {
         return;
     Settings const &settings = controller->getSettings();
     JsonDocument doc(&psramAllocator);
-    doc["latestVersion"] = ota->getCurrentVersion();
     doc["tp"] = "res:ota-settings";
+#ifdef GAGGIMATE_KNOB
+    const auto official = officialReleases.snapshot();
+    doc["latestVersion"] = official.version;
+    doc["displayUpdateAvailable"] = official.displayUpdate;
+    doc["controllerUpdateAvailable"] = official.controllerUpdate;
+    doc["officialCheckStatus"] = official.status;
+    doc["officialCheckMessage"] = official.message;
+#else
+    doc["latestVersion"] = ota->getCurrentVersion();
     doc["displayUpdateAvailable"] = ota->isUpdateAvailable(false);
     doc["controllerUpdateAvailable"] = ota->isUpdateAvailable(true);
+#endif
     doc["otaAllowed"] = FirmwareOtaPolicy::installationAllowed;
     doc["otaDisabledReason"] = FirmwareOtaPolicy::disabledReason;
     doc["displayVersion"] = BUILD_GIT_VERSION;
     doc["controllerVersion"] = controller->getSystemInfo().version;
     doc["hardware"] = controller->getSystemInfo().hardware;
-    doc["latestVersion"] = ota->getCurrentVersion();
     doc["channel"] = settings.getOTAChannel();
     doc["updating"] = updating;
 #ifdef GAGGIMATE_KNOB
