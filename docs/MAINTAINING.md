@@ -79,7 +79,7 @@ Keep private maintenance status as a current summary with evidence links. Archiv
 
 ## Releases
 
-Run the publication check, source replay, software checks and build before publishing. Test changed behavior on hardware as needed; do not reuse an old binary's acceptance for a new one.
+Stage only the intended firmware files before running `scripts/check_public.py`; the publication check inspects the Git index. Run the publication check, source replay, software checks and build before publishing. Test changed behavior on hardware as needed; do not reuse an old binary's acceptance for a new one.
 Use annotated version tags and GitHub Releases for selected firmware images, checksums and concise release notes. Keep device dumps, NVS, pairing data, raw logs and internal records outside this repository.
 The working tree is the publication boundary; the official base commit is retained for provenance, without importing private development history.
 

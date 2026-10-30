@@ -1,9 +1,11 @@
 # Changelog
 
-## Unreleased maintenance
+## 0.3.7 — USB stable
 
-- Keep the checked USB updater in stub mode after esptool automatically reconnects, so post-write verification can read preserved partitions. This changes the host tool, not the running screen application.
-- Separate stable-release acceptance requirements from ongoing maintenance and optional roadmap work.
+- Use the final port identity and stable channel; matched-release checks exclude pre-releases while preserving independent screen/controller versions and official notices.
+- Retain native K718 hardware support, rotary adjustments, persistent LED controls and standby customization. Both OTA installers remain disabled.
+- Fix the checked USB updater's post-write verification after an automatic USB reconnect.
+- Separate stable-release requirements from optional work and record real brewing dynamics as unverified, outside this USB release's validation scope.
 
 ## 0.3.7-rc.1 — candidate
 

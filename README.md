@@ -84,8 +84,11 @@ See [Port architecture and migration](docs/PORTING.md) for the implementation ma
 
 ## Releases and compatibility
 
-The development candidate is **0.3.7-rc.1**, adding read-only matched-release discovery. The latest published candidate is **[v0.3.6-rc.1](https://github.com/Bridgee/gaggimate-knob-screen/releases/tag/v0.3.6-rc.1)**, based on GaggiMate v1.9.0 / protocol 5.
-It is a **pre-release**: software/build checks do not imply hardware acceptance of this exact binary. Release notes identify the tested scope and artifact hashes.
+The current source version is **0.3.7**, the USB stable build, based on GaggiMate v1.9.0 / protocol 5. Available versioned packages are listed under [Releases](https://github.com/Bridgee/gaggimate-knob-screen/releases). Each package has its own source identity, artifact checksums and validation scope.
+
+Stable builds check only stable matched releases; pre-releases are excluded. Until the first stable matched release is published, the checker reports that no stable matched release is available.
+
+**Validation limit:** real brewing dynamics, including changing temperature/pressure and LED following during a shot, remain unverified and are excluded from the 0.3.7 USB validation scope. This does not block the USB stable build. No brewing or OTA qualification is implied.
 
 - Update the display over **USB using a K718 build**. OTA installation for both the display and controller is disabled in the knob-screen firmware. Official update checks and notifications remain enabled; update notices do not confirm port compatibility.
 - Battery percentage is uncalibrated. The lightning symbol means external power, not measured charging current.
