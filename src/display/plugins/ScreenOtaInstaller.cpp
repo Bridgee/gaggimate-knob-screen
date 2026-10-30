@@ -1,6 +1,7 @@
 #ifdef GAGGIMATE_KNOB
 #include "ScreenOtaInstaller.h"
 #include "NetworkWorker.h"
+#include "SdkOtaImage.h"
 #include "VerifiedScreenDownload.h"
 #include <EspHttpTransport.h>
 #include <Arduino.h>
@@ -34,31 +35,7 @@ class Sha256 final : public ImageHash {
   private:
     mbedtls_sha256_context context;
 };
-class SlotImage final : public ImageSink {
-  public:
-    explicit SlotImage(const esp_partition_t *partition) : partition(partition) {}
-    ~SlotImage() override { abort(); }
-    bool begin(size_t bytes) override {
-        abort();
-        const auto *running = esp_ota_get_running_partition();
-        if (!running || !partition || running->address == partition->address || bytes > partition->size) return false;
-        open = esp_ota_begin(partition, bytes, &handle) == ESP_OK; return open;
-    }
-    bool write(const uint8_t *data, size_t bytes) override { return open && esp_ota_write(handle, data, bytes) == ESP_OK; }
-    bool finish() override {
-        if (!open) return false;
-        open = false; return esp_ota_end(handle) == ESP_OK;
-    }
-    bool read(size_t offset, uint8_t *data, size_t bytes) override {
-        return offset <= partition->size && bytes <= partition->size - offset &&
-            esp_partition_read(partition, offset, data, bytes) == ESP_OK;
-    }
-    void abort() override { if (open) { esp_ota_abort(handle); open = false; } }
-  private:
-    const esp_partition_t *partition;
-    esp_ota_handle_t handle = 0;
-    bool open = false;
-};
+
 }
 void Installer::start(const InstallJob &value, std::function<bool()> currentGuard) {
     if (!network_work::post(network_work::Kind::Screen, [this, value, currentGuard = std::move(currentGuard)] {

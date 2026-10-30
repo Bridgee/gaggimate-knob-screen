@@ -49,3 +49,14 @@ class ScreenDownloadTest(unittest.TestCase):
                             str(ROOT / 'test/knob_native/check_network_worker.cpp'),
                             str(ROOT / 'src/display/plugins/NetworkWorker.cpp'), '-o', str(binary)], check=True)
             subprocess.run([str(binary)], check=True, timeout=10)
+
+    def test_actual_sdk_image_sequential_erase_bounds_and_abort(self):
+        with tempfile.TemporaryDirectory() as folder:
+            out = Path(folder)
+            (out / 'esp_ota_ops.h').write_text('#pragma once\n#include <cstddef>\n#include <cstdint>\n#define ESP_OK 0\n#define OTA_WITH_SEQUENTIAL_WRITES 0xfffffffeu\nstruct esp_partition_t { uint32_t address; size_t size; };\nusing esp_ota_handle_t = unsigned;\nconst esp_partition_t *esp_ota_get_running_partition();\nint esp_ota_begin(const esp_partition_t *, size_t, esp_ota_handle_t *);\nint esp_ota_write(esp_ota_handle_t, const void *, size_t);\nint esp_ota_end(esp_ota_handle_t);\nint esp_ota_abort(esp_ota_handle_t);\nint esp_partition_read(const esp_partition_t *, size_t, void *, size_t);\n')
+            binary = out / 'sdk-image'
+            subprocess.run(['c++', '-std=c++17', '-Wall', '-Wextra', '-Werror', '-fsanitize=address,undefined',
+                            '-DGAGGIMATE_KNOB', '-I' + str(out), '-I' + str(ROOT / 'src'),
+                            '-I' + str(ROOT / 'lib/OTA/src'), '-I' + str(ROOT / '.pio/libdeps/display-knob/ArduinoJson/src'),
+                            str(ROOT / 'test/knob_native/check_sdk_ota_image.cpp'), '-o', str(binary)], check=True)
+            subprocess.run([str(binary)], check=True, timeout=10)

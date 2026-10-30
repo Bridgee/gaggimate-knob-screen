@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.0-rc.7
+
+- Erase the inactive OTA image incrementally during sequential writes, keeping controller telemetry live. Retain exact manifest length/hash limits, SDK validation and complete flash readback before boot selection.
+- RC5-to-RC6 live staging began but aborted after the bulk erase interrupted telemetry. The running image and boot selection were retained; qualification continues.
+
 ## 0.4.0-rc.6
 
 - Prepare a distinct forward OTA target for the shared-network-worker candidate. Normal display/controller installation remains disabled pending hardware qualification.
