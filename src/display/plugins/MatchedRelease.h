@@ -20,14 +20,12 @@ class Discovery {
     bool takeChanged() { return changed.exchange(false); }
     Snapshot snapshot() const { std::lock_guard<std::mutex> lock(mutex); return state; }
   private:
-    static void worker(void *self);
     Snapshot check();
     void publish(const Snapshot &value) { std::lock_guard<std::mutex> lock(mutex); state = value; changed = true; }
     bool previews;
     mutable std::mutex mutex;
     Snapshot state;
     std::atomic<bool> busy{false}, changed{false};
-    TaskHandle_t task = nullptr;
 };
 } // namespace matched_release
 #endif

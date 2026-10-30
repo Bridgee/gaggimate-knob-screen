@@ -1,5 +1,6 @@
 #ifdef GAGGIMATE_KNOB
 #include "MatchedRelease.h"
+#include "NetworkWorker.h"
 #include <EspHttpTransport.h>
 #include <esp32-hal.h>
 #include <esp_heap_caps.h>
@@ -64,18 +65,11 @@ std::string sha256(const uint8_t *data, size_t size) {
 void Discovery::request() {
     if (busy.exchange(true)) return;
     Snapshot checking; checking.status = "checking"; publish(checking);
-    if (!task && xTaskCreate(worker, "MatchedRelease", 8192, this, 1, &task) != pdPASS) {
+    if (!network_work::post(network_work::Kind::Matched, [this] {
+        publish(check()); busy = false;
+    })) {
         Snapshot failed; failed.status = "error"; failed.message = "Release checker could not start.";
-        publish(failed); busy = false; task = nullptr; return;
-    }
-    xTaskNotifyGive(task);
-}
-void Discovery::worker(void *context) {
-    auto *self = static_cast<Discovery *>(context);
-    for (;;) {
-        ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-        self->publish(self->check());
-        self->busy = false;
+        publish(failed); busy = false;
     }
 }
 Snapshot Discovery::check() {

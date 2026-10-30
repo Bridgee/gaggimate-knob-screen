@@ -1,5 +1,6 @@
 #ifdef GAGGIMATE_KNOB
 #include "ScreenOtaInstaller.h"
+#include "NetworkWorker.h"
 #include "VerifiedScreenDownload.h"
 #include <EspHttpTransport.h>
 #include <Arduino.h>
@@ -60,25 +61,14 @@ class SlotImage final : public ImageSink {
 };
 }
 void Installer::start(const InstallJob &value, std::function<bool()> currentGuard) {
-    { std::lock_guard<std::mutex> lock(mutex); job = value; guard = std::move(currentGuard); }
-    if (!task && xTaskCreate(worker, "K718 screen OTA", 8192, this, 1, &task) != pdPASS) {
-        task = nullptr; fail("worker-unavailable"); return;
-    }
-    xTaskNotifyGive(task);
+    if (!network_work::post(network_work::Kind::Screen, [this, value, currentGuard = std::move(currentGuard)] {
+        run(value, currentGuard);
+    })) fail("worker-unavailable");
 }
 void Installer::report(const char *phase, unsigned progress) {
     std::lock_guard<std::mutex> lock(mutex);
     if (status.phase != phase || status.progress != progress) {
         status.phase = phase; status.progress = progress; changed = true;
-    }
-}
-void Installer::worker(void *context) {
-    auto *self = static_cast<Installer *>(context);
-    for (;;) {
-        ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-        InstallJob job; std::function<bool()> guard;
-        { std::lock_guard<std::mutex> lock(self->mutex); job = self->job; guard = self->guard; }
-        self->run(job, guard);
     }
 }
 void Installer::run(const InstallJob &value, const std::function<bool()> &allowed) {

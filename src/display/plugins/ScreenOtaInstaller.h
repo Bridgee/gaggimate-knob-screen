@@ -24,17 +24,14 @@ class Installer {
     bool takeChanged() { return changed.exchange(false); }
     InstallStatus snapshot() const { std::lock_guard<std::mutex> lock(mutex); return status; }
   private:
-    static void worker(void *);
     void run(const InstallJob &, const std::function<bool()> &);
     void report(const char *, unsigned);
     const bool qualificationPermission;
     mutable std::mutex mutex;
     InstallStatus status;
     InstallJob job;
-    std::function<bool()> guard;
     bool queued = false;
     std::atomic<bool> changed{false};
-    TaskHandle_t task = nullptr;
 };
 } // namespace screen_ota
 #endif

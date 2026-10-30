@@ -37,3 +37,15 @@ class ScreenDownloadTest(unittest.TestCase):
                             str(ROOT / 'test/knob_native/check_screen_queue.cpp'),
                             str(ROOT / 'src/display/plugins/ScreenOtaQueue.cpp'), '-o', str(binary)], check=True)
             subprocess.run([str(binary)], check=True, timeout=10)
+
+    def test_actual_shared_network_worker_reservation_priority_and_failure(self):
+        with tempfile.TemporaryDirectory() as folder:
+            out = Path(folder); (out / 'freertos').mkdir()
+            (out / 'freertos/FreeRTOS.h').write_text('#pragma once\n#define pdTRUE 1\n#define pdPASS 1\n#define portMAX_DELAY 0xffffffffu\n')
+            (out / 'freertos/task.h').write_text('#pragma once\n#include "FreeRTOS.h"\nusing TaskHandle_t = void *;\nint xTaskCreate(void (*)(void *), const char *, unsigned, void *, unsigned, TaskHandle_t *);\nvoid xTaskNotifyGive(TaskHandle_t);\nunsigned ulTaskNotifyTake(int, unsigned);\n')
+            binary = out / 'network-worker'
+            subprocess.run(['c++', '-std=c++17', '-Wall', '-Wextra', '-Werror', '-fsanitize=address,undefined',
+                            '-DGAGGIMATE_KNOB', '-I' + str(out), '-I' + str(ROOT / 'src'),
+                            str(ROOT / 'test/knob_native/check_network_worker.cpp'),
+                            str(ROOT / 'src/display/plugins/NetworkWorker.cpp'), '-o', str(binary)], check=True)
+            subprocess.run([str(binary)], check=True, timeout=10)

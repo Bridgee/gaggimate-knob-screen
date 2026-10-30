@@ -11,9 +11,8 @@ class Discovery {
     Snapshot snapshot() const { return mailbox.snapshot(); }
     bool takeChanged() { return mailbox.takeChanged(); }
   private:
-    static void worker(void *self);
+    void check();
     Mailbox mailbox;
-    TaskHandle_t task = nullptr;
 };
 }
 #endif

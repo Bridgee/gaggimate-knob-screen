@@ -23,6 +23,7 @@
 #include <display/drivers/GuitionKnob/Hardware.h>
 #include <Protocol.h>
 #include "ScreenOtaPolicy.h"
+#include "NetworkWorker.h"
 #include <display/drivers/GuitionKnob/BootHealth.h>
 #include <esp_ota_ops.h>
 #endif
@@ -65,6 +66,10 @@ void WebUIPlugin::setup(Controller *_controller, PluginManager *_pluginManager) 
     // Redirect mbedTLS allocations to PSRAM before any TLS (OTA) handshake runs, so the
     // ~32 KB handshake buffers don't exhaust the scarce internal-DRAM pool. See mbedtlsPsramCalloc.
     (void)mbedtls_platform_set_calloc_free(mbedtlsPsramCalloc, mbedtlsPsramFree);
+#ifdef GAGGIMATE_KNOB
+    // Reserve the sole HTTPS task before Wi-Fi/BLE and UI heap fragmentation.
+    network_work::begin();
+#endif
     this->controller = _controller;
     this->profileManager = _controller->getProfileManager();
     this->pluginManager = _pluginManager;

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.0-rc.5
+
+- Share one preallocated background HTTPS worker between release checks and screen installation, reducing internal stack memory and serializing network work. Screen install jobs take priority over queued discovery checks.
+- Keep normal display/controller OTA disabled. RC3-to-RC4 live attempts failed closed before boot selection; network qualification continues with new, immutable candidates.
+
 ## 0.4.0-rc.4 — screen OTA test target
 
 - Retain the verified-download candidate implementation and its explicit bench-only permission in a separate forward-update version. Normal display/controller OTA remains disabled.
