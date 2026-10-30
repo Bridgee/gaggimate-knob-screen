@@ -12,6 +12,7 @@ This is an independent port maintained by [Bridgee](https://github.com/Bridgee).
 - Native display, touch and backlight support; upstream Wi-Fi/web and Bluetooth controller communication remain available.
 - Battery/power-source icons on both the menu and standby screens, including low-battery colors.
 - Rotary parameter adjustment: direct on single-field pages; tap to select on multi-field pages. Grind uses 0.5 seconds or 0.5 grams per detent. Original +/− buttons retain their steps.
+- Rotary Profile browsing: one preview per detent, with no extra highlight. Tap the existing checkmark to load it; touch arrows remain available.
 - Optional LED-ring temperature/pressure bars, following the screen colors. Enable the ring and set its brightness in **Settings → General → LED Ring**; saved preferences survive restarts.
 - Custom standby text or a centered clock, with both themes and touch wake.
 - Callable speaker and microphone interfaces. The temporary hardware-test page has been removed.
@@ -84,9 +85,9 @@ See [Port architecture and migration](docs/PORTING.md) for the implementation ma
 
 ## Releases and compatibility
 
-The current source version is **0.3.7**, the USB stable build, based on GaggiMate v1.9.0 / protocol 5. Available versioned packages are listed under [Releases](https://github.com/Bridgee/gaggimate-knob-screen/releases). Each package has its own source identity, artifact checksums and validation scope.
+The current development version is **0.3.8-rc.1**, based on GaggiMate v1.9.0 / protocol 5. The latest USB stable release is [0.3.7](https://github.com/Bridgee/gaggimate-knob-screen/releases/tag/v0.3.7). Available versioned packages are listed under [Releases](https://github.com/Bridgee/gaggimate-knob-screen/releases). Each package has its own source identity, artifact checksums and validation scope.
 
-Stable builds check only stable matched releases; pre-releases are excluded. Until the first stable matched release is published, the checker reports that no stable matched release is available.
+Stable builds check only stable matched releases; pre-releases are excluded. Candidate builds also include explicitly labelled pre-releases.
 
 **Validation limit:** real brewing dynamics, including changing temperature/pressure and LED following during a shot, remain unverified and are excluded from the 0.3.7 USB validation scope. This does not block the USB stable build. No brewing or OTA qualification is implied.
 

@@ -25,7 +25,7 @@ Hardware commands are asynchronous. Check `completedJobId`, `lastError` and `res
 Speaker playback is currently a short test tone; microphone sampling returns statistics for about two seconds. Continuous audio needs a separate application-level data path.
 
 Clockwise rotation produces negative raw detents on the tested screen; the UI applies −1 so clockwise increases the selected field. Do not decode these contacts as a quadrature encoder.
-The decoder samples every 500 µs, qualifies 6 ms low and 2 ms both-high, and rejects ambiguous or startup-held pulses. Grind knob targets use 0.5 seconds or 0.5 grams per detent, bounded by the upstream limits; touch-button steps remain unchanged.
+The decoder samples every 500 µs, qualifies 6 ms low and 2 ms both-high, and rejects ambiguous or startup-held pulses. Grind knob targets use 0.5 seconds or 0.5 grams per detent, bounded by the upstream limits; touch-button steps remain unchanged. In the screen Profile selector, each detent previews the previous/next profile through the original arrow actions. The single preview has no extra highlight; tap the existing checkmark to load it. The list stops at either end.
 
 LED 0 is at 12 o'clock, numbering clockwise; LED 6 is at the bottom. UI mode follows the actual visible meter colors, leaves the unfilled arc white and turns the top/bottom gaps off.
 `LedConfig` supports off, UI, identify and fixed-color modes. Driver brightness is 0–255. **Settings → General → LED Ring** stores enable/brightness (0–100%) in screen NVS; default off/45%. Enabling uses the validated 12-LED UI mapping. The ring stays off in standby, on controller loss or without visible gauges.

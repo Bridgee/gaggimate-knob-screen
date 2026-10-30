@@ -27,6 +27,9 @@ AdjustmentTargets visibleKnobTargets(int screen) {
         add(AdjustmentId::Temperature, objects.target_temp3 ? lv_obj_get_parent(objects.target_temp3) : nullptr,
             objects.water_down_temp_button, objects.water_up_temp_button, objects.target_temp3);
         break;
+    case SCREEN_ID_PROFILE_SCREEN:
+        add(AdjustmentId::Profile, objects.profile_name_1, objects.previous_profile, objects.next_profile, objects.profile_name_1);
+        break;
     case SCREEN_ID_GRIND_SCREEN:
         add(AdjustmentId::Weight, objects.target_weight, objects.grind_down_weight_button, objects.grind_up_weight_button, objects.target_duration3_1);
         add(AdjustmentId::Duration, objects.target_time, objects.grind_down_duration_button, objects.grind_up_duration_button, objects.target_duration3);
@@ -44,9 +47,9 @@ void KnobAdjustment::unbind() {
     for (auto &binding : bindings) {
         const auto &t = binding.target;
         if (exists(t.row)) {
-            if(exists(t.value)){lv_obj_clear_state(t.value, LV_STATE_USER_1);lv_obj_remove_style(t.value, &focusStyle, LV_STATE_USER_1); }
+            if(t.id != AdjustmentId::Profile && exists(t.value)){lv_obj_clear_state(t.value, LV_STATE_USER_1);lv_obj_remove_style(t.value, &focusStyle, LV_STATE_USER_1); }
             lv_obj_remove_event_cb_with_user_data(t.row, deleted, &binding);
-            if (!binding.rowWasClickable) lv_obj_clear_flag(t.row, LV_OBJ_FLAG_CLICKABLE);
+            if (t.id != AdjustmentId::Profile && !binding.rowWasClickable) lv_obj_clear_flag(t.row, LV_OBJ_FLAG_CLICKABLE);
         }
         for (auto *object : {t.row, t.lower, t.raise})
             if (exists(object)) lv_obj_remove_event_cb_with_user_data(object, pressed, &binding);
@@ -75,7 +78,8 @@ void KnobAdjustment::choose(AdjustmentId id) {
 void KnobAdjustment::highlight() {
     for (unsigned i=0;i<count;++i) {
         auto &t = bindings[i].target;
-        if (!exists(t.value)) continue;
+        // The profile browser already shows one preview at a time; it needs no focus decoration.
+        if (t.id == AdjustmentId::Profile || !exists(t.value)) continue;
         if (ready && t.id == selectedId) lv_obj_add_state(t.value, LV_STATE_USER_1);
         else lv_obj_clear_state(t.value, LV_STATE_USER_1);
     }
@@ -99,11 +103,13 @@ void KnobAdjustment::update(int screen, int32_t raw, bool enabled, const Adjustm
         for (unsigned i=0;i<count;++i) {
             auto &binding=bindings[i];binding.target=targets.items[i];
             binding.rowWasClickable=lv_obj_has_flag(binding.target.row,LV_OBJ_FLAG_CLICKABLE);
-            lv_obj_add_flag(binding.target.row,LV_OBJ_FLAG_CLICKABLE);
-            lv_obj_add_style(binding.target.value,&focusStyle,LV_STATE_USER_1);
             lv_obj_add_event_cb(binding.target.row,deleted,LV_EVENT_DELETE,&binding);
-            for(auto *object:{binding.target.row,binding.target.lower,binding.target.raise})
-                lv_obj_add_event_cb(object,pressed,LV_EVENT_PRESSED,&binding);
+            if (binding.target.id != AdjustmentId::Profile) {
+                lv_obj_add_flag(binding.target.row,LV_OBJ_FLAG_CLICKABLE);
+                lv_obj_add_style(binding.target.value,&focusStyle,LV_STATE_USER_1);
+                for(auto *object:{binding.target.row,binding.target.lower,binding.target.raise})
+                    lv_obj_add_event_cb(object,pressed,LV_EVENT_PRESSED,&binding);
+            }
         }
         selectedId = count==1 ? bindings[0].target.id : AdjustmentId::None;
         decoder.clearFraction();

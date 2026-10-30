@@ -111,6 +111,57 @@ void checkUiExtensions(const char *directory,int theme,void(*save)(const char *,
         knob.update(2,181,true,targets,focus);
         assert(brewClicks==1 && grindCalls==priorGrindCalls);
         lv_obj_remove_event_cb_with_user_data(targets.items[1].raise,countClick,&brewClicks);
+        // Profile rotation previews through the original arrows, never the load/checkmark action.
+        auto profileFlags=[&](bool previous,bool next) {
+            UIFlagsValue f(eez::flow::getGlobalVariable(FLOW_GLOBAL_VARIABLE_UI_FLAGS));
+            f.has_prev_profile(previous);f.has_next_profile(next);
+            eez::flow::setGlobalVariable(FLOW_GLOBAL_VARIABLE_UI_FLAGS,f);tick();
+        };
+        eez_flow_set_screen(SCREEN_ID_PROFILE_SCREEN,LV_SCR_LOAD_ANIM_NONE,0,0);
+        profileFlags(false,true);
+        auto profiles=visibleKnobTargets(SCREEN_ID_PROFILE_SCREEN);assert(profiles.count==1);
+        assert(profiles.items[0].id==AdjustmentId::Profile);
+        const bool nameClickable=lv_obj_has_flag(objects.profile_name_1,LV_OBJ_FLAG_CLICKABLE);
+        int previous=0,next=0,loads=0;
+        lv_obj_add_event_cb(objects.previous_profile,countClick,LV_EVENT_CLICKED,&previous);
+        lv_obj_add_event_cb(objects.next_profile,countClick,LV_EVENT_CLICKED,&next);
+        lv_obj_add_event_cb(objects.select_profile,countClick,LV_EVENT_CLICKED,&loads);
+        knob.update(SCREEN_ID_PROFILE_SCREEN,200,true,profiles,focus);
+        assert(knob.selected()==AdjustmentId::Profile);
+        assert(lv_obj_has_flag(objects.profile_name_1,LV_OBJ_FLAG_CLICKABLE)==nameClickable);
+        assert(!lv_obj_has_state(objects.profile_name_1,LV_STATE_USER_1));
+        assert(lv_obj_get_style_outline_width(objects.profile_name_1,LV_PART_MAIN)==0);
+        knob.update(SCREEN_ID_PROFILE_SCREEN,199,true,profiles,focus);assert(previous==0); // first item
+        knob.update(SCREEN_ID_PROFILE_SCREEN,200,true,profiles,focus);assert(next==1 && loads==0);
+        profileFlags(true,true);
+        knob.update(SCREEN_ID_PROFILE_SCREEN,201,true,visibleKnobTargets(SCREEN_ID_PROFILE_SCREEN),focus);
+        assert(next==2 && loads==0);
+        profileFlags(true,false);
+        knob.update(SCREEN_ID_PROFILE_SCREEN,202,true,visibleKnobTargets(SCREEN_ID_PROFILE_SCREEN),focus);
+        assert(next==2); // last item
+        knob.update(SCREEN_ID_PROFILE_SCREEN,201,true,visibleKnobTargets(SCREEN_ID_PROFILE_SCREEN),focus);
+        assert(previous==1 && loads==0);
+        profileFlags(true,true);
+        lv_event_send(objects.next_profile,LV_EVENT_CLICKED,nullptr);assert(next==3 && loads==0);
+        lv_event_send(objects.previous_profile,LV_EVENT_CLICKED,nullptr);assert(previous==2 && loads==0);
+        knob.update(SCREEN_ID_PROFILE_SCREEN,205,false,profiles,focus);
+        knob.update(SCREEN_ID_PROFILE_SCREEN,205,true,profiles,focus);assert(next==3); // no disabled-motion backlog
+        profileFlags(false,false);
+        auto single=visibleKnobTargets(SCREEN_ID_PROFILE_SCREEN);assert(single.count==0);
+        knob.update(SCREEN_ID_PROFILE_SCREEN,220,true,single,focus);
+        knob.update(SCREEN_ID_PROFILE_SCREEN,221,true,single,focus);assert(next==3 && previous==2 && loads==0);
+        profileFlags(false,true);
+        knob.update(SCREEN_ID_PROFILE_SCREEN,222,true,visibleKnobTargets(SCREEN_ID_PROFILE_SCREEN),focus);
+        assert(next==3); // newly available entries do not replay motion
+        knob.update(SCREEN_ID_PROFILE_SCREEN,223,true,visibleKnobTargets(SCREEN_ID_PROFILE_SCREEN),focus);
+        assert(next==4 && loads==0);
+        assert(!lv_obj_has_state(objects.profile_name_1,LV_STATE_USER_1));
+        assert(lv_obj_get_style_outline_width(objects.profile_name_1,LV_PART_MAIN)==0);
+        paint();save(directory,"knob-profile-preview.ppm");
+        lv_event_send(objects.select_profile,LV_EVENT_CLICKED,nullptr);assert(loads==1); // explicit touch still confirms
+        lv_obj_remove_event_cb_with_user_data(objects.previous_profile,countClick,&previous);
+        lv_obj_remove_event_cb_with_user_data(objects.next_profile,countClick,&next);
+        lv_obj_remove_event_cb_with_user_data(objects.select_profile,countClick,&loads);
     }
     eez_flow_set_screen(1,LV_SCR_LOAD_ANIM_NONE,0,0);tick();
     StandbyAppearance appearance;
@@ -145,5 +196,5 @@ void checkUiExtensions(const char *directory,int theme,void(*save)(const char *,
     eez_flow_set_screen(4,LV_SCR_LOAD_ANIM_NONE,0,0);tick();eez_flow_set_screen(1,LV_SCR_LOAD_ANIM_NONE,0,0);tick();
     appearance.content=StandbyContent::Text;
     assert(updateStandbyDisplay(objects.standby_screen,objects.obj3,objects.time,appearance,"10:27",foreground));
-    printf("PASS: %s rotary single/multi/touch/deletion/disabled and standby text/clock/layout/recreation\n",theme?"Light":"Dark");
+    printf("PASS: %s rotary single/multi/profile-preview/touch/deletion/disabled and standby text/clock/layout/recreation\n",theme?"Light":"Dark");
 }

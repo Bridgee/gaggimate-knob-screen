@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.8-rc.1 — candidate
+
+- Browse the screen Profile selector with the knob, one profile per detent. Reuse the original previous/next actions and limits, with no extra highlight; tap the existing checkmark to load the preview. Touch arrows remain available.
+
 ## 0.3.7 — USB stable
 
 - Set Grind knob adjustment to 0.5 seconds or 0.5 grams per detent; show fractional time targets on the screen and web dashboard. Keep the original touch-button steps.

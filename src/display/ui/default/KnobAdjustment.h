@@ -6,7 +6,7 @@
 #include "KnobAdjustmentPolicy.h"
 
 namespace gaggimate_ui {
-enum class AdjustmentId : uint8_t { None, Temperature, Duration, Weight };
+enum class AdjustmentId : uint8_t { None, Temperature, Duration, Weight, Profile };
 struct AdjustmentTarget {
     AdjustmentId id = AdjustmentId::None;
     lv_obj_t *row = nullptr, *lower = nullptr, *raise = nullptr, *value = nullptr;
