@@ -79,6 +79,8 @@ class UsbSlotsTest(unittest.TestCase):
                 self.assertIsNotNone(error)
                 self.assertEqual(device[0xe000:0x10000], original[0xe000:0x10000])
                 if fault != 'write': self.assertEqual(writes, [])
+                active = 0x10000 if seq % 2 else 0x650000
+                if mode != 'recover': self.assertEqual(device[active:active+0x640000], original[active:active+0x640000])
                 return
             self.assertIsNone(error)
             receipt = json.loads((root / 'backup/flash.json').read_text())
@@ -87,13 +89,12 @@ class UsbSlotsTest(unittest.TestCase):
                 self.assertEqual(device[0xe000:0x10000], files['boot_app0.bin'])
                 self.assertEqual(device[0x650000:0xc90000], original[0x650000:0xc90000])
                 self.assertEqual(writes[-1][0], 0xe000)
-            elif mode == 'trial':
+            elif mode in ('trial', 'update'):
                 self.assertEqual(writes[-1][0], 0xf000)
                 self.assertEqual(device[0xe000:0xf000], original[0xe000:0xf000])
-                self.assertEqual(device[0x10000:0x650000], original[0x10000:0x650000])
-            else:
-                self.assertEqual(device[0xe000:0x10000], original[0xe000:0x10000])
-                self.assertEqual(writes[0][0], 0x650000 if seq % 2 == 0 else 0x10000)
+                active = 0x10000 if seq % 2 else 0x650000
+                self.assertEqual(device[active:active+0x640000], original[active:active+0x640000])
+                self.assertEqual(writes[0][0], 0x650000 if seq % 2 else 0x10000)
             for name, entry in receipt['backups'].items():
                 self.assertEqual(digest(root / 'backup' / (name + '.bin')), entry['sha256'])
 

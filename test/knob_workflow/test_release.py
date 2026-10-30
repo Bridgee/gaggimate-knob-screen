@@ -45,7 +45,11 @@ class ReleaseTest(unittest.TestCase):
         ota=struct.pack('<HBBII16sI',0x50aa,1,0,0xe000,0x2000,b'otadata',0)
         (self.root/'partitions.bin').write_bytes((self.root/'partitions.bin').read_bytes()+nvs+ota)
         self.manifest['artifacts']['partitions.bin']={'sha256':digest(self.root/'partitions.bin'),'bytes':(self.root/'partitions.bin').stat().st_size};self.save()
-        device=bytearray(b'\xff'*0x650000)
+        (self.root/'bootloader.bin').write_bytes(b'reviewed bootloader')
+        self.manifest['artifacts']['bootloader.bin']={'sha256':digest(self.root/'bootloader.bin'),'bytes':(self.root/'bootloader.bin').stat().st_size};self.save()
+        device=bytearray(b'\xff'*0xc90000)
+        device[:len(b'reviewed bootloader')]=b'reviewed bootloader'
+        device[0xe000:0xe020]=record(1,2)
         table=(self.root/'partitions.bin').read_bytes();device[0x8000:0x8000+len(table)]=table
         class Port:
             def setDTR(self,value):pass
@@ -78,7 +82,10 @@ class ReleaseTest(unittest.TestCase):
             flash(self.root,'fake-port',':'.join(f'{x:02x}' for x in range(6)),backup,validation=True)
         receipt=json.loads((backup/'flash.json').read_text())
         self.assertTrue(receipt['written']);self.assertTrue(receipt['readback_verified'])
-        for name in ('partition-table','otadata','nvs'):
+        self.assertEqual(receipt['scope'],'app1 + explicit boot selection')
+        self.assertEqual(bytes(device[0xe000:0xf000]),(backup/'otadata.bin').read_bytes()[:4096])
+        self.assertEqual(bytes(device[0xf000:0xf020]),record(2,0))
+        for name in ('partition-table','nvs','app0'):
             region=receipt['backups'][name]
             self.assertEqual(bytes(device[region['offset']:region['offset']+region['bytes']]),(backup/(name+'.bin')).read_bytes())
 

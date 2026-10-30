@@ -2,7 +2,7 @@
 
 ## 0.4.0-rc.2 — USB recovery and startup health
 
-- Recognize settled app0/app1 boot selections in the checked USB updater. Add explicit, backed-up app0 recovery and inactive-slot USB trials; commit boot selection only after application readback.
+- Recognize settled app0/app1 boot selections, including the vendor sequence-zero placeholder, in the checked USB updater. Normal updates stage in the inactive slot and retain the current application. Add explicit, backed-up app0 recovery and inactive-slot USB trials; commit boot selection only after application readback.
 - Defer Arduino's early OTA acceptance. Confirm a trial only after local display/touch initialization, a completed frame, settings/filesystem access and 20 seconds of live UI/main/logic loops. Controller or Wi-Fi absence alone does not fail screen health.
 - Expose read-only startup health, pending state and running-slot diagnostics. Keep both OTA installers disabled pending hardware qualification and download verification.
 

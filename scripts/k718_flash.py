@@ -88,21 +88,23 @@ def flash(folder,port,expected_mac,backup,validation=False,receipt=None,mode='up
             metadata_offset=ota['offset']
             final_ota=metadata
         else:
-            target=selected(current_ota)['slot']
+            current_slot=selected(current_ota)['slot']
+            target=current_slot
             final_ota=current_ota
-            if mode=='trial':
+            if mode in ('trial','update'):
                 # The exact reviewed SDK bootloader is required for NEW/PENDING rollback.
                 if 'bootloader.bin' not in manifest['artifacts']:raise RuntimeError('Missing reviewed bootloader')
                 loader=(folder/'bootloader.bin').read_bytes()
                 if bytes(esp.read_flash(0,len(loader)))!=loader:raise RuntimeError('Bootloader differs; no USB trial written')
                 target,relative,metadata,final_ota=trial(current_ota)
+                if target==current_slot:raise RuntimeError('Refusing to overwrite the currently selected application')
                 metadata_offset=ota['offset']+relative
         address,size=parts[target]['offset'],parts[target]['size']
         backup.mkdir(parents=True,mode=0o700)
         receipt_data={'screen_mac':mac,'port':port,'release_sha256':digest(folder/'release.json'),'firmware_sha256':manifest['artifacts']['firmware.bin']['sha256'],'validation_only':validation,'operation':mode,'scope':target+(' + explicit boot selection' if metadata is not None else ' only'),'selected_entries':entries,'backups':{},'written':False}
         snapshots={}
         regions=[('partition-table',0x8000,0x1000),('otadata',ota['offset'],ota['size']),('nvs',parts['nvs']['offset'],parts['nvs']['size'])]
-        for name in (('app0','app1') if mode!='update' else (target,)):
+        for name in ('app0','app1'):
             regions.append((name,parts[name]['offset'],parts[name]['size']))
         for name,offset,count in regions:
             data=bytearray()
@@ -130,8 +132,8 @@ def flash(folder,port,expected_mac,backup,validation=False,receipt=None,mode='up
             write_json(backup/'flash.json',receipt_data)
             write_region(metadata_offset,metadata)
         if bytes(esp.read_flash(ota['offset'],ota['size']))!=final_ota:raise RuntimeError('OTA selection readback differs')
-        preserved=['partition-table','nvs']+(['otadata'] if metadata is None else [])
-        if mode in ('trial','recover'):preserved.append('app1' if target=='app0' else 'app0')
+        preserved=['partition-table','nvs']
+        preserved.append('app1' if target=='app0' else 'app0')
         for name in preserved:
             region=receipt_data['backups'][name]
             if esp.flash_md5sum(region['offset'],region['bytes'])!=hashlib.md5(snapshots[name]).hexdigest():raise RuntimeError('Unexpected change outside write scope: '+name)
