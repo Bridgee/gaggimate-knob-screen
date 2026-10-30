@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased maintenance
+
+- Keep the checked USB updater in stub mode after esptool automatically reconnects, so post-write verification can read preserved partitions. This changes the host tool, not the running screen application.
+- Separate stable-release acceptance requirements from ongoing maintenance and optional roadmap work.
+
 ## 0.3.7-rc.1 — candidate
 
 - Check our published matched releases in a background worker and display independent component versions and compatibility in System & Updates.

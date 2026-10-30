@@ -97,6 +97,11 @@ def flash(folder,port,expected_mac,backup,validation=False,receipt=None):
         with (folder/'firmware.bin').open('rb') as stream:
             write_flash(esp,SimpleNamespace(addr_filename=[(manifest['application_offset'],stream)],compress=True,no_compress=False,no_stub=False,force=False,encrypt=False,encrypt_files=None,ignore_flash_encryption_efuse_setting=False,erase_all=False,flash_size='keep',flash_mode='keep',flash_freq='keep',chip='esp32s3'))
         written=True
+        # esptool 4.9 retries mutate the caller's IS_STUB to False, then replace
+        # only their local loader. The device still runs the stub. Rebind its
+        # transport without resetting/running the app before preserved-region reads.
+        if not esp.IS_STUB:
+            esp=esp.STUB_CLASS(esp)
         if esp.flash_md5sum(manifest['application_offset'],len(binary))!=hashlib.md5(binary).hexdigest():raise RuntimeError('Independent application readback failed')
         for name in ('partition-table','otadata','nvs'):
             region=receipt_data['backups'][name]
