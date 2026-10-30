@@ -15,7 +15,7 @@ Implemented does not mean that every new binary has completed hardware acceptanc
 
 - Validate the current candidate on the target: real GitHub metadata refresh, separate component versions/compatibility, retained official notices and disabled installation controls.
 - Check normal operation after the update and restart: controller reconnection/telemetry, display/touch, rotary adjustment, LED preferences, standby/wake and saved settings. Reuse established peripheral evidence; repeat basic hardware tests only when their implementation or inputs change.
-- Record the scope of real-machine use. Dynamic temperature/pressure and LED following during brewing remain unverified and are explicitly excluded from the 0.3.7 USB validation scope. They do not block this USB release; complete that check before claiming brewing acceptance.
+- Record the scope of real-machine use. Dynamic temperature/pressure and LED following during brewing remain unverified and are explicitly excluded from the USB validation scope. They do not block this USB release; complete that check before claiming brewing acceptance.
 - Build the final stable identity, pass software/CI checks and verify that exact final package on hardware. Archive source identity, artifact checksums, compatibility, acceptance results and the previous package/USB rollback instructions before publishing.
 
 ## Ongoing maintenance (not first-release blockers)

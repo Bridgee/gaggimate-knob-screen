@@ -1,8 +1,9 @@
 # Changelog
 
-## 0.3.8-rc.1 — candidate
+## 0.3.8 — USB stable
 
 - Browse the screen Profile selector with the knob, one profile per detent. Reuse the original previous/next actions and limits, with no extra highlight; tap the existing checkmark to load the preview. Touch arrows remain available.
+- Retain the USB-only installation policy and independent matched-release discovery. Screen OTA will be developed and qualified separately; both OTA installers remain disabled in this release.
 
 ## 0.3.7 — USB stable
 
