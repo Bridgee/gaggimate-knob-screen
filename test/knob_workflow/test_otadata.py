@@ -1,4 +1,7 @@
 import struct
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
 import unittest
 from k718_otadata import inspect, record, selected, trial
 
@@ -11,6 +14,17 @@ class OtaSelectionTest(unittest.TestCase):
     def test_vendor_boot_app0_crc(self):
         self.assertEqual(record(1, 0xffffffff)[28:], bytes.fromhex('9a984347'))
         self.assertEqual(selected(metadata(record(1, 0xffffffff)))['slot'], 'app0')
+
+    def test_vendor_sequence_zero_placeholder(self):
+        placeholder = b'\x00' * 4 + b'\xff' * 28
+        self.assertEqual(selected(metadata(record(1, 0xffffffff), placeholder))['slot'], 'app0')
+        slot, offset, _, _ = trial(metadata(record(1, 0xffffffff), placeholder))
+        self.assertEqual((slot, offset), ('app1', 4096))
+        with self.assertRaisesRegex(RuntimeError, 'placeholder'):
+            selected(metadata(None, placeholder))
+        altered = bytearray(placeholder); altered[4] = 0
+        with self.assertRaisesRegex(RuntimeError, 'Unknown'):
+            selected(metadata(record(1, 2), bytes(altered)))
 
     def test_erased_baseline(self):
         self.assertEqual(selected(metadata())['slot'], 'app0')

@@ -37,7 +37,7 @@ def inspect(data):
         raw = data[copy * 4096:copy * 4096 + 32]
         seq, _, state, crc = struct.unpack('<I20sII', raw)
         erased = raw == b'\xff' * 32
-        if not erased and (state not in STATES or seq == 0):
+        if not erased and (state not in STATES or (seq == 0 and raw != b'\x00' * 4 + b'\xff' * 28)):
             raise RuntimeError('Unknown OTA metadata; explicit review required')
         valid = seq != ERASED and crc == (binascii.crc32(raw[:4], ERASED) & ERASED)
         entries.append(dict(copy=copy, sequence=seq, state=state, crc_valid=valid,
@@ -55,6 +55,8 @@ def selected(data):
             return dict(slot='app0', copy=None, sequence=0, state=ERASED)
         raise RuntimeError('No settled OTA selection; use explicit recover')
     chosen = max(active, key=lambda e: (e['sequence'], -e['copy']))
+    if chosen['sequence'] == 0:
+        raise RuntimeError('Only a vendor placeholder remains; use explicit recover')
     return dict(chosen, slot='app' + str((chosen['sequence'] - 1) % 2))
 
 

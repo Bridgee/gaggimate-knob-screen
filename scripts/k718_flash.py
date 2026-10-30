@@ -117,7 +117,8 @@ def flash(folder,port,expected_mac,backup,validation=False,receipt=None,mode='up
             nonlocal esp,written
             receipt_data['write_attempted']=True
             write_json(backup/'flash.json',receipt_data)
-            write_flash(esp,SimpleNamespace(addr_filename=[(offset,io.BytesIO(data))],compress=True,no_compress=False,no_stub=False,force=False,encrypt=False,encrypt_files=None,ignore_flash_encryption_efuse_setting=False,erase_all=False,flash_size='keep',flash_mode='keep',flash_freq='keep',chip='esp32s3'))
+            stream=io.BytesIO(data);stream.name='verified-region.bin'
+            write_flash(esp,SimpleNamespace(addr_filename=[(offset,stream)],compress=True,no_compress=False,no_stub=False,force=False,encrypt=False,encrypt_files=None,ignore_flash_encryption_efuse_setting=False,erase_all=False,flash_size='keep',flash_mode='keep',flash_freq='keep',chip='esp32s3'))
             written=True
             # esptool 4.9 retries can replace their local loader only.
             if not esp.IS_STUB:esp=esp.STUB_CLASS(esp)
