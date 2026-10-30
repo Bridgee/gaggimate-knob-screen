@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.0-rc.1 — OTA groundwork
+
+- Add read-only screen OTA preflight with immutable own-release asset binding, version/channel/controller checks, busy-state guards and reviewed A/B partition bounds. Expose separate screen/controller installation permissions, both disabled. No installer or download endpoint is enabled.
+
 ## 0.3.8 — USB stable
 
 - Browse the screen Profile selector with the knob, one profile per detent. Reuse the original previous/next actions and limits, with no extra highlight; tap the existing checkmark to load the preview. Touch arrows remain available.

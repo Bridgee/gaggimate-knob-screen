@@ -85,7 +85,7 @@ See [Port architecture and migration](docs/PORTING.md) for the implementation ma
 
 ## Releases and compatibility
 
-The current source version is **0.3.8**, the USB stable build, based on GaggiMate v1.9.0 / protocol 5. Available versioned packages are listed under [Releases](https://github.com/Bridgee/gaggimate-knob-screen/releases). Each package has its own source identity, artifact checksums and validation scope.
+The current development version is **0.4.0-rc.1**, with read-only OTA groundwork. The latest USB stable release is [0.3.8](https://github.com/Bridgee/gaggimate-knob-screen/releases/tag/v0.3.8), based on GaggiMate v1.9.0 / protocol 5. Available versioned packages are listed under [Releases](https://github.com/Bridgee/gaggimate-knob-screen/releases). Each package has its own source identity, artifact checksums and validation scope.
 
 Stable builds check only stable matched releases; pre-releases are excluded. Candidate builds also include explicitly labelled pre-releases.
 

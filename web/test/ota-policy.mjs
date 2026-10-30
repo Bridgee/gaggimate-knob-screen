@@ -101,6 +101,20 @@ try {
   assert.match(pairedHtml, /OTA installation is unverified/);
   assert.equal(canInstallOta({ ...pair, otaAllowed: true }, 'controller'), false);
   assert.equal(canInstallOta({ ...pair, otaAllowed: true }, 'display'), false);
+  // Read-only next-generation fields cannot unlock the legacy official installer.
+  const hints = {
+    ...pair,
+    otaAllowed: true,
+    screenOtaInstallationAllowed: true,
+    controllerOtaInstallationAllowed: true,
+    screenOtaPreflight: 'metadata-ready',
+  };
+  assert.equal(canInstallOta(hints, 'display'), false);
+  assert.equal(canInstallOta(hints, 'controller'), false);
+  assert.deepEqual(
+    buttons(MatchedVersions({ settings: hints })).map(b => !!b.props.disabled),
+    [false, true, true],
+  );
   for (const [status, message] of [
     ['error', 'Release metadata transfer was interrupted.'],
     ['no-release', 'No stable matched release was found.'],

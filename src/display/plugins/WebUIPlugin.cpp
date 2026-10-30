@@ -22,6 +22,8 @@
 #ifdef GAGGIMATE_KNOB
 #include <display/drivers/GuitionKnob/Hardware.h>
 #include <Protocol.h>
+#include "ScreenOtaPolicy.h"
+#include <esp_ota_ops.h>
 #endif
 
 static WebUIPlugin *g_webUIPlugin = nullptr;
@@ -770,6 +772,24 @@ void WebUIPlugin::updateOTAStatus(const String &version) {
     doc["pairControllerState"] = ready ? matched_release::componentState(system.version.c_str(), pair.pair.controllerVersion) : "unknown";
     doc["pairCompatibility"] = ready ? matched_release::compatibility(pair.pair, gm_proto::PROTOCOL_VERSION,
         system.protocolVersion, controller->getSystemState() == SYSTEM_READY, system.version.c_str()) : "unknown";
+    screen_ota::Context otaContext;
+    otaContext.portVersion = BUILD_PORT_VERSION;
+    otaContext.controllerVersion = system.version.c_str();
+    otaContext.localProtocol = gm_proto::PROTOCOL_VERSION;
+    otaContext.controllerProtocol = system.protocolVersion;
+    otaContext.controllerReady = controller->getSystemState() == SYSTEM_READY;
+    otaContext.activeProcess = controller->isActive() || controller->isGrindActive();
+    otaContext.updating = updating || controller->isUpdating();
+    const auto *runningSlot = esp_ota_get_running_partition();
+    const auto *updateSlot = esp_ota_get_next_update_partition(nullptr);
+    if (runningSlot) { otaContext.runningOffset = runningSlot->address; otaContext.runningBytes = runningSlot->size; }
+    if (updateSlot) { otaContext.updateOffset = updateSlot->address; otaContext.updateBytes = updateSlot->size; }
+    const auto preflight = screen_ota::inspect(ready, pair.release, pair.pair, otaContext,
+        std::strcmp(BUILD_RELEASE_CHANNEL, "candidate") == 0);
+    doc["screenOtaInstallationAllowed"] = screen_ota::screenInstallationAllowed;
+    doc["controllerOtaInstallationAllowed"] = screen_ota::controllerInstallationAllowed;
+    doc["screenOtaPreflight"] = preflight.state;
+
 #endif
     // LittleFS usage metrics
     {

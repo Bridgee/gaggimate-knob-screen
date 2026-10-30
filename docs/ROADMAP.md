@@ -24,9 +24,19 @@ Implemented does not mean that every new binary has completed hardware acceptanc
 - Incorporate compatibility reports from additional units of the same model and keep documentation current.
 - Keep published tags/assets immutable and validate changed behavior for each release.
 
+## Next development stage: screen OTA
+
+Read-only preflight and separate disabled component permissions are implemented in development. No download or installation endpoint is enabled.
+
+1. Bind installation requests to a freshly validated own-repository release and exact manifest/image hashes.
+2. Support USB recovery from either application slot and application health-gated boot confirmation.
+3. Implement a background screen downloader/installer; verify complete length and hash before changing boot selection.
+4. Validate real updates, settings/reconnection and corrupt/interrupted/failed-boot recovery before enabling screen installation.
+
+Keep the old K718 installer denied. Controller OTA needs independent qualification; combined updates follow later. These stages do not block the existing USB stable release.
+
 ## Optional future work
 
-- Verified OTA installation and recovery from matched releases. Review controller and screen installation separately; screen partition selection and rollback need validation before enabling it.
 - Reproducible controller self-builds compared against official binaries. Continue distributing pinned official controller images until a replacement is independently qualified.
 - Pinned build tools for additional host platforms and cross-host reproducibility evidence.
 - Better battery estimation and power-source reporting where hardware permits.
