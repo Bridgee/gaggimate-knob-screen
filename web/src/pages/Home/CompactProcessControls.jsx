@@ -1,3 +1,4 @@
+import { formatGrindTargetTime } from '../../utils/grindTargetTime.js';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faClock } from '@fortawesome/free-solid-svg-icons/faClock';
 import { faGauge } from '@fortawesome/free-solid-svg-icons/faGauge';
@@ -137,7 +138,7 @@ export default function CompactProcessControls() {
   const grindValue =
     grindTarget === 1 && volumetricAvailable
       ? `${grindTargetVolume}g`
-      : `${Math.round(grindTargetDuration / 1000)}s`;
+      : formatGrindTargetTime(grindTargetDuration);
 
   const renderContent = () => {
     if (processRunning && isFinished) return <FinishedView elapsed={fmtElapsed(p?.e)} />;

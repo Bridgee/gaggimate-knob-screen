@@ -11,7 +11,7 @@ This is an independent port maintained by [Bridgee](https://github.com/Bridgee).
 
 - Native display, touch and backlight support; upstream Wi-Fi/web and Bluetooth controller communication remain available.
 - Battery/power-source icons on both the menu and standby screens, including low-battery colors.
-- Rotary parameter adjustment: direct on single-field pages; tap to select on multi-field pages. Original +/− buttons remain available.
+- Rotary parameter adjustment: direct on single-field pages; tap to select on multi-field pages. Grind uses 0.5 seconds or 0.5 grams per detent. Original +/− buttons retain their steps.
 - Optional LED-ring temperature/pressure bars, following the screen colors. Enable the ring and set its brightness in **Settings → General → LED Ring**; saved preferences survive restarts.
 - Custom standby text or a centered clock, with both themes and touch wake.
 - Callable speaker and microphone interfaces. The temporary hardware-test page has been removed.

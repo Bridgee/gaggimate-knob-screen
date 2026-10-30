@@ -27,7 +27,7 @@ The original EEZ project remains the source design. Native generation changes ge
 LVGL renders directly at 360 × 360 and flushes dirty rectangles to the display; touch coordinates are native pixels.
 
 Checks preserve the ten upstream pages, all 64 page event handlers and the flow asset bytes except display dimensions. The original drawing/click-area helpers have coordinate adaptations.
-Rotary changes call existing button handlers, retaining their step sizes, limits and save behavior. Multi-field pages require touch selection first.
+Rotary changes normally call existing button handlers. Grind uses 0.5 seconds or 0.5 grams per detent through the existing controller setters, retaining the original limits, change events and save behavior. Its time label includes tenths, mirrored by the web dashboard. Original touch-button steps remain unchanged. Multi-field pages require touch selection first.
 
 The additional power icon, rotary highlight, LED mirror, standby options and web attribution are extensions. Brightness updates and theme-cache handling are compatibility fixes.
 OTA installation is an explicit functional difference: both display and controller installation are blocked in this port until a compatible OTA path is implemented. Official release discovery and notifications remain enabled. Use compatible firmware over USB; an official LilyGO binary does not contain the K718 driver.

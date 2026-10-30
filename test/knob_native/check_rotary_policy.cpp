@@ -4,6 +4,9 @@
 #include <cassert>
 #include <cstdio>
 #include <climits>
+#include <cstring>
+#include "display/core/constants.h"
+#include "display/ui/default/GrindKnobPolicy.h"
 using namespace guition_knob;
 using namespace gaggimate_ui;
 int main() {
@@ -36,6 +39,18 @@ int main() {
     KnobStepDecoder quarters;quarters.calibrate(4,1);assert(quarters.consume(0,true)==0);
     assert(quarters.consume(3,true)==0);quarters.clearFraction();assert(quarters.consume(4,true)==0);
     assert(quarters.consume(7,true)==1);assert(quarters.consume(15,false)==0);assert(quarters.consume(19,true)==1);
+    assert(grindKnobDuration(25000,1,BREW_MIN_DURATION_MS,BREW_MAX_DURATION_MS)==25500);
+    assert(grindKnobDuration(25500,-1,BREW_MIN_DURATION_MS,BREW_MAX_DURATION_MS)==25000);
+    assert(grindKnobDuration(59500,1,BREW_MIN_DURATION_MS,BREW_MAX_DURATION_MS)==60000);
+    assert(grindKnobDuration(5000,-1,BREW_MIN_DURATION_MS,BREW_MAX_DURATION_MS)==5000);
+    assert(grindKnobDuration(INT_MAX,1,BREW_MIN_DURATION_MS,BREW_MAX_DURATION_MS)==BREW_MAX_DURATION_MS);
+    assert(grindKnobWeight(18,1,BREW_MIN_VOLUMETRIC,BREW_MAX_VOLUMETRIC)==18.5);
+    assert(grindKnobWeight(18.5,-1,BREW_MIN_VOLUMETRIC,BREW_MAX_VOLUMETRIC)==18);
+    assert(grindKnobWeight(5,-1,BREW_MIN_VOLUMETRIC,BREW_MAX_VOLUMETRIC)==5);
+    assert(grindKnobWeight(250,1,BREW_MIN_VOLUMETRIC,BREW_MAX_VOLUMETRIC)==250);
+    char grindTime[12];formatGrindKnobDuration(25500,grindTime,sizeof(grindTime));assert(!std::strcmp(grindTime,"0:25.5"));
+    formatGrindKnobDuration(60000,grindTime,sizeof(grindTime));assert(!std::strcmp(grindTime,"1:00.0"));
+    formatGrindKnobDuration(300000,grindTime,sizeof(grindTime));assert(!std::strcmp(grindTime,"5:00.0"));
     assert(validStandbyContent("logo") && validStandbyContent("clock") && validStandbyContent("text"));
     assert(!validStandbyContent("other") && !validStandbyContent(nullptr));
     assert(validStandbyText("My Coffee 123!") && validStandbyText("") && validStandbyText("ABCDEFGHIJKLMNOPQRSTUVWX"));

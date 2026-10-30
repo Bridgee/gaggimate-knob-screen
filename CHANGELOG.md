@@ -2,6 +2,8 @@
 
 ## 0.3.7 — USB stable
 
+- Set Grind knob adjustment to 0.5 seconds or 0.5 grams per detent; show fractional time targets on the screen and web dashboard. Keep the original touch-button steps.
+
 - Isolate official update checks on a background worker so slow HTTPS cannot stall controller initialization or telemetry. Preserve official sources/channels and discard stale channel results.
 
 - Use the final port identity and stable channel; matched-release checks exclude pre-releases while preserving independent screen/controller versions and official notices.

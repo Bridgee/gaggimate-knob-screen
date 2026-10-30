@@ -1,3 +1,4 @@
+import { formatGrindTargetTime } from '../../../utils/grindTargetTime.js';
 import PropTypes from 'prop-types';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { getPrimaryIcon, getPrimaryLabel } from '../utils.js';
@@ -43,7 +44,7 @@ export function ActionCard({
   const grindValue =
     grindTarget === 1 && volumetricAvailable
       ? `${grindTargetVolume}g`
-      : `${Math.round(grindTargetDuration / 1000)}s`;
+      : formatGrindTargetTime(grindTargetDuration);
 
   const handlePrimary = () => {
     if (isActive) deactivate();

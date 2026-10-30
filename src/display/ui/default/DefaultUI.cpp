@@ -5,6 +5,7 @@
 #ifdef GAGGIMATE_KNOB
 #include "KnobMenuBattery.h"
 #include "KnobLedGauges.h"
+#include "GrindKnobPolicy.h"
 #include <display/drivers/GuitionKnob/Hardware.h>
 #endif
 
@@ -64,6 +65,17 @@ void DefaultUI::reloadProfiles() { profileLoaded = 0; }
 
 DefaultUI::DefaultUI(Controller *controller, Driver *driver, PluginManager *pluginManager)
     : controller(controller), panelDriver(driver), pluginManager(pluginManager) {
+#ifdef GAGGIMATE_KNOB
+    knobAdjustment.setGrindAdjustment([this](gaggimate_ui::AdjustmentId field, int direction) {
+        if (field == gaggimate_ui::AdjustmentId::Duration) {
+            this->controller->setTargetGrindDuration(gaggimate_ui::grindKnobDuration(
+                this->controller->getTargetGrindDuration(), direction, BREW_MIN_DURATION_MS, BREW_MAX_DURATION_MS));
+        } else if (field == gaggimate_ui::AdjustmentId::Weight) {
+            this->controller->setTargetGrindVolume(gaggimate_ui::grindKnobWeight(
+                this->controller->getSettings().getTargetGrindVolume(), direction, BREW_MIN_VOLUMETRIC, BREW_MAX_VOLUMETRIC));
+        }
+    });
+#endif
     setupPanel();
     xTaskCreatePinnedToCore(loopTask, "DefaultUI::loop", configMINIMAL_STACK_SIZE * 6, this, 1, &taskHandle, 1);
 }
@@ -258,7 +270,11 @@ void DefaultUI::loop() {
         eez::flow::setGlobalVariable(FLOW_GLOBAL_VARIABLE_SCALE_WEIGHT_CURRENT, currentWeight);
 
         char timeBuf[12];
+#ifdef GAGGIMATE_KNOB
+        gaggimate_ui::formatGrindKnobDuration(controller->getSettings().getTargetGrindDuration(), timeBuf, sizeof(timeBuf));
+#else
         formatDuration(controller->getSettings().getTargetGrindDuration(), timeBuf, sizeof(timeBuf));
+#endif
         if (stringChanged(grindTimeTarget.getString(), timeBuf)) {
             grindTimeTarget = StringValue(timeBuf);
             eez::flow::setGlobalVariable(FLOW_GLOBAL_VARIABLE_GRIND_TIME_TARGET, grindTimeTarget);

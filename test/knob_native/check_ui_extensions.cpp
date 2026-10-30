@@ -3,6 +3,8 @@
 #include "ui.h"
 #include "structs.h"
 #include "KnobAdjustment.h"
+#include "GrindKnobPolicy.h"
+#include "display/core/constants.h"
 #include "StandbyDisplay.h"
 #include <cassert>
 #include <cstring>
@@ -61,16 +63,54 @@ void checkUiExtensions(const char *directory,int theme,void(*save)(const char *,
         auto water=visibleKnobTargets(6);assert(water.count==1);knob.update(6,160,true,water,focus);
         assert(knob.selected()==AdjustmentId::Temperature);
         eez_flow_set_screen(SCREEN_ID_GRIND_SCREEN,LV_SCR_LOAD_ANIM_NONE,0,0);tick();
+        int grindMs=25000,grindCalls=0;double grindGrams=18.0;
+        knob.setGrindAdjustment([&](AdjustmentId field,int direction){
+            ++grindCalls;
+            if(field==AdjustmentId::Duration)grindMs=grindKnobDuration(grindMs,direction,BREW_MIN_DURATION_MS,BREW_MAX_DURATION_MS);
+            else grindGrams=grindKnobWeight(grindGrams,direction,BREW_MIN_VOLUMETRIC,BREW_MAX_VOLUMETRIC);
+            char time[12];formatGrindKnobDuration(grindMs,time,sizeof(time));
+            eez::flow::setGlobalVariable(FLOW_GLOBAL_VARIABLE_GRIND_TIME_TARGET,StringValue(time));
+            eez::flow::setGlobalVariable(FLOW_GLOBAL_VARIABLE_GRIND_WEIGHT_TARGET,FloatValue(grindGrams));
+        });
+        int raw=170;
         for(bool byWeight:{false,true}) {
             UIFlagsValue grindFlags(eez::flow::getGlobalVariable(FLOW_GLOBAL_VARIABLE_UI_FLAGS));
             grindFlags.grind_volumetric(byWeight);eez::flow::setGlobalVariable(FLOW_GLOBAL_VARIABLE_UI_FLAGS,grindFlags);tick();
             auto grind=visibleKnobTargets(SCREEN_ID_GRIND_SCREEN);assert(grind.count==1);
-            knob.update(8,170+byWeight,true,grind,focus);
+            knob.update(8,raw,true,grind,focus);
             assert(knob.selected()==(byWeight?AdjustmentId::Weight:AdjustmentId::Duration));
+            int originalClicks=0;
+            lv_obj_add_event_cb(grind.items[0].raise,countClick,LV_EVENT_CLICKED,&originalClicks);
+            const int calls=grindCalls;
+            knob.update(8,++raw,true,grind,focus);tick();
+            assert(grindCalls==calls+1 && originalClicks==0);
+            assert(byWeight ? grindGrams==18.5 && grindMs==25000 : grindMs==25500 && grindGrams==18.0);
+            if(!byWeight) {
+                assert(!std::strcmp(lv_label_get_text(grind.items[0].value),"0:25.5"));
+                lv_point_t size;lv_txt_get_size(&size,"5:00.0",lv_obj_get_style_text_font(grind.items[0].value,LV_PART_MAIN),
+                    lv_obj_get_style_text_letter_space(grind.items[0].value,LV_PART_MAIN),0,LV_COORD_MAX,LV_TEXT_FLAG_NONE);
+                assert(size.x<=lv_obj_get_content_width(grind.items[0].value));
+            }
+            knob.update(8,--raw,true,grind,focus);tick();
+            assert(grindMs==25000 && grindGrams==18.0);
+            lv_event_send(grind.items[0].raise,LV_EVENT_CLICKED,nullptr);
+            assert(originalClicks==1 && grindCalls==calls+2); // touch keeps the upstream action
+            lv_obj_remove_event_cb_with_user_data(grind.items[0].raise,countClick,&originalClicks);
+            lv_obj_add_state(grind.items[0].raise,LV_STATE_DISABLED);
+            knob.update(8,++raw,true,grind,focus);
+            assert(grindCalls==calls+2 && grindMs==25000 && grindGrams==18.0);
+            lv_obj_clear_state(grind.items[0].raise,LV_STATE_DISABLED);
+            raw+=10;
         }
         // Returning to a multi-target page clears focus again.
         eez_flow_set_screen(2,LV_SCR_LOAD_ANIM_NONE,0,0);tick();targets=visibleKnobTargets(2);
         knob.update(2,180,true,targets,focus);assert(targets.count==2 && knob.selected()==AdjustmentId::None);
+        int brewClicks=0;const int priorGrindCalls=grindCalls;
+        lv_obj_add_event_cb(targets.items[1].raise,countClick,LV_EVENT_CLICKED,&brewClicks);
+        lv_event_send(targets.items[1].row,LV_EVENT_PRESSED,nullptr);
+        knob.update(2,181,true,targets,focus);
+        assert(brewClicks==1 && grindCalls==priorGrindCalls);
+        lv_obj_remove_event_cb_with_user_data(targets.items[1].raise,countClick,&brewClicks);
     }
     eez_flow_set_screen(1,LV_SCR_LOAD_ANIM_NONE,0,0);tick();
     StandbyAppearance appearance;

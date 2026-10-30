@@ -1,6 +1,8 @@
 #pragma once
 #include <lvgl.h>
 #include <array>
+#include <functional>
+#include <utility>
 #include "KnobAdjustmentPolicy.h"
 
 namespace gaggimate_ui {
@@ -21,6 +23,7 @@ class KnobAdjustment {
     ~KnobAdjustment();
     void update(int screen, int32_t raw, bool enabled, const AdjustmentTargets &targets, lv_color_t focusColor);
     void calibrate(int edges, int direction) { decoder.calibrate(edges, direction); }
+    void setGrindAdjustment(std::function<void(AdjustmentId, int)> adjust) { grindAdjustment = std::move(adjust); }
     AdjustmentId selected() const { return selectedId; }
     uint8_t targetCount() const { return count; }
   private:
@@ -32,6 +35,7 @@ class KnobAdjustment {
     std::array<Binding, 3> bindings{};
     lv_style_t focusStyle;
     KnobStepDecoder decoder;
+    std::function<void(AdjustmentId, int)> grindAdjustment;
     int page = -1;
     uint8_t count = 0;
     bool ready = false, styleReady = false, haveFocusColor = false;

@@ -124,8 +124,13 @@ void KnobAdjustment::update(int screen, int32_t raw, bool enabled, const Adjustm
         auto *button=steps>0?t.raise:t.lower;
         for(int n=0;n<(steps>0?steps:-steps);++n) {
             if(!visible(button) || lv_obj_has_state(button,LV_STATE_DISABLED))break;
-            // The existing click handler owns steps, clamping and dirty/save semantics.
-            lv_event_send(button,LV_EVENT_CLICKED,nullptr);
+            if (page == SCREEN_ID_GRIND_SCREEN && grindAdjustment &&
+                (t.id == AdjustmentId::Duration || t.id == AdjustmentId::Weight)) {
+                grindAdjustment(t.id, steps > 0 ? 1 : -1);
+            } else {
+                // Other fields retain their original touch-button actions.
+                lv_event_send(button,LV_EVENT_CLICKED,nullptr);
+            }
         }
         break;
     }
