@@ -63,7 +63,19 @@ Build the same committed stack in two clean directories, then compare:
 python scripts/k718.py verify-repro FIRST_PACKAGE SECOND_PACKAGE   --out dist/reproducibility.json
 ```
 
-The seven firmware artifacts must match byte for byte for the same supported platform and inputs. Logs may differ in paths and audit times.
+The seven firmware artifacts must match byte for byte for identical supported build environments and inputs. Logs may differ in paths and audit times. Same-host reproducibility has been demonstrated; byte equality between local and CI hosts, across operating systems, or with historical official controller binaries is not established.
+
+## Stable-release acceptance
+
+The [roadmap](ROADMAP.md) separates release requirements from ongoing maintenance and optional work. OTA installation, controller self-builds, extra host platforms and battery calibration are not prerequisites for a USB-only stable release.
+
+1. Identify the exact candidate source, CI run and application hash. Back up the target and install with the checked USB updater; record readback verification and controller identity/protocol.
+2. Validate changed behavior on the device and its real web UI. For matched discovery, check the network refresh, component versions/compatibility, retained upstream notices and disabled installers. A metadata match is not OTA qualification.
+3. Check restart/reconnection, settings retention and the existing interaction paths. Reuse prior peripheral evidence when unchanged, and label it as prior evidence rather than acceptance of the exact new binary. Record any untested real-machine use explicitly.
+4. Generate the stable version/channel, run software/CI checks and test the resulting final package. Do not rename an RC binary or transfer its acceptance automatically to a different hash. Stable discovery excludes prereleases, so validate its channel behavior too.
+5. Publish immutable versioned assets with checksums, compatibility and concise acceptance/limitation notes. Retain the previous compatible application and documented USB rollback path privately; do not imply that an unperformed rollback test passed.
+
+Keep private maintenance status as a current summary with evidence links. Archive superseded snapshots instead of retaining contradictory active pending lists. Completed pin discovery, LED persistence and previously accepted interaction features are not new tasks unless a change requires regression testing.
 
 ## Releases
 
