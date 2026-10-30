@@ -26,12 +26,12 @@ Implemented does not mean that every new binary has completed hardware acceptanc
 
 ## Next development stage: screen OTA
 
-Read-only preflight, separate disabled permissions, two-slot USB recovery/trials and local startup-health confirmation are implemented in development. Recovery/health have been exercised on a development build. An explicit candidate-only download/install test interface is implemented; normal installation remains disabled pending end-to-end qualification.
+Read-only preflight, separate disabled permissions, two-slot USB recovery/trials and local startup-health confirmation are implemented in development. Recovery/health have been exercised on a development build. The explicit candidate-only interface passed USB-bench download/readback, interrupted staging, unconfirmed-boot rollback, healthy installation, settings and UI checks in 0.4.0-rc.8. Normal web installation remains disabled; the tested backend has not yet been connected to the ordinary update buttons.
 
 1. Implemented: bind installation requests to a freshly validated own-repository release and exact manifest/image hashes.
 2. Exercised on hardware: support USB recovery from either application slot and application health-gated boot confirmation.
-3. Implemented for candidate tests: background screen downloader/installer; verify complete length and hash before changing boot selection.
-4. Validate real updates, settings/reconnection and corrupt/interrupted/failed-boot recovery before enabling screen installation.
+3. Exercised on hardware: own-repository screen download/install, length/hash/SDK/readback verification, interrupted staging and unconfirmed-boot recovery. Malformed/corrupt-image cases also have host tests.
+4. Integrate the ordinary screen update action with the verified own-release path, retaining the legacy installer block and separate disabled controller permission; validate that user-facing flow before enabling it. Record physical power loss and other untested cases explicitly.
 
 Keep the old K718 installer denied. Controller OTA needs independent qualification; combined updates follow later. These stages do not block the existing USB stable release.
 

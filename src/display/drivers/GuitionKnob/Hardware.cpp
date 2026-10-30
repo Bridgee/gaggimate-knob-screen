@@ -176,22 +176,24 @@ void Hardware::sampleRail() {
     // Read-only SOF counter: a running USB host is positive external-power
     // evidence even if SYS droops. No CDC reader or open terminal is required.
     const auto usbFrame = REG_READ(USB_SERIAL_JTAG_FRAM_NUM_REG) & USB_SERIAL_JTAG_SOF_FRAME_INDEX;
-    uint32_t mv = 0;
-    for (int i = 0; i < 16; ++i) mv += analogReadMilliVolts(BatteryAdc);
-    const uint16_t rail = (mv + 4) / 8; // average16, divider x2
+    std::array<uint16_t, 16> readings;
+    for (auto &reading : readings) reading = analogReadMilliVolts(BatteryAdc);
+    const uint16_t rail = trimmedRailMilliVolts(readings);
     vTaskDelay(pdMS_TO_TICKS(5));
     const bool usbHost = usbFrame != (REG_READ(USB_SERIAL_JTAG_FRAM_NUM_REG) & USB_SERIAL_JTAG_SOF_FRAME_INDEX);
     const auto old = snapshot();
     const auto source = estimatedPowerSource(rail, old.powerSource, usbHost);
+    const int percentage = batteryEstimate.update(source, rail, millis());
     portENTER_CRITICAL(&lock);
     state.railMv = rail;
+    state.batteryFilteredMv = batteryEstimate.filteredMilliVolts();
     state.powerSource = source;
     state.usbHostActive = usbHost;
-    state.batteryPercent = source == PowerSource::Battery ? estimatedBatteryPercent(rail) : -1;
+    state.batteryPercent = percentage;
     portEXIT_CRITICAL(&lock);
     if (!old.railMv || old.powerSource != source)
         knobDiagnosticPrintf("K718 power: SYS=%umV source=%s usbHost=%d estimatedBattery=%d%%\n", rail,
-            source == PowerSource::External ? "external" : source == PowerSource::Battery ? "battery" : "unknown", usbHost, source == PowerSource::Battery ? estimatedBatteryPercent(rail) : -1);
+            source == PowerSource::External ? "external" : source == PowerSource::Battery ? "battery" : "unknown", usbHost, percentage);
 }
 
 void Hardware::sampleEncoder() {

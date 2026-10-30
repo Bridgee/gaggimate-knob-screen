@@ -9,9 +9,8 @@ const server = await createServer({
   optimizeDeps: { noDiscovery: true, entries: [] },
 });
 try {
-  const { FirmwareVersions, MatchedVersions, canInstallOta } = await server.ssrLoadModule(
-    '/src/pages/Settings/tabs/FirmwareVersions.jsx',
-  );
+  const { FirmwareVersions, MatchedVersions, OfficialUpdateChannel, canInstallOta } =
+    await server.ssrLoadModule('/src/pages/Settings/tabs/FirmwareVersions.jsx');
   const settings = {
     controllerVersion: 'v1.9.0',
     displayVersion: 'v1.9.0-k718.0.3.5-rc.2+example',
@@ -98,7 +97,43 @@ try {
   assert.match(pairedHtml, /Installed version is newer/);
   assert.match(pairedHtml, /Pre-release/);
   assert.match(pairedHtml, /Official GaggiMate 1.10.0 is available/);
-  assert.match(pairedHtml, /OTA installation is unverified/);
+  assert.match(pairedHtml, /Target, protocol and controller version match/);
+  assert.doesNotMatch(pairedHtml, /OTA installation is unverified|USB installation required/);
+  assert.match(pairedHtml, /Web installation not enabled/);
+  assert.match(pairedHtml, /Controller OTA remains disabled/);
+  const candidateHtml = renderToString(
+    MatchedVersions({ settings: { ...pair, screenOtaQualificationAvailable: true } }),
+  );
+  assert.match(candidateHtml, /includes a screen OTA test interface/);
+  assert.match(candidateHtml, /Installation from this page is not enabled yet/);
+  const stableHtml = renderToString(
+    MatchedVersions({ settings: { ...pair, screenOtaQualificationAvailable: false } }),
+  );
+  assert.doesNotMatch(stableHtml, /includes a screen OTA test interface/);
+  const notices = OfficialUpdateChannel({ settings: { ...pair, channel: 'nightly' } });
+  assert.equal(notices.type, 'details');
+  assert.equal(notices.props.open, undefined); // advanced upstream controls start collapsed
+  const noticeHtml = renderToString(notices);
+  assert.match(noticeHtml, /Official GaggiMate update notices/);
+  assert.match(noticeHtml, /notifications only/);
+  assert.match(noticeHtml, /Knob Screen firmware is/);
+  assert.match(noticeHtml, /Save notice channel &amp; refresh/);
+  assert.match(noticeHtml, /value="nightly" selected/);
+  assert.equal(buttons(notices)[0].props.disabled, false);
+  assert.equal(
+    buttons(OfficialUpdateChannel({ settings: { ...pair, updating: true } }))[0].props.disabled,
+    true,
+  );
+  assert.equal(
+    buttons(OfficialUpdateChannel({ settings: pair, submitting: true }))[0].props.disabled,
+    true,
+  );
+  const originalChannel = OfficialUpdateChannel({ settings: { channel: 'latest' } });
+  assert.equal(originalChannel.type, 'form');
+  const originalHtml = renderToString(originalChannel);
+  assert.match(originalHtml, /Update Channel/);
+  assert.match(originalHtml, /Save Channel &amp; Refresh/);
+  assert.doesNotMatch(originalHtml, /notifications only|Upstream notification channel/);
   assert.equal(canInstallOta({ ...pair, otaAllowed: true }, 'controller'), false);
   assert.equal(canInstallOta({ ...pair, otaAllowed: true }, 'display'), false);
   // Read-only next-generation fields cannot unlock the legacy official installer.

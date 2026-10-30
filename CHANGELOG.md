@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.0-rc.9
+
+- Stabilize the coarse battery estimate with trimmed ADC bursts, median/time filtering and display hysteresis. Preserve prompt low/critical indication, clear stale readings, and keep USB/external power lightning-only without cached SOC. The voltage curve remains uncalibrated.
+- Clarify that screen OTA candidate testing has completed while installation from the ordinary web page is not enabled. Compatibility text no longer labels every matching pair as unverified. Keep normal/controller installation permissions unchanged.
+- Move the official Stable/Nightly selector into a collapsed notifications section, separate from Knob Screen matched releases.
+- Software candidate only; battery behavior and the revised web UI still need device validation.
+
 ## 0.4.0-rc.8
 
 - Prepare a separate forward OTA target with the shared network worker and incremental erasure. Normal display/controller installation remains disabled pending qualification.

@@ -14,7 +14,8 @@ void Hardware::bindWeb(AsyncWebServer &server) {
         const auto s = snapshot();
         JsonDocument doc;
         doc["ready"] = s.ready; doc["busy"] = s.busy;
-        doc["railMv"] = s.railMv; doc["batteryPercent"] = s.batteryPercent;
+        doc["railMv"] = s.railMv;
+        doc["batteryFilteredMv"] = s.batteryFilteredMv; doc["batteryPercent"] = s.batteryPercent;
         doc["powerSource"] = s.powerSource == PowerSource::External ? "external" : s.powerSource == PowerSource::Battery ? "battery" : "unknown";
         doc["usbHostActive"] = s.usbHostActive;
         doc["powerSourceMethod"] = s.usbHostActive ? "USB SOF activity" : "SYS voltage estimate";

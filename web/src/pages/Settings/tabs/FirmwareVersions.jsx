@@ -19,7 +19,7 @@ export function MatchedVersions({ settings, onCheckPair }) {
   const ready = settings.pairStatus === 'ready';
   const checking = settings.pairStatus === 'checking';
   const compatibility = {
-    matched: 'Target, protocol and controller version match. OTA installation is unverified.',
+    matched: 'Target, protocol and controller version match.',
     incompatible: 'This pair does not match the current protocol or controller version.',
     unknown: 'Compatibility is unknown until the controller is connected and identified.',
   };
@@ -116,11 +116,13 @@ export function MatchedVersions({ settings, onCheckPair }) {
       )}
       <div id='ota-installation-notice' role='note' className='alert alert-info md:col-span-2'>
         <div>
-          <p className='font-semibold'>USB installation required</p>
+          <p className='font-semibold'>Web installation not enabled</p>
           <p>
-            Matched release checks are read-only. Normal display and controller updates remain
-            disabled while screen OTA is being tested.
+            {settings.screenOtaQualificationAvailable
+              ? 'This development build includes a screen OTA test interface. Installation from this page is not enabled yet.'
+              : 'Screen installation from this page is not enabled.'}
           </p>
+          <p>Use the K718 USB package for manual updates. Controller OTA remains disabled.</p>
         </div>
       </div>
     </>
@@ -181,5 +183,51 @@ export function FirmwareVersions({ settings, submitting, onUpdate, onCheckPair }
         </div>
       )}
     </>
+  );
+}
+
+export function OfficialUpdateChannel({ settings, submitting, formRef, onSubmit }) {
+  const noticesOnly = Boolean(settings.pairSupported);
+  const busy = submitting || (noticesOnly && Boolean(settings.updating));
+  const form = (
+    <form ref={formRef} onSubmit={onSubmit} className='space-y-4'>
+      <div className='form-control max-w-md'>
+        <label htmlFor='channel' className='mb-2 block text-sm font-medium'>
+          {noticesOnly ? 'Upstream notification channel' : 'Update Channel'}
+        </label>
+        <div className='flex w-full items-center gap-2'>
+          <select
+            id='channel'
+            name='channel'
+            className='select select-bordered grow'
+            disabled={noticesOnly && busy}
+          >
+            <option value='latest' selected={settings.channel === 'latest'}>
+              Stable
+            </option>
+            <option value='nightly' selected={settings.channel === 'nightly'}>
+              Nightly
+            </option>
+          </select>
+          <button type='submit' className='btn btn-secondary' disabled={busy}>
+            {noticesOnly ? 'Save notice channel & refresh' : 'Save Channel & Refresh'}
+          </button>
+        </div>
+      </div>
+    </form>
+  );
+  if (!noticesOnly) return form;
+  return (
+    <details className='border-base-content/10 rounded-lg border p-4'>
+      <summary className='cursor-pointer font-semibold'>Official GaggiMate update notices</summary>
+      <div className='mt-4 space-y-3'>
+        <p className='text-base-content/70 text-sm'>
+          Stable/Nightly selects official GaggiMate notifications only. Knob Screen firmware is
+          checked separately using the matched releases above. Changing this channel does not enable
+          installation or controller OTA.
+        </p>
+        {form}
+      </div>
+    </details>
   );
 }

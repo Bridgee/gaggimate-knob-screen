@@ -1,4 +1,4 @@
-import { FirmwareVersions, canInstallOta } from './FirmwareVersions';
+import { FirmwareVersions, OfficialUpdateChannel, canInstallOta } from './FirmwareVersions';
 import { useCallback, useContext, useEffect, useRef, useState } from 'preact/hooks';
 import { ApiServiceContext, machine } from '../../../services/ApiService.js';
 import { downloadJson } from '../../../utils/download.js';
@@ -287,12 +287,13 @@ export function SystemTab() {
   const onSubmit = useCallback(
     async e => {
       e.preventDefault();
+      if (formData.pairSupported && formData.updating) return;
       setSubmitting(true);
       const form = formRef.current;
       const data = new FormData(form);
       apiService.send({ tp: 'req:ota-settings', update: true, channel: data.get('channel') });
     },
-    [apiService],
+    [apiService, formData.pairSupported, formData.updating],
   );
 
   const onUpdate = useCallback(
@@ -327,26 +328,14 @@ export function SystemTab() {
     <div className='space-y-4 sm:space-y-6 lg:grid lg:grid-cols-2 lg:gap-4'>
       {/* Firmware updates channel */}
       <Section title='System Version & Updates' className='h-full'>
-        <form ref={formRef} onSubmit={onSubmit} className='space-y-4'>
-          <div className='form-control max-w-md'>
-            <label htmlFor='channel' className='mb-2 block text-sm font-medium'>
-              {formData.pairSupported ? 'Official update channel' : 'Update Channel'}
-            </label>
-            <div className='flex w-full items-center gap-2'>
-              <select id='channel' name='channel' className='select select-bordered grow'>
-                <option value='latest' selected={formData.channel === 'latest'}>
-                  Stable
-                </option>
-                <option value='nightly' selected={formData.channel === 'nightly'}>
-                  Nightly
-                </option>
-              </select>
-              <button type='submit' className='btn btn-secondary' disabled={submitting}>
-                Save Channel & Refresh
-              </button>
-            </div>
-          </div>
-        </form>
+        {!formData.pairSupported && (
+          <OfficialUpdateChannel
+            settings={formData}
+            submitting={submitting}
+            formRef={formRef}
+            onSubmit={onSubmit}
+          />
+        )}
 
         <div className='border-base-content/5 mt-6 grid grid-cols-1 gap-6 border-t pt-6 md:grid-cols-2'>
           <div className='flex flex-col space-y-1'>
@@ -370,6 +359,16 @@ export function SystemTab() {
             onUpdate={onUpdate}
             onCheckPair={() => apiService.send({ tp: 'req:ota-settings', refreshPair: true })}
           />
+          {formData.pairSupported && (
+            <div className='md:col-span-2'>
+              <OfficialUpdateChannel
+                settings={formData}
+                submitting={submitting}
+                formRef={formRef}
+                onSubmit={onSubmit}
+              />
+            </div>
+          )}
         </div>
       </Section>
 

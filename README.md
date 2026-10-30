@@ -10,7 +10,7 @@ This is an independent port maintained by [Bridgee](https://github.com/Bridgee).
 ## What this port adds
 
 - Native display, touch and backlight support; upstream Wi-Fi/web and Bluetooth controller communication remain available.
-- Battery/power-source icons on both the menu and standby screens, including low-battery colors.
+- Battery/power-source icons on both the menu and standby screens, with filtered voltage estimates, display hysteresis and low-battery colors.
 - Rotary parameter adjustment: direct on single-field pages; tap to select on multi-field pages. Grind uses 0.5 seconds or 0.5 grams per detent. Original +/− buttons retain their steps.
 - Rotary Profile browsing: one preview per detent, with no extra highlight. Tap the existing checkmark to load it; touch arrows remain available.
 - Optional LED-ring temperature/pressure bars, following the screen colors. Enable the ring and set its brightness in **Settings → General → LED Ring**; saved preferences survive restarts.
@@ -85,7 +85,7 @@ See [Port architecture and migration](docs/PORTING.md) for the implementation ma
 
 ## Releases and compatibility
 
-The current development version is **0.4.0-rc.8**, with a candidate-only screen OTA test interface. The latest USB stable release is [0.3.8](https://github.com/Bridgee/gaggimate-knob-screen/releases/tag/v0.3.8), based on GaggiMate v1.9.0 / protocol 5. Available versioned packages are listed under [Releases](https://github.com/Bridgee/gaggimate-knob-screen/releases). Each package has its own source identity, artifact checksums and validation scope.
+The current development version is **0.4.0-rc.9**, with a candidate-only screen OTA test interface. The latest USB stable release is [0.3.8](https://github.com/Bridgee/gaggimate-knob-screen/releases/tag/v0.3.8), based on GaggiMate v1.9.0 / protocol 5. Available versioned packages are listed under [Releases](https://github.com/Bridgee/gaggimate-knob-screen/releases). Each package has its own source identity, artifact checksums and validation scope.
 
 Stable builds check only stable matched releases; pre-releases are excluded. Candidate builds also include explicitly labelled pre-releases.
 

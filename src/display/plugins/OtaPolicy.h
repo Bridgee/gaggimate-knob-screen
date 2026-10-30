@@ -8,9 +8,9 @@ namespace FirmwareOtaPolicy {
 constexpr const char *displayComparisonVersion = BUILD_UPSTREAM_VERSION;
 constexpr bool installationAllowed = false;
 constexpr const char *disabledReason =
-    "Display and controller OTA installation is temporarily disabled. "
+    "Display and controller OTA installation from this page is disabled. "
     "Official update checks and notifications remain enabled. "
-    "Until knob-screen OTA is available, use USB with compatible firmware; the display requires a K718 build.";
+    "Use a K718 USB package for manual screen updates.";
 #else
 constexpr const char *displayComparisonVersion = BUILD_GIT_VERSION;
 constexpr bool installationAllowed = true;

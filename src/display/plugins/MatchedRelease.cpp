@@ -99,7 +99,7 @@ Snapshot Discovery::check() {
         result.message = "Matched release target, schema or asset metadata does not match."; return result;
     }
     result.release = release; result.status = "ready"; result.validatedAt = millis();
-    result.message = "Manifest and published asset metadata checked. OTA installation is unverified and disabled.";
+    result.message = "Manifest and published asset metadata checked.";
     return result;
 }
 } // namespace matched_release

@@ -7,7 +7,7 @@ Change the generator or resource inputs, regenerate, review and commit the outpu
 Existing UI checks compare all page handlers and flow bytes against the upstream input.
 
 Hardware drivers, UI adaptation, optional extensions and build tooling are separate modules. Preserve upstream controller/PID/process behavior and original button actions.
-Normal OTA installation for both the display and controller is disabled in this port; the explicit candidate test interface is described below. Official release checks, channel selection and update notifications remain active. Display comparisons use the official base version in `port/config.json`, while the installed version retains its full port identity. Use USB with compatible firmware; the display requires a K718 build. A compatible OTA path remains future work.
+Normal OTA installation for both the display and controller is disabled in this port; the explicit candidate test interface is described below. Official release checks, channel selection and update notifications remain active. Display comparisons use the official base version in `port/config.json`, while the installed version retains its full port identity. Use USB with compatible firmware; the display requires a K718 build. The candidate screen OTA backend passed USB-bench download, readback, interruption, unconfirmed-boot rollback and healthy-install tests in 0.4.0-rc.8. Installation from the ordinary web page remains a separate integration step.
 
 ## Upstream updates
 

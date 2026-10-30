@@ -4,6 +4,7 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/queue.h>
 #include "HardwarePolicy.h"
+#include "BatteryEstimate.h"
 #include "LedGaugePolicy.h"
 #include "LedPreferences.h"
 #include <driver/spi_master.h>
@@ -15,7 +16,7 @@ namespace guition_knob {
 enum class HardwareTest : uint8_t { Led, Speaker, Microphone };
 struct HardwareState {
     bool ready = false, encoderReady = false, busy = false;
-    uint16_t railMv = 0;
+    uint16_t railMv = 0, batteryFilteredMv = 0;
     PowerSource powerSource = PowerSource::Unknown;
     bool usbHostActive = false;
     int batteryPercent = -1;
@@ -60,6 +61,7 @@ class Hardware {
     static void worker(void *arg);
     void run();
     void sampleRail();
+    BatteryEstimate batteryEstimate;
     void sampleEncoder();
     int testLed();
     int openLeds();

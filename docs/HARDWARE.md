@@ -37,6 +37,14 @@ Low-level `/api/hardware/led` settings remain temporary overrides until the next
 These interfaces have been exercised on the target board. Reuse their known configuration; new features need checks for their own behavior, not repeated pin discovery.
 Battery capacity is not calibrated, charge-only adapters can be ambiguous, audio quality is not qualified, and optional haptics are not validated.
 
+## Battery estimate stability
+
+The 2-second sampler trims the two lowest/highest ADC values from each 16-reading burst. During battery supply, a three-burst median and a quarter-weight moving filter stabilize the SYS-voltage estimate. Changes of at least two percentage points must persist for three samples before the displayed estimate changes. Downward low/critical warning crossings take priority; sustained critical voltage bypasses the slower filter. Real voltage recovery can raise the estimate.
+
+A new battery session needs three valid readings (about four seconds after the first reading). USB/external power, unknown supply and invalid readings clear the estimate immediately. A sampling gap over 10 seconds starts a fresh session. No previous percentage is displayed on USB: the menu and standby keep the existing lightning-only image in both themes.
+
+`railMv` remains the current trimmed SYS reading for supply detection; `batteryFilteredMv` reports the battery-only filtered reading, or zero when unavailable. Filtering reduces jitter; the generic voltage-to-percentage table remains uncalibrated and does not establish cell capacity or trustworthy charging SOC.
+
 ## HTTP interfaces
 
 - `GET /api/hardware`: hardware snapshot.
