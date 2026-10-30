@@ -669,7 +669,8 @@ bool Controller::tryBeginScreenUpdate() {
 }
 bool Controller::canCommitScreenUpdate(unsigned protocol, const char *version) const {
     std::lock_guard<std::recursive_mutex> guard(processMutex);
-    return updating && mode == MODE_STANDBY && currentProcess == nullptr && screenControlEntries == 0 && comms.isConnected() &&
+    return updating && !autotuning && !isErrorState() && mode == MODE_STANDBY &&
+        currentProcess == nullptr && screenControlEntries == 0 && comms.isConnected() &&
         !systemInfo.protocolMismatch && systemInfo.protocolVersion == protocol && systemInfo.version == version;
 }
 #endif
@@ -726,6 +727,10 @@ bool Controller::isVolumetricAvailable() const {
 }
 
 void Controller::autotune(int testTime, int samples, int heaterWattage) {
+#ifdef GAGGIMATE_KNOB
+    guition_knob::ActionReservation updateGuard(processMutex, screenControlEntries, updating);
+    if (!updateGuard) return;
+#endif
     if (isActive() || !isReady()) {
         return;
     }
