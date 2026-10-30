@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.0-rc.4 — screen OTA test target
+
+- Retain the verified-download candidate implementation and its explicit bench-only permission in a separate forward-update version. Normal display/controller OTA remains disabled.
+
 ## 0.4.0-rc.3 — screen OTA candidate testing
 
 - Add an isolated own-repository screen downloader/installer with complete length/SHA-256 checks, SDK image validation and flash readback before boot selection. Reuse the upstream resumable HTTPS transport.
