@@ -1,3 +1,5 @@
+import { t } from '@lingui/core/macro';
+
 export const TARGET_FLOW_MAX = 12;
 export const TARGET_PRESSURE_MAX = 16;
 export const STANDARD_LINE_WIDTH = 4;
@@ -44,17 +46,17 @@ export function getReplayExportStatusLabel(status, exportFormat = 'mp4') {
     case 'idle':
       return '';
     case 'preparing':
-      return exportFormat === 'webm' ? 'Preparing WebM export...' : 'Preparing MP4 export...';
+      return exportFormat === 'webm' ? t`Preparing WebM export...` : t`Preparing MP4 export...`;
     case 'renderingImage':
-      return 'Rendering PNG export...';
+      return t`Rendering PNG export...`;
     case 'preparingJson':
-      return 'Preparing shot JSON...';
+      return t`Preparing shot JSON...`;
     case 'recording':
-      return 'Recording replay...';
+      return t`Recording replay...`;
     case 'downloading':
-      return 'Downloading export...';
+      return t`Downloading export...`;
     case 'error':
-      return 'Replay export failed.';
+      return t`Replay export failed.`;
     default:
       return '';
   }
@@ -80,7 +82,7 @@ export const CHART_COLOR_FALLBACKS = {
   weight: '#8B5CF6',
   weightFlow: '#6d28d9',
   phaseLine: 'rgba(107, 114, 128, 0.5)',
-  stopLabel: 'rgba(220, 38, 38, 0.85)',
+  stopLabel: '#b54747',
   warning: '#f59e0b',
 };
 

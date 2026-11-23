@@ -110,9 +110,9 @@
     "esp-arduino-ble-scales": {
       "name": "esp-arduino-ble-scales",
       "kind": "git",
-      "commit": "7fa8589ab6cde389789dbb8708fef21d87c76cca",
+      "commit": "4e214ca7f34691a149b30ec6dd90b185af36f44b",
       "url": "https://github.com/gaggimate/esp-arduino-ble-scales",
-      "source_sha256": "f7a4a510db83e6f9127fc55cd6626e4959feb0d5eb76039c1b1daca264d0282e"
+      "source_sha256": "452d4a3bec485bc2363dc023f761f615717087bf230940c339affcc1891d402d"
     },
     "lvgl": {
       "name": "lvgl",

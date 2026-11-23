@@ -1,17 +1,17 @@
 {
   "schema": 1,
   "repository": "jniebuhr/gaggimate",
-  "tag": "v1.9.0",
-  "commit": "43d2a7ba2299c196fd67c001f455985e07e57a49",
-  "release_id": 398998635,
-  "controller_protocol": 5,
+  "tag": "v1.10.0",
+  "commit": "34bf9fc5f6cf89c9929636fc23092b75284092f9",
+  "release_id": 449795598,
+  "controller_protocol": 16,
   "board": "Gaggimate-Controller",
   "asset": {
     "name": "board-firmware.bin",
-    "id": 597822725,
-    "url": "https://github.com/jniebuhr/gaggimate/releases/download/v1.9.0/board-firmware.bin",
-    "bytes": 701856,
-    "sha256": "00eedb76594a4c5bd04b2687a46a32d12b082952df240485bbc335f7bf2a5628"
+    "id": 762860237,
+    "url": "https://github.com/jniebuhr/gaggimate/releases/download/v1.10.0/board-firmware.bin",
+    "bytes": 735264,
+    "sha256": "bdb1382f08dc285abface6ceeb498abecb177e21a617f0a8a9efc9783cb6b5fa"
   },
   "identity_source": "GitHub release asset metadata; SHA-256 verified against the downloaded original file",
   "installation_allowed": false

@@ -4,6 +4,7 @@
 #define ELEGANTOTA_USE_ASYNC_WEBSERVER 1
 
 #include <DNSServer.h>
+#include <memory>
 
 #include "GitHubOTA.h"
 #ifdef GAGGIMATE_KNOB
@@ -24,17 +25,18 @@ const String LOCAL_URL = "http://4.4.4.1/";
 const String RELEASE_URL = "https://github.com/jniebuhr/gaggimate/releases/";
 // Headless builds must pull their own release assets; the screen firmware would not boot on them.
 #ifdef GAGGIMATE_KNOB
-#define OTA_DISPLAY_FIRMWARE "display-knob-firmware.bin"
-#define OTA_DISPLAY_FILESYSTEM "display-knob-filesystem.bin"
+constexpr char OTA_DISPLAY_FIRMWARE[] = "display-knob-firmware.bin";
+constexpr char OTA_DISPLAY_FILESYSTEM[] = "display-knob-filesystem.bin";
 #elif defined(GAGGIMATE_HEADLESS)
-#define OTA_DISPLAY_FIRMWARE "display-headless-firmware.bin"
-#define OTA_DISPLAY_FILESYSTEM "display-headless-filesystem.bin"
+constexpr char OTA_DISPLAY_FIRMWARE[] = "display-headless-firmware.bin";
+constexpr char OTA_DISPLAY_FILESYSTEM[] = "display-headless-filesystem.bin";
 #else
-#define OTA_DISPLAY_FIRMWARE "display-firmware.bin"
-#define OTA_DISPLAY_FILESYSTEM "display-filesystem.bin"
+constexpr char OTA_DISPLAY_FIRMWARE[] = "display-firmware.bin";
+constexpr char OTA_DISPLAY_FILESYSTEM[] = "display-filesystem.bin";
 #endif
 
 class ProfileManager;
+class MachineProfileStore;
 
 class WebUIPlugin : public Plugin {
   public:
@@ -55,11 +57,13 @@ class WebUIPlugin : public Plugin {
     // Serves the web UI from the firmware-embedded, memory-mapped flash blob
     // (catch-all for any path not claimed by an explicit route). [GM-106]
     void serveWebAsset(AsyncWebServerRequest *request);
+    void handleMachineProfiles(AsyncWebServerRequest *request);
     void handleSettings(AsyncWebServerRequest *request) const;
     void handleBLEScaleList(AsyncWebServerRequest *request);
     void handleBLEScaleScan(AsyncWebServerRequest *request);
     void handleBLEScaleConnect(AsyncWebServerRequest *request);
     void handleBLEScaleInfo(AsyncWebServerRequest *request);
+    void handleBLEScaleForget(AsyncWebServerRequest *request);
     void updateOTAStatus(const String &version);
     void updateOTAProgress(uint8_t phase, int progress);
 
@@ -77,20 +81,31 @@ class WebUIPlugin : public Plugin {
     std::atomic<bool> officialRefreshRequested{true};
     std::atomic<bool> pairRefreshRequested{true};
 #endif
+    // Profile images on the SD card (pre-converted 300x300 RGB565 from the web UI)
+    void handleProfileImage(AsyncWebServerRequest *request);
+    void handleProfileImageBody(AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total);
+
     GitHubOTA *ota = nullptr;
     AsyncWebServer server;
     WebSocketHandler wsHandler;
     Controller *controller = nullptr;
     PluginManager *pluginManager = nullptr;
-    DNSServer *dnsServer = nullptr;
+    std::unique_ptr<DNSServer> dnsServer;
     ProfileManager *profileManager = nullptr;
+    MachineProfileStore *machineProfiles = nullptr;
 
     long lastUpdateCheck = 0;
     long lastDns = 0;
     bool updating = false;
     bool apMode = false;
     bool serverRunning = false;
+    bool pluginHooksRegistered = false;
     String updateComponent = "";
+
+    // One upload at a time; a new upload takes over a stale one whose client went away.
+    AsyncWebServerRequest *imageUploadRequest = nullptr;
+    File imageUploadFile;
+    String imageUploadError;
 };
 
 #endif // WEBUIPLUGIN_H

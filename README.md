@@ -3,7 +3,7 @@
 [![Firmware checks](https://github.com/Bridgee/gaggimate-knob-screen/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/Bridgee/gaggimate-knob-screen/actions/workflows/build.yml)
 
 GaggiMate screen firmware adapted and maintained for the **GUITION JC3636K718C_I_YR1** battery-powered knob screen.
-Based on official [GaggiMate v1.9.0](https://github.com/jniebuhr/gaggimate/tree/v1.9.0), with **native 360 × 360 UI** and **controller protocol 5**.
+Based on official [GaggiMate v1.10.0](https://github.com/jniebuhr/gaggimate/tree/v1.10.0), with **native 360 × 360 UI** and **controller protocol 16**.
 
 This is an independent port maintained by [Bridgee](https://github.com/Bridgee). It preserves the upstream coffee-control logic, page flows and original touch buttons, then adds the hardware adaptation and optional knob-screen extensions below.
 
@@ -72,7 +72,7 @@ Pin assignments, callable interfaces and limitations are in [Hardware interfaces
 ## From official firmware to this port
 
 ```text
-Official GaggiMate v1.9.0
+Official GaggiMate v1.10.0
   → K718 display/touch/backlight and board interfaces
   → native 360 × 360 geometry, fonts, images and touch coordinates
   → battery status, LED gauges, rotary adjustments and standby options
@@ -85,7 +85,7 @@ See [Port architecture and migration](docs/PORTING.md) for the implementation ma
 
 ## Releases and compatibility
 
-The current development version is **0.4.0-rc.9**, with a candidate-only screen OTA test interface. The latest USB stable release is [0.3.8](https://github.com/Bridgee/gaggimate-knob-screen/releases/tag/v0.3.8), based on GaggiMate v1.9.0 / protocol 5. Available versioned packages are listed under [Releases](https://github.com/Bridgee/gaggimate-knob-screen/releases). Each package has its own source identity, artifact checksums and validation scope.
+The current development version is **0.5.0-rc.1**, rebased on official v1.10.0 / protocol 16. It requires an official v1.10.0 controller; hardware validation is pending and all OTA installation is disabled for this migration candidate. The latest USB stable release is [0.3.8](https://github.com/Bridgee/gaggimate-knob-screen/releases/tag/v0.3.8), based on GaggiMate v1.9.0 / protocol 5. Available versioned packages are listed under [Releases](https://github.com/Bridgee/gaggimate-knob-screen/releases). Each package has its own source identity, artifact checksums and validation scope.
 
 Stable builds check only stable matched releases; pre-releases are excluded. Candidate builds also include explicitly labelled pre-releases.
 
@@ -99,6 +99,8 @@ Stable builds check only stable matched releases; pre-releases are excluded. Can
 Successful CI runs provide development firmware bundles under Actions. Versioned public packages are published under [Releases](https://github.com/Bridgee/gaggimate-knob-screen/releases).
 
 CI also prepares a [matched firmware pair](docs/MAINTAINING.md#matched-firmware-pairs): our K718 application plus the unmodified official controller application, with pinned source identities, separate versions and SHA-256 checksums. This prepares distribution inputs; OTA installation remains disabled.
+
+The v1.10.0 candidate retains the upstream live shot/profile charts, profile images, setup flow and multilingual web UI. Existing K718 extensions remain available. The previous v1.9.0 screen firmware is not compatible with a protocol-16 controller.
 
 ## Build
 

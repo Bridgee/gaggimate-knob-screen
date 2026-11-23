@@ -67,6 +67,45 @@ class ReplayTest(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError,'unadopted'):k718.guard_source()
         k718.bind_upstream('v2',5)
         self.assertEqual(k718.guard_source()['upstream']['commit'],new)
+    def test_merged_upstream_exports_net_adaptation_without_rewriting_history(self):
+        port_head = self.git('rev-parse', 'HEAD')
+        self.git('checkout', '-q', '--detach', self.base)
+        self.put('next-api.txt', 'new upstream API\n'); self.commit('next official')
+        new = self.git('rev-parse', 'HEAD')
+        self.git('checkout', '-q', '--detach', port_head)
+        self.git('merge', '--no-ff', '-m', 'adopt new upstream', new)
+        cfg = json.loads((self.repo/'port/config.json').read_text())
+        cfg['upstream'].update(commit=new, ref='v2', version='v2')
+        self.put('port/config.json', json.dumps(cfg)); self.commit('bind reviewed upstream')
+        head = self.git('rev-parse', 'HEAD'); tree = self.git('rev-parse', 'HEAD^{tree}')
+        stack = self.export(); data = json.loads((stack/'series.json').read_text())
+        self.assertEqual(data['history_mode'], 'net-adaptation')
+        self.assertEqual(len(data['patches']), 1)
+        self.assertEqual(data['source_commit'], head)
+        self.assertEqual(self.git('rev-parse', 'HEAD'), head)
+        state = k718.replay(stack, self.home/'merged-replay')
+        self.assertTrue(state['source_tree_matches_export'])
+        self.assertEqual(state['result_tree'], tree)
+        self.assertEqual((self.home/'merged-replay/next-api.txt').read_text(), 'new upstream API\n')
+
+    def test_pending_upstream_merge_binding_checks_ref_and_protocol(self):
+        port_head = self.git('rev-parse', 'HEAD')
+        self.git('checkout', '-q', '--detach', self.base)
+        self.put('next-api.txt', 'next\n'); self.commit('next official')
+        new = self.git('rev-parse', 'HEAD'); self.git('tag', 'v2', new)
+        self.git('checkout', '-q', '--detach', port_head)
+        self.git('merge', '--no-commit', '--no-ff', new)
+        with self.assertRaisesRegex(RuntimeError, 'exact selected'):
+            k718.bind_upstream('v2', 5, self.base)
+        with self.assertRaisesRegex(RuntimeError, 'protocol'):
+            k718.bind_upstream('v2', 16, 'v2')
+        k718.bind_upstream('v2', 5, 'v2')
+        cfg = json.loads((self.repo/'port/config.json').read_text())
+        self.assertEqual(cfg['upstream']['commit'], new)
+        self.assertEqual(cfg['controller_protocol'], 5)
+        self.assertEqual(self.git('rev-parse', 'HEAD'), port_head)
+        self.assertTrue((self.repo/'.port/merge-binding.json').is_file())
+
     def test_partition_parser(self):
         import struct
         data=struct.pack('<HBBII16sI',0x50aa,0,0x10,0x10000,0x640000,b'app0',0)+b'\xff'*32

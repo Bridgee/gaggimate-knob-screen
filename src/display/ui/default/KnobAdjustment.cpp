@@ -27,8 +27,8 @@ AdjustmentTargets visibleKnobTargets(int screen) {
         add(AdjustmentId::Temperature, objects.target_temp3 ? lv_obj_get_parent(objects.target_temp3) : nullptr,
             objects.water_down_temp_button, objects.water_up_temp_button, objects.target_temp3);
         break;
-    case SCREEN_ID_PROFILE_SCREEN:
-        add(AdjustmentId::Profile, objects.profile_name_1, objects.previous_profile, objects.next_profile, objects.profile_name_1);
+    case SCREEN_ID_NEW_PROFILE_SCREEN:
+        add(AdjustmentId::Profile, objects.new_profile_screen, objects.previous_profile_1, objects.next_profile_1, objects.new_profile_screen);
         break;
     case SCREEN_ID_GRIND_SCREEN:
         add(AdjustmentId::Weight, objects.target_weight, objects.grind_down_weight_button, objects.grind_up_weight_button, objects.target_duration3_1);

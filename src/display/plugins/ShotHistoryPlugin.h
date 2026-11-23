@@ -3,6 +3,7 @@
 
 #include <ArduinoJson.h>
 #include <LittleFS.h>
+#include <atomic>
 #include <display/core/Plugin.h>
 #include <display/core/utils.h>
 #include <display/models/shot_log_format.h>
@@ -18,7 +19,9 @@ class ShotHistoryPlugin : public Plugin {
     ShotHistoryPlugin() = default;
 
     void setup(Controller *controller, PluginManager *pluginManager) override;
-    void loop() override {};
+    void loop() override {
+        // event-driven, nothing to poll
+    }
 
     void record();
 
@@ -28,6 +31,13 @@ class ShotHistoryPlugin : public Plugin {
     bool appendToIndex(const ShotIndexEntry &entry);
     void updateIndexMetadata(uint32_t shotId, uint8_t rating, uint16_t volume);
     void markIndexDeleted(uint32_t shotId);
+    // Removes every shot log and notes file under /h and resets the index; false when anything could not be removed
+    bool deleteAllHistory(size_t &deleted);
+    // Runs deleteAllHistory on its own task and reports via evt:history-delete-all; returns an error text when refused
+    const char *startAsyncDeleteAll();
+    // Body of the delete-all task; the simulator spawns no tasks and pumps it from its main loop
+    void runDeleteAll();
+    bool isDeleteAllInProgress() const { return deleteAllInProgress; }
     void rebuildIndex();
     void startAsyncRebuild();
     bool ensureIndexExists();
@@ -44,6 +54,7 @@ class ShotHistoryPlugin : public Plugin {
     bool writeEntryAtPosition(File &indexFile, size_t position, const ShotIndexEntry &entry);
     void saveNotes(const String &id, const JsonDocument &notes);
     void loadNotes(const String &id, JsonDocument &notes);
+    String resolveNotesPath(uint32_t id);
     void startRecording();
 
     uint16_t getSystemInfo(); // Helper to pack system state bits
@@ -55,6 +66,7 @@ class ShotHistoryPlugin : public Plugin {
     void cleanupHistory();
     size_t getFreeSpace();
 
+    float selectWeightFlow() const;
     void recordPhaseTransition(uint8_t phaseNumber, uint16_t sampleIndex,
                                uint8_t reason); // Helper for phase transitions
 
@@ -73,16 +85,20 @@ class ShotHistoryPlugin : public Plugin {
     bool extendedRecording = false;
     bool shotStartedVolumetric = false; // Track initial volumetric mode
     double currentBrewDelay = 0.0;      // Brew delay (ms) the active shot was started with
+    float shotDose = 0.0f;              // Dose (g) of the brew process's profile snapshot; captured at brew end
     unsigned long shotStart = 0;
     unsigned long extendedRecordingStart = 0;
     unsigned long lastWeightChangeTime = 0;
     float currentTemperature = 0.0f;
-    float currentBluetoothWeight = 0.0f;
+    float currentActiveWeight = 0.0f;
     float lastStableWeight = 0.0f;
-    float lastBluetoothWeight = 0.0f;
-    float currentBluetoothFlow = 0.0f;
+    float lastActiveWeight = 0.0f;
+    float currentActiveFlow = 0.0f;
     float currentEstimatedWeight = 0.0f;
+    float currentScaleFlow = 0.0f;       // native flow from the BLE scale (g/s)
+    unsigned long lastScaleFlowTime = 0; // millis() of the last native flow update
     float currentPuckResistance = 0.0f;
+    float maxRecordedWeight = 0.0f;
     String currentProfileName;
 
     // Phase transition tracking (v5+)
@@ -99,6 +115,7 @@ class ShotHistoryPlugin : public Plugin {
 
     // Async rebuild state
     bool rebuildInProgress = false;
+    std::atomic<bool> deleteAllInProgress{false};
 
     xTaskHandle taskHandle;
     void flushBuffer();

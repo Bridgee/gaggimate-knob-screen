@@ -20,7 +20,7 @@ Implemented does not mean that every new binary has completed hardware acceptanc
 
 ## Ongoing maintenance (not first-release blockers)
 
-- Exercise the documented replay/adaptation process against the next selected official firmware version. Same-base reconstruction is verified; a cross-version migration still needs review and testing.
+- Keep the cross-version migration and exact source reconstruction checks passing. The 0.5.0 candidate targets official 1.10.0 / protocol 16; complete its focused hardware acceptance with a matching controller before a stable release.
 - Incorporate compatibility reports from additional units of the same model and keep documentation current.
 - Keep published tags/assets immutable and validate changed behavior for each release.
 

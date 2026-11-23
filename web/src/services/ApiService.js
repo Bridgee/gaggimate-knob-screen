@@ -2,6 +2,8 @@ import { createContext } from 'preact';
 import { parseWarningStates } from '../utils/warnings.js';
 import { signal } from '@preact/signals';
 import uuidv4 from '../utils/uuid.js';
+import { isApp } from '../app/platform.js';
+import { machineSocketUrl } from '../app/machines.js';
 
 function randomId() {
   return Math.random()
@@ -17,54 +19,83 @@ export default class ApiService {
   maxReconnectDelay = 30000; // Maximum delay of 30 seconds
   baseReconnectDelay = 1000; // Start with 1 second delay
   reconnectTimeout = null;
-  isConnecting = false;
 
-  constructor() {
-    console.log('Established websocket connection');
+  // socketUrl/state let extra instances watch other machines without touching the dashboard's state.
+  constructor({ socketUrl = null, state = machine } = {}) {
+    this.socketUrl = socketUrl;
+    this.state = state;
+    this.closed = false;
+  }
+
+  // Disconnects without scheduling reconnects until reopen().
+  close() {
+    this.closed = true;
+    clearTimeout(this.reconnectTimeout);
+    this._dropSocket();
+    this._markDisconnected();
+  }
+
+  reopen() {
+    this.closed = false;
+    this.reconnectAttempts = 0;
     this.connect();
   }
 
   async connect() {
-    if (this.isConnecting) return;
-    this.isConnecting = true;
-
+    clearTimeout(this.reconnectTimeout);
+    this.reconnectTimeout = null;
     try {
-      if (this.socket) {
-        this.socket.close();
-      }
+      this._dropSocket();
 
-      const apiHost = window.location.host;
       const wsProtocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
-      this.socket = new WebSocket(`${wsProtocol}${apiHost}/ws`);
+      const socketUrl =
+        this.socketUrl ?? (isApp ? machineSocketUrl() : `${wsProtocol}${window.location.host}/ws`);
+      // In the app there's nothing to connect to until a machine has been set up.
+      if (!socketUrl) return;
+      const socket = new WebSocket(socketUrl);
+      this.socket = socket;
 
-      this.socket.addEventListener('message', this._onMessage.bind(this));
-      this.socket.addEventListener('close', this._onClose.bind(this));
-      this.socket.addEventListener('error', this._onError.bind(this));
-      this.socket.addEventListener('open', this._onOpen.bind(this));
+      // Late events from a replaced socket (e.g. a close queued while iOS suspended the app) must not touch state.
+      const current = handler => event => socket === this.socket && handler.call(this, event);
+      socket.addEventListener('message', current(this._onMessage));
+      socket.addEventListener('close', current(this._onClose));
+      socket.addEventListener('error', current(this._onError));
+      socket.addEventListener('open', current(this._onOpen));
     } catch (error) {
       console.error('WebSocket connection error:', error);
       this._scheduleReconnect();
-    } finally {
-      this.isConnecting = false;
     }
+  }
+
+  // Detaches before closing so the old socket's close event counts as stale.
+  _dropSocket() {
+    const socket = this.socket;
+    this.socket = null;
+    socket?.close();
   }
 
   _onOpen() {
     console.log('WebSocket connected successfully');
     this.reconnectAttempts = 0;
-    machine.value = {
-      ...machine.value,
+    this.state.value = {
+      ...this.state.value,
       connected: true,
     };
   }
 
   _onClose() {
     console.log('WebSocket connection closed');
-    machine.value = {
-      ...machine.value,
-      connected: false,
-    };
+    this._markDisconnected();
     this._scheduleReconnect();
+  }
+
+  _markDisconnected() {
+    this.state.value = {
+      ...this.state.value,
+      connected: false,
+      // scan:complete can't arrive on a dead socket, so don't leave the spinner latched.
+      scale: { ...this.state.value.scale, scanning: false },
+    };
   }
 
   _onError(error) {
@@ -75,6 +106,7 @@ export default class ApiService {
   }
 
   _scheduleReconnect() {
+    if (this.closed) return;
     if (this.reconnectTimeout) {
       clearTimeout(this.reconnectTimeout);
     }
@@ -103,6 +135,10 @@ export default class ApiService {
     const listeners = Object.values(this.listeners[message.tp] || {});
     if (message.tp === 'evt:status') {
       this._onStatus(message);
+    } else if (message.tp === 'evt:hardware-scale') {
+      this._onHardwareScale(message);
+    } else if (message.tp.startsWith('evt:scale:')) {
+      this._onScaleEvent(message);
     }
     for (const listener of listeners) {
       listener(message);
@@ -166,16 +202,25 @@ export default class ApiService {
   // (plus a full snapshot on connect and every 10 s). Merge onto the last known status.
   _onStatus(message) {
     const has = key => Object.prototype.hasOwnProperty.call(message, key);
-    const status = { ...machine.value.status };
+    const status = { ...this.state.value.status };
     const map = (key, name, convert = v => v) => {
       if (has(key)) status[name] = convert(message[key]);
     };
     map('ct', 'currentTemperature');
     map('tt', 'targetTemperature');
+    map('cst', 'currentSteamTemperature');
+    map('tst', 'targetSteamTemperature');
+    map('sa', 'steamActive');
+    map('sca', 'steamControlsAvailable');
     map('pr', 'currentPressure');
     map('pt', 'targetPressure');
     map('tw', 'targetWeight', v => v || 0);
     map('fl', 'currentFlow');
+    map('awl', 'albaWaterLevelAvailable');
+    map('htl', 'hasTankLevel');
+    map('tlo', 'tankLevelOK', v => v ?? null);
+    map('hsl', 'hasSteamLevel');
+    map('sbl', 'steamBoilerLow', v => v ?? null);
     map('tf', 'targetFlow', v => v || 0);
     map('m', 'mode');
     map('p', 'selectedProfile');
@@ -188,10 +233,13 @@ export default class ApiService {
     map('gt', 'grindTarget', v => v || 0);
     map('gact', 'grindActive', v => v || false);
     map('cw', 'currentWeight', v => v || 0);
+    map('smartDose', 'smartDose');
     map('bc', 'bluetoothConnected', v => v || false);
+    map('scaleSource', 'activeScaleSource', v => v || 'inactive');
     map('sbat', 'scaleBattery', v => v ?? null);
     map('process', 'process', v => v || null);
     map('rssi', 'rssi', v => v || 0);
+    map('lnk', 'controllerLink', v => v || 'none');
     map('lat', 'lat', v => v || 0);
     map('rtx', 'rtx', v => v || 0);
     map('tof', 'tofDistance', v => v || 0);
@@ -206,14 +254,19 @@ export default class ApiService {
     status.activeTargetWeight = (status.process?.a && status.targetWeight) || 0;
     status.timestamp = new Date();
 
-    const capabilities = { ...machine.value.capabilities };
+    const capabilities = { ...this.state.value.capabilities };
     if (has('cd')) capabilities.dimming = message.cd;
     if (has('cp')) capabilities.pressure = message.cp;
     if (has('led')) capabilities.ledControl = message.led;
+    if (has('tofc')) capabilities.tof = message.tofc;
     if (has('gp')) capabilities.gearpumpAddon = !!message.gp;
+    if (has('db')) capabilities.dualBoiler = message.db;
+    if (has('hs')) capabilities.hardwareScale = !!message.hs;
+    if (has('sd')) capabilities.sdCard = !!message.sd;
+    if (has('hl')) capabilities.headless = !!message.hl;
 
     // Only telemetry frames extend the chart history; state-only frames would duplicate points.
-    let history = machine.value.history;
+    let history = this.state.value.history;
     if (has('ct')) {
       const historyEntry = { ...status };
       delete historyEntry.process;
@@ -221,39 +274,94 @@ export default class ApiService {
       history = [...history, historyEntry].slice(-600);
     }
 
-    machine.value = { ...machine.value, connected: true, status, capabilities, history };
+    this.state.value = { ...this.state.value, connected: true, status, capabilities, history };
+  }
+
+  _onScaleEvent(message) {
+    const now = Date.now();
+    switch (message.tp) {
+      case 'evt:scale:scan:complete':
+        updateScaleState({ scanning: false });
+        break;
+      case 'evt:scale:connect:error':
+        updateScaleState({
+          connectError: { address: message.address, reason: message.reason, at: now },
+        });
+        break;
+      case 'evt:scale:connect:success':
+        updateScaleState({ connectError: null, disconnected: null });
+        break;
+      case 'evt:scale:disconnect':
+        updateScaleState({
+          disconnected: { address: message.address, name: message.name, at: now },
+        });
+        break;
+    }
+  }
+
+  _onHardwareScale(message) {
+    this.state.value = {
+      ...this.state.value,
+      status: {
+        ...this.state.value.status,
+        hardwareScaleCell1Weight: message.c1 ?? 0,
+        hardwareScaleCell2Weight: message.c2 ?? 0,
+        hardwareScaleCell1Valid: !!message.c1v,
+        hardwareScaleCell2Valid: !!message.c2v,
+      },
+    };
   }
 }
 
 export const ApiServiceContext = createContext(null);
 
-export const machine = signal({
-  connected: false,
-  status: {
-    currentTemperature: 0,
-    targetTemperature: 0,
-    currentFlow: 0,
-    targetFlow: 0,
-    mode: 0,
-    selectedProfile: '',
-    selectedProfileId: null,
-    brewTargetDuration: 0,
-    brewTargetVolume: 0,
-    grindTargetDuration: 0,
-    grindTargetVolume: 0,
-    grindTarget: 0,
-    grindActive: false,
-    process: null,
-    update: false,
-    warnings: [],
-    system: null,
-  },
-  capabilities: {
-    pressure: false,
-    dimming: false,
-  },
-  history: [],
-});
+// Fresh per-machine state; `machine` is the one the UI renders.
+export const createMachineState = () =>
+  signal({
+    connected: false,
+    status: {
+      currentTemperature: 0,
+      targetTemperature: 0,
+      currentSteamTemperature: 0,
+      targetSteamTemperature: 0,
+      currentFlow: 0,
+      targetFlow: 0,
+      mode: 0,
+      selectedProfile: '',
+      selectedProfileId: null,
+      brewTargetDuration: 0,
+      brewTargetVolume: 0,
+      grindTargetDuration: 0,
+      grindTargetVolume: 0,
+      grindTarget: 0,
+      grindActive: false,
+      process: null,
+      update: false,
+      warnings: [],
+      system: null,
+    },
+    capabilities: {
+      pressure: false,
+      dimming: false,
+      dualBoiler: false,
+      hardwareScale: false,
+      sdCard: false,
+      headless: false,
+    },
+    // BLE scale lifecycle from evt:scale:* (GM-257).
+    scale: {
+      scanning: false,
+      connectError: null,
+      disconnected: null,
+    },
+    history: [],
+  });
+
+export const machine = createMachineState();
+
+export const updateScaleState = patch => {
+  machine.value = { ...machine.value, scale: { ...machine.value.scale, ...patch } };
+};
 
 let settingsCache = null;
 let settingsData = null;

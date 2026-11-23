@@ -37,6 +37,16 @@ class PublicationBoundaryTest(unittest.TestCase):
     def test_non_english_project_text_is_rejected(self):
         self.assertTrue(self.check('README.md', '\u4e2d\u6587'.encode()))
 
+    def test_upstream_translation_exception_is_exact_and_keeps_other_checks(self):
+        name = 'src/messages.po'; data = '\u4e2d\u6587'.encode()
+        self.policy['upstream_text_exceptions'] = {name: {
+            'sha256': hashlib.sha256(data).hexdigest(), 'checks': ['non-English project text']}}
+        self.assertEqual(self.check(name, data), [])
+        self.assertTrue(self.check(name, data+b'changed'))
+        private = data+b'/' + b'Users/example/private'
+        self.policy['upstream_text_exceptions'][name]['sha256'] = hashlib.sha256(private).hexdigest()
+        self.assertTrue(self.check(name, private))
+
     def test_generated_images_and_symlinks_are_rejected(self):
         self.assertTrue(self.check('src/firmware.bin'))
         self.assertTrue(self.check('src/linked.cpp', b'../../private', '120000'))

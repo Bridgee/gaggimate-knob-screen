@@ -1,5 +1,6 @@
 """Check the staged firmware publication boundary; never uploads files."""
 import argparse
+import hashlib
 import io
 import json
 from pathlib import Path, PurePosixPath
@@ -46,7 +47,14 @@ def inspect(entries, policy):
         if name.endswith('.eez-project-ui-state'): issues.append(f'{name}: local editor state')
         if path.suffix in {'.bin', '.elf', '.log', '.dump', '.pcap', '.sqlite', '.zip'}:
             issues.append(f'{name}: generated binary or device artifact')
-        issues.extend(content_issues(name, data))
+        content = content_issues(name, data)
+        exception = policy.get('upstream_text_exceptions', {}).get(name)
+        # Retain reviewed upstream translations/certificate fingerprints without
+        # allowing edited files, private paths or secret material through.
+        if exception and hashlib.sha256(data).hexdigest() == exception['sha256']:
+            approved = {'non-English project text', 'literal device MAC address'} & set(exception['checks'])
+            content = [problem for problem in content if problem not in {f'{name}: {label}' for label in approved}]
+        issues.extend(content)
         if name.endswith(('.tar.gz', '.tgz')):
             if name not in policy.get('archives', []):
                 issues.append(f'{name}: archive is not an approved build input'); continue

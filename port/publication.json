@@ -2,7 +2,7 @@
   "schema": 1,
   "repository": "Bridgee/gaggimate-knob-screen",
   "upstream": "https://github.com/jniebuhr/gaggimate",
-  "upstream_commit": "43d2a7ba2299c196fd67c001f455985e07e57a49",
+  "upstream_commit": "34bf9fc5f6cf89c9929636fc23092b75284092f9",
   "allowed_roots": [
     ".github",
     "assets",
@@ -38,5 +38,35 @@
   "archives": [
     "port/tools/mklittlefs/source.tar.gz",
     "port/tools/mklittlefs/darwin-arm64.tar.gz"
-  ]
+  ],
+  "upstream_text_exceptions": {
+    "web/src/i18n.js": {
+      "sha256": "b8bcc57a622e9d317860e22c833876820698ef06d88063d08b8f50797f1d68b6",
+      "checks": [
+        "non-English project text"
+      ],
+      "reason": "Original language names in the upstream locale selector."
+    },
+    "web/src/locales/ja/messages.po": {
+      "sha256": "eb0067519b8d4f7ef8c66b32690219eb43c462d7ed93bce27fde14b2f3e13daa",
+      "checks": [
+        "non-English project text"
+      ],
+      "reason": "Unmodified official Japanese translation catalog."
+    },
+    "web/src/locales/zh/messages.po": {
+      "sha256": "3fd0dec83b3839e30f7397eb35bff755fe0e2fc9812083d0796ab35adc452e20",
+      "checks": [
+        "non-English project text"
+      ],
+      "reason": "Unmodified official Chinese translation catalog."
+    },
+    "lib/OTA/certs/ca_roots.pem": {
+      "sha256": "653a87e90c7c8b41be64614384ed3dc9f075e0cc6a3b86b0699af472f5ff5936",
+      "checks": [
+        "literal device MAC address"
+      ],
+      "reason": "Unmodified reviewed upstream CA certificate fingerprints, not device identities."
+    }
+  }
 }

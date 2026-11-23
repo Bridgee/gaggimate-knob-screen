@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "upstream": "v1.10.0",
+  "pages": [
+    "StandbyScreen",
+    "BrewScreen",
+    "StatusScreen",
+    "MenuScreenNew",
+    "SteamScreen",
+    "WaterScreen",
+    "GrindScreen",
+    "InfoScreen",
+    "NewProfileScreen",
+    "WelcomeScreen"
+  ],
+  "handlers": 74,
+  "geometry_sites": 262,
+  "baked_zoom_sites": 23,
+  "dynamic_image_sites": 4,
+  "flow_bytes": 24504,
+  "native_fonts": [
+    10,
+    12,
+    14,
+    16,
+    18,
+    26
+  ]
+}

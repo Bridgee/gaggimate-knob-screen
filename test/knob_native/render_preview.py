@@ -51,11 +51,13 @@ while depth:
     if runtime[end] == '{': depth += 1
     elif runtime[end] == '}': depth -= 1
     end += 1
-stubs += 'void applyPreviewMenuLayout(bool grindAvailable) ' + runtime[start:end] + '\n'
+stubs += 'void applyPreviewMenuLayoutForMachine(bool grindAvailable, bool dualBoiler) ' + runtime[start:end] + '\n'
+stubs += 'void applyPreviewMenuLayout(bool grindAvailable) { applyPreviewMenuLayoutForMachine(grindAvailable, false); }\n'
 (BUILD / 'actions.cpp').write_text(stubs)
 flags = ['-O1', '-g', '-DGAGGIMATE_KNOB', '-DLV_CONF_INCLUDE_SIMPLE', '-DLV_LVGL_H_INCLUDE_SIMPLE',
          '-I' + str(INC), '-I' + str(LVGL), '-I' + str(EEZ), '-I' + str(EEZ.parent), '-I' + str(ROOT / 'src'), '-Wno-unknown-warning-option']
 sources = sorted((LVGL / 'src').rglob('*.c')) + [NATIVE / x for x in ('screens.c', 'ui.c', 'images.c')]
+sources += sorted((EEZ / 'fonts').glob('*.c'))
 sources += [EEZ / 'styles.c', EEZ / 'images.c', EEZ / 'eez-flow.cpp', BUILD / 'actions.cpp', ROOT / 'test/knob_native/preview.cpp']
 sources += [EEZ.parent / 'KnobMenuBattery.cpp']
 sources += [EEZ.parent / 'KnobBatteryImages.c', EEZ.parent / 'KnobAdjustment.cpp', EEZ.parent / 'StandbyDisplay.cpp', ROOT / 'test/knob_native/check_ui_extensions.cpp', ROOT / 'test/knob_native/doc_scenes.cpp']
@@ -78,7 +80,7 @@ LIGHT = BUILD / 'pages-light'
 LIGHT.mkdir(exist_ok=True)
 subprocess.run([str(BUILD / 'preview'), str(LIGHT), '1'], check=True)
 from PIL import Image, ImageDraw
-names = ['Standby', 'Brew', 'Status', 'Menu', 'Steam', 'Water', 'Profiles', 'Grind', 'Info', 'New profile']
+names = ['Standby', 'Brew', 'Status', 'Menu', 'Steam', 'Water', 'Grind', 'Info', 'Profiles', 'Welcome']
 sheet = Image.new('RGB', (5 * 380, 2 * 400), '#232323'); draw = ImageDraw.Draw(sheet)
 for i, name in enumerate(names):
     img = Image.open(PAGES / ('page-%02d.ppm' % (i + 1)))

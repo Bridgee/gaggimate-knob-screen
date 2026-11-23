@@ -71,6 +71,35 @@ void WebSocketHandler::setup(Controller *_controller, PluginManager *_pluginMana
         broadcastJson(doc);
     });
 
+    // BLE scale lifecycle for the Bluetooth settings tab (GM-257).
+    pluginManager->on("scale:scan:complete", [this](Event const &event) {
+        JsonDocument doc(&psramAllocator);
+        doc["tp"] = "evt:scale:scan:complete";
+        doc["count"] = event.getInt("count");
+        broadcastJson(doc);
+    });
+    pluginManager->on("scale:connect:error", [this](Event const &event) {
+        JsonDocument doc(&psramAllocator);
+        doc["tp"] = "evt:scale:connect:error";
+        doc["address"] = event.getString("address");
+        doc["reason"] = event.getString("reason");
+        broadcastJson(doc);
+    });
+    pluginManager->on("scale:connect:success", [this](Event const &event) {
+        JsonDocument doc(&psramAllocator);
+        doc["tp"] = "evt:scale:connect:success";
+        doc["address"] = event.getString("address");
+        doc["name"] = event.getString("name");
+        broadcastJson(doc);
+    });
+    pluginManager->on("scale:disconnect", [this](Event const &event) {
+        JsonDocument doc(&psramAllocator);
+        doc["tp"] = "evt:scale:disconnect";
+        doc["address"] = event.getString("address");
+        doc["name"] = event.getString("name");
+        broadcastJson(doc);
+    });
+
     // Forward shot history rebuild progress events to WebSocket clients
     pluginManager->on("evt:history-rebuild-progress", [this](Event const &event) {
         JsonDocument doc(&psramAllocator);
@@ -78,6 +107,15 @@ void WebSocketHandler::setup(Controller *_controller, PluginManager *_pluginMana
         doc["total"] = event.getInt("total");
         doc["current"] = event.getInt("current");
         doc["status"] = event.getString("status");
+        broadcastJson(doc);
+    });
+
+    // Forward the outcome of an async delete-all to WebSocket clients
+    pluginManager->on("evt:history-delete-all", [this](Event const &event) {
+        JsonDocument doc(&psramAllocator);
+        doc["tp"] = "evt:history-delete-all";
+        doc["status"] = event.getString("status");
+        doc["deleted"] = event.getInt("deleted");
         broadcastJson(doc);
     });
 
@@ -101,7 +139,9 @@ void WebSocketHandler::setup(Controller *_controller, PluginManager *_pluginMana
         broadcastJson(doc);
     });
 
-    // Subscribe to Bluetooth scale weight updates
+    // Subscribe to the selected scale (hardware, Bluetooth, or estimation).
+    pluginManager->on("controller:volumetric-measurement:active:change",
+                      [this](Event const &event) { this->currentActiveWeight = event.getFloat("value"); });
     pluginManager->on("controller:volumetric-measurement:bluetooth:change",
                       [this](Event const &event) { this->currentBluetoothWeight = event.getFloat("value"); });
 }
@@ -134,6 +174,16 @@ void WebSocketHandler::attach(AsyncWebServer &server) {
 }
 
 void WebSocketHandler::loop(unsigned long now) {
+    if (now - lastHardwareScaleDiagnostic >= 200 && hasClients() && controller->getSystemInfo().capabilities.hwScale) {
+        lastHardwareScaleDiagnostic = now;
+        hardwareScaleDiagnosticDoc.clear();
+        hardwareScaleDiagnosticDoc["tp"] = "evt:hardware-scale";
+        hardwareScaleDiagnosticDoc["c1"] = controller->getHardwareScaleCell1Weight();
+        hardwareScaleDiagnosticDoc["c2"] = controller->getHardwareScaleCell2Weight();
+        hardwareScaleDiagnosticDoc["c1v"] = controller->isHardwareScaleCell1Valid();
+        hardwareScaleDiagnosticDoc["c2v"] = controller->isHardwareScaleCell2Valid();
+        broadcastJson(hardwareScaleDiagnosticDoc);
+    }
     if (now > lastStatus + STATUS_PERIOD && hasClients()) {
         lastStatus = now;
         publishState(now);
@@ -259,8 +309,15 @@ void WebSocketHandler::handleWebSocketData(AsyncWebSocket *server, AsyncWebSocke
                     client->text(toWsBuffer(resp));
                 } else if (msgType == "req:flush:start") {
                     handleFlushStart(client->id(), doc);
+                } else if (msgType == "req:steam:toggle") {
+                    controller->toggleSteamHeater();
+                } else if (msgType == "req:scale:tare") {
+                    controller->getClientController()->tareHardwareScale();
+                    pluginManager->trigger("webui:scale:tare");
                 } else if (msgType == "req:flush:stop") {
                     handleFlushStop(client->id(), doc);
+                } else if (auto it = pluginRequestHandlers.find(msgType); it != pluginRequestHandlers.end()) {
+                    it->second(cid, doc);
                 }
             }
         }
@@ -305,6 +362,7 @@ void WebSocketHandler::handleProfileRequest(uint32_t clientId, JsonDocument &req
             if (request["minimal"].as<bool>()) {
                 p["id"] = profile.id;
                 p["label"] = profile.label;
+                p["utility"] = profile.utility;
             } else {
                 writeProfile(p, profile);
             }
@@ -321,8 +379,9 @@ void WebSocketHandler::handleProfileRequest(uint32_t clientId, JsonDocument &req
     } else if (type == "req:profiles:save") {
         auto obj = request["profile"].as<JsonObject>();
         Profile profile;
-        parseProfile(obj, profile);
-        if (!profileManager->saveProfile(profile)) {
+        if (!parseProfile(obj, profile)) {
+            response["error"] = F("Invalid profile");
+        } else if (!profileManager->saveProfile(profile)) {
             response["error"] = F("Save failed");
         }
         auto respObj = response["profile"].to<JsonObject>();
@@ -334,10 +393,14 @@ void WebSocketHandler::handleProfileRequest(uint32_t clientId, JsonDocument &req
         }
     } else if (type == "req:profiles:select") {
         auto id = request["id"].as<String>();
-        profileManager->selectProfile(id);
+        if (!profileManager->selectProfile(id)) {
+            response["error"] = F("Profile not found");
+        }
     } else if (type == "req:profiles:favorite") {
         auto id = request["id"].as<String>();
-        profileManager->addFavoritedProfile(id);
+        if (!profileManager->addFavoritedProfile(id)) {
+            response["error"] = F("Favorite limit reached");
+        }
     } else if (type == "req:profiles:unfavorite") {
         auto id = request["id"].as<String>();
         profileManager->removeFavoritedProfile(id);
@@ -369,10 +432,33 @@ void WebSocketHandler::publishState(unsigned long now) {
     doc["p"] = profile.label;
     doc["puid"] = profile.id;
     const auto &caps = controller->getSystemInfo().capabilities;
+    doc["sa"] = controller->isSteamHeaterActive();
+    doc["sca"] = controller->isSteamControlsAvailable();
     doc["cp"] = caps.pressure;
     doc["cd"] = caps.dimming;
     doc["gp"] = caps.hasAddon(7);
+    doc["hs"] = caps.hwScale;
+    doc["scaleSource"] = controller->getActiveScaleSourceName();
     doc["led"] = caps.ledControl;
+    doc["tofc"] = caps.tof;
+    // Legacy TOF capability also covers binary tank switches; only Alba provides a percentage.
+    doc["awl"] = caps.ledControl && caps.tof && !(caps.dualBoiler && controller->getSettings().getTankLevelEnabled());
+    doc["sd"] = controller->isSDCard();
+#ifdef GAGGIMATE_HEADLESS
+    doc["hl"] = true; // no screen: the web UI hides display settings
+#else
+    doc["hl"] = false;
+#endif
+    doc["htl"] = controller->hasTankLevel();
+    if (controller->hasTankLevelReading())
+        doc["tlo"] = controller->isTankLevelOK();
+    else
+        doc["tlo"] = nullptr;
+    doc["hsl"] = controller->hasSteamLevel();
+    if (controller->hasSteamLevelReading())
+        doc["sbl"] = controller->isSteamBoilerLow();
+    else
+        doc["sbl"] = nullptr;
     doc["tw"] = profile.getTotalVolume(); // total target weight for the process
     doc["bta"] = controller->isVolumetricAvailable() ? 1 : 0;
     doc["bt"] = controller->isVolumetricAvailable() && profile.isVolumetric() ? 1 : 0;
@@ -412,26 +498,31 @@ void WebSocketHandler::publishTelemetry() {
     statusDoc.clear();
     statusDoc["tp"] = "evt:status";
     statusDoc["ct"] = round_to(controller->getCurrentTemp(), 3);
+    statusDoc["cst"] = round_to(controller->getCurrentSteamTemp(), 3);
+    statusDoc["tst"] = controller->getTargetSteamTemp();
+    statusDoc["db"] = controller->getSystemInfo().capabilities.dualBoiler;
     statusDoc["tt"] = controller->getTargetTemp();
     statusDoc["pr"] = round_to(controller->getCurrentPressure(), 3);
     statusDoc["fl"] = round_to(controller->getCurrentPumpFlow(), 3);
     statusDoc["pt"] = controller->getTargetPressure();
     statusDoc["wl"] = controller->getWaterLevel();
     statusDoc["tof"] = controller->getTofDistance();
-    statusDoc["rssi"] = 0;
     statusDoc["lat"] = -1; // BLE round-trip latency (ms); -1 = not yet measured
     statusDoc["pw"] = controller->getCurrentPumpPower();
     statusDoc["hp"] = round_to(controller->getCurrentHeaterPower(), 3);
-    if (controller->getClientController()->getClient()->isConnected()) {
-        statusDoc["rssi"] = controller->getClientController()->getClient()->getRssi();
-    }
+    // Link carrying the controller session; rssi only means something on BLE.
+    const LinkType link = controller->getClientController()->getLinkType();
+    statusDoc["lnk"] = link == LinkType::Uart ? "uart" : link == LinkType::Ble ? "ble" : "none";
+    statusDoc["rssi"] = controller->getClientController()->getRssi();
     if (controller->getClientController()->hasLatency()) {
         statusDoc["lat"] = controller->getClientController()->getLatencyMs();
     }
     statusDoc["rtx"] = controller->getClientController()->getRetransmits(); // comms frames resent since boot
     const bool bleConnected = BLEScales.isConnected();
     statusDoc["bw"] = bleConnected ? this->currentBluetoothWeight : 0; // current bluetooth weight
-    statusDoc["cw"] = bleConnected ? this->currentBluetoothWeight : 0; // Use 'currentWeight' for forward compatbility
+    statusDoc["cw"] = this->currentActiveWeight;
+    for (auto &provider : statusProviders)
+        provider(statusDoc);
     // Explicit null/zero so merging clients drop a finished process instead of keeping the last one.
     statusDoc["process"] = nullptr;
     statusDoc["pkr"] = 0;
@@ -491,6 +582,8 @@ void WebSocketHandler::publishTelemetry() {
 
     broadcastJson(statusDoc);
 }
+
+void WebSocketHandler::sendJson(uint32_t clientId, JsonDocument &doc) { ws.text(clientId, toWsBuffer(doc)); }
 
 void WebSocketHandler::broadcastJson(JsonDocument &doc) {
     if (ws.getClients().empty()) {

@@ -4,7 +4,6 @@
 extern "C" {
 #endif
 extern const lv_img_dsc_t img_clock_40x40_z120;
-extern const lv_img_dsc_t img_clock_40x40_z150;
 extern const lv_img_dsc_t img_clock_40x40_z200;
 extern const lv_img_dsc_t img_equality_40x40_z120;
 extern const lv_img_dsc_t img_equality_40x40_z150;

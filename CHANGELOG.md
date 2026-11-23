@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.5.0-rc.1
+
+- Adopt official GaggiMate v1.10.0 and controller protocol 16; pair with the hash-pinned, unmodified official controller image. Previous protocol-5 controllers are incompatible.
+- Regenerate native 360 x 360 UI for the updated 74-handler EEZ design, live charts, profile previews/images and setup/welcome flow. Move rotary profile browsing to the new selector; preserve half-step Grind, parameter focus, LED gauges and custom standby content.
+- Retain filtered battery estimates and lightning-only external power; add the shared battery status to the welcome screen.
+- Preserve upstream settings save validation and multilingual web UI alongside isolated K718 LED/standby settings and attribution.
+- Support append-only upstream merges with deterministic net-adaptation export and exact official-base replay. Keep all OTA installation disabled for this migration candidate.
+- Software candidate only; target-device interaction, protocol-16 reconnection, settings migration, charts and real brewing remain unverified.
+
 ## 0.4.0-rc.9
 
 - Stabilize the coarse battery estimate with trimmed ADC bursts, median/time filtering and display hysteresis. Preserve prompt low/critical indication, clear stale readings, and keep USB/external power lightning-only without cached SOC. The voltage curve remains uncalibrated.

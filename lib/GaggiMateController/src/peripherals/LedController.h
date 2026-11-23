@@ -4,10 +4,11 @@
 #include "SoftWireBus.h"
 #include <Arduino.h>
 #include <PCA9634/PCA9634.h>
+#include <memory>
 
 class LedController {
   public:
-    LedController(SoftWireBus *bus);
+    explicit LedController(SoftWireBus *bus);
     void setup();
     bool isAvailable();
     void setChannel(uint8_t channel, uint8_t brightness);
@@ -29,7 +30,7 @@ class LedController {
     static bool isHeldLowChannel(uint8_t channel) { return channel == 4 || channel == 5; }
 
     SoftWireBus *bus;
-    PCA9634 *pca9634 = nullptr;
+    std::unique_ptr<PCA9634> pca9634;
     bool initialized = false;
     bool healthy = true;
     bool outputsEnabled = false;

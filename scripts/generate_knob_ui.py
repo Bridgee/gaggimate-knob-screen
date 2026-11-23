@@ -13,12 +13,15 @@ import json
 from pathlib import Path
 import re
 import struct
+import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
 EEZ = ROOT / 'src/display/ui/default/eez'
 OUT = ROOT / 'src/display/ui/default/knob360'
 PROJECT = ROOT / 'eez-ui/gaggimate.eez-project'
 NATIVE_PROJECT = ROOT / 'eez-ui/gaggimate-knob360.eez-project'
+CONTRACT_PATH = ROOT / 'port/ui-contract.json'
+CONTRACT = json.loads(CONTRACT_PATH.read_text())
 FONT = {14: 10, 16: 12, 18: 14, 20: 16, 24: 18, 34: 26}
 LINE_HEIGHT = {10: 11, 12: 15, 14: 16, 16: 18, 18: 21, 26: 29}  # LVGL8.4 built-in fonts
 
@@ -33,7 +36,7 @@ def digest(path):
 
 
 def inputs():
-    return [Path(__file__), PROJECT, EEZ / 'screens.c', EEZ / 'ui.c', EEZ / 'images.c', *sorted((EEZ / 'images').glob('*.c'))]
+    return [Path(__file__), CONTRACT_PATH, ROOT / 'port/tools/package-lock.json', PROJECT, EEZ / 'screens.c', EEZ / 'ui.c', EEZ / 'images.c', *sorted((EEZ / 'fonts').glob('*.c')), *sorted((EEZ / 'images').glob('*.c'))]
 
 
 def check():
@@ -42,7 +45,7 @@ def check():
         for rel, expected in m[group].items():
             if digest(ROOT / rel) != expected:
                 raise SystemExit('Stale native UI: ' + rel + '; run scripts/generate_knob_ui.py')
-    print('Native360 UI verified: 10 pages, native fonts/icons, flow logic retained.')
+    print(f"Native360 UI verified: {len(CONTRACT['pages'])} pages, native fonts/icons, flow logic retained.")
 
 
 def rewrite_calls(text, rules):
@@ -81,8 +84,16 @@ def generate():
     project = json.loads(PROJECT.read_text())
     symbols = dict(re.findall(r'\{"([^"]+)", &(img_\w+)\}', (EEZ / 'images.c').read_text()))
     bitmaps = {x['name']: x for x in project['bitmaps']}
-    originals = {name: Image.open(io.BytesIO(base64.b64decode(item['image'].split(',', 1)[1]))).convert('RGBA')
-                 for name, item in bitmaps.items()}
+    def bitmap(item):
+        uri = item['image']
+        data = base64.b64decode(uri.split(',', 1)[1])
+        if uri.startswith('data:image/svg+xml;'):
+            # Use the same pinned Sharp tool as battery glyph generation.
+            module = (ROOT / 'port/tools/package.json').as_uri()
+            program = f"import {{createRequire}} from 'node:module'; const sharp=createRequire({json.dumps(module)})('sharp'); const chunks=[]; for await (const c of process.stdin) chunks.push(c); process.stdout.write(await sharp(Buffer.concat(chunks)).png().toBuffer());"
+            data = subprocess.check_output(['node', '--input-type=module', '-e', program], input=data)
+        return Image.open(io.BytesIO(data)).convert('RGBA')
+    originals = {name: bitmap(item) for name, item in bitmaps.items()}
     formats = {}
     for path in (EEZ / 'images').glob('*.c'):
         source = path.read_text()
@@ -97,7 +108,9 @@ def generate():
             original = originals[name]
             size = tuple(max(1, (v * 3 * zoom + 512) // 1024) for v in original.size)
             image = original.resize(size, Image.Resampling.LANCZOS)
-            images[symbol] = (image, formats[source_symbol])
+            fmt = formats[source_symbol]
+            # Decode indexed upstream artwork into RGB565+alpha at generation time.
+            images[symbol] = (image, 'LV_IMG_CF_TRUE_COLOR_ALPHA' if fmt == 'LV_IMG_CF_INDEXED_8BIT' else fmt)
             if symbol != source_symbol: variants[(name, zoom)] = symbol
         return symbol
 
@@ -110,11 +123,11 @@ def generate():
         return 'lv_img_set_src(obj, &' + symbol + ');' + m[2] + 'lv_img_set_zoom(obj, 256);'
 
     source, zoom_count = zoom_pattern.subn(bake_zoom, source)
-    if zoom_count != 20: raise ValueError('Review changed upstream image zoom sites')
+    if zoom_count != CONTRACT['baked_zoom_sites']: raise ValueError('Review changed upstream image zoom sites')
     # Four image placeholders receive user/profile pictures dynamically, rather
     # than a compiled icon. Retain individual image zoom for those only.
     source, dynamic_zoom_count = re.subn(r'lv_img_set_zoom\(obj, 255\);', 'lv_img_set_zoom(obj, 192);', source)
-    if dynamic_zoom_count != 4: raise ValueError('Review dynamic profile image sites')
+    if dynamic_zoom_count != CONTRACT['dynamic_image_sites']: raise ValueError('Review dynamic profile image sites')
     rules = {'lv_obj_set_pos': [1, 2], 'lv_obj_set_size': [1, 2], 'lv_qrcode_create': [1],
              'lv_meter_set_scale_ticks': [3, 4], 'lv_meter_set_scale_major_ticks': [3, 4, 6],
              'lv_meter_add_needle_img': [3, 4], 'lv_meter_add_scale_lines': [5]}
@@ -122,7 +135,7 @@ def generate():
                   'border_width', 'radius', 'shadow_width', 'text_letter_space'):
         rules['lv_obj_set_style_' + style] = [1]
     source, counts = rewrite_calls(source, rules)
-    if counts['lv_obj_set_size'] != 239 or counts['lv_obj_set_pos'] != 239:
+    if counts['lv_obj_set_size'] != CONTRACT['geometry_sites'] or counts['lv_obj_set_pos'] != CONTRACT['geometry_sites']:
         raise ValueError('Review changed upstream widget geometry')
     source = re.sub(r'(lv_obj_set_style_text_font\(obj, &lv_font_montserrat_)(\d+)',
                     lambda m: m[1] + str(FONT[int(m[2])]), source)
@@ -139,6 +152,10 @@ def generate():
         if size and font and int(size[2]) < LINE_HEIGHT[int(font[1])]:
             block = block[:size.start(2)] + str(LINE_HEIGHT[int(font[1])]) + block[size.end(2):]
             label_height_fixes += 1
+        if size and 'lv_obj_set_style_text_font(obj, &ui_font_montserrat_symbol' in block:
+            if int(size[2]) < 17:
+                block = block[:size.start(2)] + '17' + block[size.end(2):]
+                label_height_fixes += 1
         return block
 
     source = label_blocks.sub(fit_label, source)
@@ -226,7 +243,7 @@ def generate():
         native['bitmaps'].append(entry)
     NATIVE_PROJECT.write_text(json.dumps(native, ensure_ascii=False, indent=2) + '\n')
     outputs = [OUT / x for x in ('screens.c', 'ui.c', 'images.c', 'images.h')] + [NATIVE_PROJECT]
-    manifest = {'resolution': [360, 360], 'pages': 10, 'widgets': 2, 'font_map': FONT, 'geometry_calls': counts,
+    manifest = {'resolution': [360, 360], 'pages': len(CONTRACT['pages']), 'widgets': len(project['userWidgets']), 'font_map': FONT, 'geometry_calls': counts,
                 'baked_zoom_sites': zoom_count, 'dynamic_profile_image_sites': dynamic_zoom_count,
                 'label_height_fixes': label_height_fixes,
                 'resources': resource_info, 'flow_metadata_patch': [settings, settings + 4],

@@ -46,7 +46,7 @@ void assertPreviewPixels(lv_obj_t *object) {
 static void publish() {
     SystemStatusValue system;
     system.bluetooth(true); system.wifi(true); system.error(false);
-    system.error_label(""); system.time("10:27"); system.controller_version("v1.9.0");
+    system.error_label(""); system.time("10:27"); system.controller_version("v1.10.0");
     system.display_version("native360"); system.pressure_available(true);
     system.grind_available(true); system.volumetric_available(true);
     system.network("GaggiMate"); system.ip("4.4.4.1"); system.ap_active(true); system.mode(1);
@@ -121,11 +121,11 @@ int main(int argc, char **argv) {
         for (int i = 0; i < 12; ++i) {
             ticks += 30; ui_tick();
             if (screen == 4) applyPreviewMenuLayout(true);
-            if (screen == 1 || screen == 4) updateKnobStatusBattery(screen == 1 ? objects.standby_icons : objects.status_icons, guition_knob::PowerSource::External, -1);
+            if (screen == 1 || screen == 4 || screen == SCREEN_ID_WELCOME_SCREEN) updateKnobStatusBattery(screen == 1 ? objects.standby_icons : screen == 4 ? objects.status_icons : objects.standby_icons_2, guition_knob::PowerSource::External, -1);
             lv_timer_handler();
         }
-        if (screen == 1 || screen == 4) {
-            lv_obj_t *statusRow = screen == 1 ? objects.standby_icons : objects.status_icons;
+        if (screen == 1 || screen == 4 || screen == SCREEN_ID_WELCOME_SCREEN) {
+            lv_obj_t *statusRow = screen == 1 ? objects.standby_icons : screen == 4 ? objects.status_icons : objects.standby_icons_2;
             assert(lv_obj_get_child_cnt(statusRow) == 4);
             lv_obj_t *battery = lv_obj_get_child(statusRow, -1);
             assert(lv_obj_check_type(battery, &lv_img_class));
@@ -165,12 +165,12 @@ int main(int argc, char **argv) {
             lv_timer_handler();
         }
         assert(lv_obj_get_width(lv_scr_act()) == 360 && lv_obj_get_height(lv_scr_act()) == 360);
-        if (screen == 7)
-            assert(lv_obj_get_height(objects.profile_name_1) >= lv_obj_get_style_text_font(objects.profile_name_1, LV_PART_MAIN)->line_height);
+        if (screen == SCREEN_ID_NEW_PROFILE_SCREEN)
+            assert(lv_obj_get_height(objects.obj24) >= lv_obj_get_style_text_font(objects.obj24, LV_PART_MAIN)->line_height);
         char filename[96]; snprintf(filename, sizeof(filename), "page-%02d.ppm", screen);
         saveFrame(argv[1], filename);
-        if (screen == 1 || screen == 4) {
-            lv_obj_t *row = screen == 1 ? objects.standby_icons : objects.status_icons;
+        if (screen == 1 || screen == 4 || screen == SCREEN_ID_WELCOME_SCREEN) {
+            lv_obj_t *row = screen == 1 ? objects.standby_icons : screen == 4 ? objects.status_icons : objects.standby_icons_2;
             for (const int percentage : {60, 25, 10}) {
                 ticks += 30;
                 ui_tick();

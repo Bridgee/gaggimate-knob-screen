@@ -15,6 +15,11 @@ template <> struct PreferencesCodec<int> {
     static void write(Preferences &prefs, const char *key, const int &value) { prefs.putInt(key, value); }
 };
 
+template <> struct PreferencesCodec<unsigned long> {
+    static unsigned long read(Preferences &prefs, const char *key, const unsigned long &def) { return prefs.getULong(key, def); }
+    static void write(Preferences &prefs, const char *key, const unsigned long &value) { prefs.putULong(key, value); }
+};
+
 template <> struct PreferencesCodec<bool> {
     static bool read(Preferences &prefs, const char *key, const bool &def) { return prefs.getBool(key, def); }
     static void write(Preferences &prefs, const char *key, const bool &value) { prefs.putBool(key, value); }
@@ -57,7 +62,7 @@ class PropertyBase {
 using PropertyRegistry = std::vector<PropertyBase *>;
 
 // A persisted setting: tracks its own dirty state so only changed values hit NVS.
-template <typename T> class Property : public PropertyBase {
+template <typename T, typename Codec = PreferencesCodec<T>> class Property : public PropertyBase {
   public:
     Property(PropertyRegistry &registry, const char *key, T defaultValue) : key(key), value(std::move(defaultValue)) {
         registry.push_back(this);
@@ -77,16 +82,19 @@ template <typename T> class Property : public PropertyBase {
     // Overrides the value without marking it dirty (migration defaults for absent keys).
     void initDefault(const T &newValue) { value = newValue; }
 
+    // Writes the current value even if unchanged, so a default is recorded as a key.
+    void persist() { dirty = true; }
+
     bool isDirty() const override { return dirty; }
 
-    void load(Preferences &prefs) override { value = PreferencesCodec<T>::read(prefs, key, value); }
+    void load(Preferences &prefs) override { value = Codec::read(prefs, key, value); }
 
     void store(Preferences &prefs) override {
         if (!dirty)
             return;
         // Clear before writing so a concurrent set() is not lost, only deferred to the next flush.
         dirty = false;
-        PreferencesCodec<T>::write(prefs, key, value);
+        Codec::write(prefs, key, value);
     }
 
   private:

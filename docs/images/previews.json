@@ -13,37 +13,37 @@
       "scene": "doc-menu-charging.png",
       "theme": "Dark",
       "purpose": "External power: lightning icon",
-      "sha256": "3cc7ded7d757d6f8a3702a4aefda17d471389b5febbb9992a528457023bbce29"
+      "sha256": "7f88f99e47bf7ea9fb554001fbd047c3d21ca61f7b82b673eaa961b248539639"
     },
     "menu-battery-high.png": {
       "scene": "doc-menu-battery-high.png",
       "theme": "Dark",
       "purpose": "High battery: 90 percent fixture, full icon",
-      "sha256": "ff1a9e578df16627deb4746414a5c4705559365e26cc49c0eb91cec12510925b"
+      "sha256": "d9e189b3f079cb3e44243e677d2eff19a65a792fbc1898b73fd6b57c7150ebbf"
     },
     "menu-battery-low.png": {
       "scene": "doc-menu-low.png",
       "theme": "Dark",
       "purpose": "Low battery: 25 percent fixture, yellow icon",
-      "sha256": "d45ff21246421a72825169645282ded14bb54b936a7632f6618598885cd89ec9"
+      "sha256": "c8e13bc3405648fa2ce9bff884446b463a6c164ec3f9b753ee23f3ab4f30967d"
     },
     "menu-battery-critical.png": {
       "scene": "doc-menu-critical.png",
       "theme": "Dark",
       "purpose": "Critical battery: 10 percent fixture, red icon",
-      "sha256": "7d1e35edefaf4faf18a89a182051a2111897fc5181b74bd8c13ea5d0dbee5124"
+      "sha256": "ce85361c826afc03a6734d8cad4b7aa29e44353f7e0ba3833a279e715253793e"
     },
     "knob-single.png": {
       "scene": "doc-knob-single.png",
       "theme": "Light",
       "purpose": "Single temperature field selected automatically",
-      "sha256": "4a2aa78bf6d09b531dd58056ecc342cebaca360f55db0233912cb80f68194a95"
+      "sha256": "a1ad52b175611f56248b30adb225aa5494217275d38e847771889feffb7a4b8c"
     },
     "knob-multiple.png": {
       "scene": "doc-knob-multiple.png",
       "theme": "Light",
       "purpose": "Temperature selected by touch among multiple fields",
-      "sha256": "fb583a3ca33c4bff48980254c75f083612f096c1cdbab1ebe56688c6918f3c00"
+      "sha256": "930f4c24bb5ecd78451eff994a3fa3cf5eadd0b53ceeed8be081b1963c8d44a5"
     },
     "standby-text.png": {
       "scene": "doc-standby-text.png",

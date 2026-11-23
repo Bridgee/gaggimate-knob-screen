@@ -2,9 +2,11 @@
 #include "screens.h"
 #include "ui.h"
 #include "../NativeResolution.h"
+#include "vars.h"
 #include <Arduino.h>
 #include <display/main.h>
 #include <display/plugins/BLEScalePlugin.h>
+#include <display/plugins/SmartDosePlugin.h>
 
 void action_on_wakeup(lv_event_t *e) {
     if (!controller.getClientController()->isConnected() || controller.getSystemInfo().protocolMismatch ||
@@ -34,7 +36,9 @@ void action_on_brew_screen(lv_event_t *e) {
 
 void action_on_steam_screen(lv_event_t *e) {
     controller.getUI()->changeScreen(SCREEN_ID_STEAM_SCREEN);
-    controller.setMode(MODE_STEAM);
+    if (!controller.getSystemInfo().capabilities.dualBoiler) {
+        controller.setMode(MODE_STEAM);
+    }
     controller.deactivate();
 };
 
@@ -58,7 +62,10 @@ void action_on_flush(lv_event_t *e) {
 };
 
 void action_on_volumetric_hold(lv_event_t *e) {
+    SmartDose.onTare(true);
+    SmartDose.onTare(false);
     controller.getClientController()->tare();
+    controller.getClientController()->tareHardwareScale();
     BLEScales.tare();
 };
 
@@ -190,9 +197,21 @@ void action_on_meter_draw(lv_event_t *e) {
     }
 };
 
-void action_on_steam_temp_lower(lv_event_t *e) { controller.lowerTemp(); };
+void action_on_steam_temp_lower(lv_event_t *e) {
+    if (!controller.getSystemInfo().capabilities.dualBoiler) {
+        controller.lowerTemp();
+    } else {
+        controller.lowerSteamTemp();
+    }
+};
 
-void action_on_steam_temp_raise(lv_event_t *e) { controller.raiseTemp(); };
+void action_on_steam_temp_raise(lv_event_t *e) {
+    if (!controller.getSystemInfo().capabilities.dualBoiler) {
+        controller.raiseTemp();
+    } else {
+        controller.raiseSteamTemp();
+    }
+};
 
 void action_on_grind_time_lower(lv_event_t *e) { controller.lowerGrindTarget(); };
 
@@ -213,6 +232,16 @@ void action_on_grind_toggle(lv_event_t *e) {
 };
 
 void action_on_simple_process_toggle(lv_event_t *e) {
+    if (controller.getSystemInfo().capabilities.dualBoiler && controller.getUI()->getCurrentScreen() == SCREEN_ID_STEAM_SCREEN) {
+        controller.toggleSteamHeater();
+        controller.getUI()->markDirty();
+        return;
+    }
+    if (controller.getSystemInfo().capabilities.dualBoiler && controller.getUI()->getCurrentScreen() == SCREEN_ID_WATER_SCREEN) {
+        controller.toggleWaterValve();
+        controller.getUI()->markDirty();
+        return;
+    }
     if (controller.getMode() != MODE_STEAM) {
         controller.isActive() ? controller.deactivate() : controller.activate();
         controller.getUI()->markDirty();
@@ -224,6 +253,10 @@ void action_on_profile_load(lv_event_t *e) { controller.getUI()->onProfileSelect
 void action_on_previous_profile(lv_event_t *e) { controller.getUI()->onPreviousProfile(); };
 
 void action_on_next_profile(lv_event_t *e) { controller.getUI()->onNextProfile(); };
+
+void action_on_profile_detail_toggle(lv_event_t *e) { controller.getUI()->onProfileDetailToggle(); }
+
+void action_on_welcome_continue(lv_event_t *e) { controller.getUI()->onWelcomeContinue(); }
 
 void action_on_brew_cancel(lv_event_t *e) {
     controller.deactivate();
@@ -259,9 +292,11 @@ static void suppressMeterTicks(lv_obj_t *obj) {
 
 void action_on_screen_load(lv_event_t *e) {
     suppressMeterTicks(lv_event_get_target(e));
-    applyClickArea(objects.select_profile, 30);
-    applyClickArea(objects.previous_profile, 30);
-    applyClickArea(objects.next_profile, 30);
+    applyClickArea(objects.select_profile_1, 30);
+    applyClickArea(objects.previous_profile_1, 30);
+    applyClickArea(objects.next_profile_1, 30);
+    applyClickArea(objects.obj47, 20); // profile image/details toggle
+    applyClickArea(objects.obj48, 20);
     applyClickArea(objects.btn_brew_1, 15);
     applyClickArea(objects.btn_steam_1, 15);
     applyClickArea(objects.btn_water_1, 15);
@@ -275,7 +310,6 @@ void action_on_screen_load(lv_event_t *e) {
     applyClickArea(objects.steam_dials__menu_icon, 20);
     applyClickArea(objects.water_dials__menu_icon, 20);
     applyClickArea(objects.grind_dials__menu_icon, 20);
-    applyClickArea(objects.profile_dials__menu_icon, 20);
     applyClickArea(objects.info_menu_icon, 20);
     applyClickArea(objects.start_button, 25);
     applyClickArea(objects.water_start_button, 25);
@@ -298,9 +332,18 @@ void action_on_screen_load(lv_event_t *e) {
     applyClickArea(objects.grind_down_weight_button, 15);
     applyClickArea(objects.pause_button, 25);
     applyClickArea(objects.check_button, 25);
+    applyClickArea(objects.pause_button_1, 25);
+    applyClickArea(objects.check_button_1, 25);
     applyClickArea(objects.accept_button, 20);
     applyClickArea(objects.save_as_new_button, 20);
     applyClickArea(objects.save_button, 20);
+    applyClickArea(objects.steam_toggle, 25);
+    applyClickArea(objects.welcome_icon, 25);
+}
+
+static bool isProfileScreen() {
+    const int screen = eez_flow_get_current_screen();
+    return screen == SCREEN_ID_NEW_PROFILE_SCREEN;
 }
 
 void action_on_screen_swipe(lv_event_t *e) {
@@ -310,12 +353,10 @@ void action_on_screen_swipe(lv_event_t *e) {
         if (lv_indev_get_gesture_dir(lv_indev_get_act()) == LV_DIR_TOP) {
             lv_indev_wait_release(lv_indev_get_act());
             action_on_menu_click(e);
-        } else if (lv_indev_get_gesture_dir(lv_indev_get_act()) == LV_DIR_RIGHT &&
-                   eez_flow_get_current_screen() == SCREEN_ID_PROFILE_SCREEN) {
+        } else if (lv_indev_get_gesture_dir(lv_indev_get_act()) == LV_DIR_RIGHT && isProfileScreen()) {
             lv_indev_wait_release(lv_indev_get_act());
             action_on_previous_profile(e);
-        } else if (lv_indev_get_gesture_dir(lv_indev_get_act()) == LV_DIR_LEFT &&
-                   eez_flow_get_current_screen() == SCREEN_ID_PROFILE_SCREEN) {
+        } else if (lv_indev_get_gesture_dir(lv_indev_get_act()) == LV_DIR_LEFT && isProfileScreen()) {
             lv_indev_wait_release(lv_indev_get_act());
             action_on_next_profile(e);
         }
@@ -330,3 +371,5 @@ void action_on_warning_ignore(lv_event_t *e) {
     controller.getUI()->setBrewConfirmVisible(false);
     controller.activate(true);
 }
+
+void action_on_set_dose(lv_event_t *) { SmartDose.setDose(); }

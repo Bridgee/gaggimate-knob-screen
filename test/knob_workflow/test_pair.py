@@ -36,7 +36,7 @@ class PairTest(unittest.TestCase):
             'schema': 1, 'target': 'display-knob', 'chip': 'ESP32-S3',
             'source_commit': 'a' * 40, 'source_tree': 'b' * 40, 'port_version': '0.3.6-rc.1',
             'upstream': {'commit': self.policy['commit'], 'version': self.policy['tag']},
-            'controller_protocol': 5, 'application_offset': 0x10000, 'application_size': 0x640000,
+            'controller_protocol': self.policy['controller_protocol'], 'application_offset': 0x10000, 'application_size': 0x640000,
             'artifacts': {p.name: {'bytes': p.stat().st_size, 'sha256': digest(p)} for p in self.screen.glob('*.bin')},
         }
         self.save()
@@ -50,7 +50,7 @@ class PairTest(unittest.TestCase):
     def test_pair_preserves_both_images_and_independent_versions(self):
         self.run_package(); doc = json.loads((self.output / 'pair.json').read_text())
         self.assertEqual(doc['screen']['version'], '0.3.6-rc.1')
-        self.assertEqual(doc['controller']['version'], 'v1.9.0')
+        self.assertEqual(doc['controller']['version'], self.policy['tag'])
         self.assertFalse(doc['installation_allowed'])
         self.assertFalse(doc['compatibility']['controller_ota_verified'])
         self.assertEqual((self.output / 'board-firmware.bin').read_bytes(), self.controller.read_bytes())

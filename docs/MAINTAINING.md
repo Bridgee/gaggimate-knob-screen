@@ -27,7 +27,7 @@ After review, in the replayed checkout:
 python scripts/k718.py bind-upstream   --version NEW_OFFICIAL_VERSION --controller-protocol REVIEWED_PROTOCOL
 ```
 
-Update the port version, adapt code/locks/resources, commit, then export/replay and build a new candidate. Update housekeeping filters if upstream adds necessary firmware paths.
+Update the port version, adapt code/locks/resources, commit, then export/replay and build a new candidate. For an append-only public branch, merge the reviewed upstream tag, resolve conflicts and use `bind-upstream --ref NEW_OFFICIAL_TAG --version NEW_OFFICIAL_VERSION --controller-protocol REVIEWED_PROTOCOL` before committing the merge. Export detects merged history and records one complete net-adaptation patch with the actual source identity; it does not replay upstream history as adaptations. Update housekeeping filters if upstream adds necessary firmware paths.
 An upstream update can require focused manual adaptation; the replay process preserves a traceable starting point.
 
 ## Matched firmware pairs
@@ -62,7 +62,7 @@ On a trusted local bench, connect a compatible controller, enter standby and wai
 
 The task downloads in the background with incremental erasure during sequential writes, validates full size/hash and the SDK image, then hashes the flash readback. Only a verified image may become the next boot target. Settings/filesystems and controller firmware are not written. Normal controls remain unavailable during staging; a failed transfer retains the current application. Trial startup uses the local health gate described in [Building and flashing](BUILDING.md).
 
-Qualify real download/install, retained settings, reconnection, interrupted staging and unconfirmed-boot recovery before changing the normal permission. Record physical power-loss and any other untested cases explicitly. Software tests and matching release metadata alone do not qualify a network installer.
+Qualify real download/install, retained settings, reconnection, interrupted staging and unconfirmed-boot recovery before changing the normal permission. Record physical power-loss and any other untested cases explicitly. Software tests and matching release metadata alone do not qualify a network installer. The 0.5.0 / official 1.10.0 migration resets `screen_ota_qualification` to false until the new protocol/build is independently reviewed.
 
 ## Reproducible builds
 

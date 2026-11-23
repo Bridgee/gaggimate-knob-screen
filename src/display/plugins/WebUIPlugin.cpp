@@ -6,6 +6,9 @@
 #include <SD_MMC.h>
 #include <algorithm>
 #include <display/core/Controller.h>
+#include <display/core/MachineProfileStore.h>
+#include <display/core/MachineProfiles.h>
+#include <display/core/ProfileImage.h>
 #include <display/core/ProfileManager.h>
 #include <display/models/profile.h>
 #include <display/plugins/BLEScalePlugin.h>
@@ -137,11 +140,11 @@ void WebUIPlugin::loop() {
 #endif
     if (updating) {
         // Pass which component is being flashed: a controller update streams the
-        // firmware over BLE (wants a low-latency link), a display update is over
-        // Wi-Fi (wants BLE to stay out of the radio's way). "" = both.
+        // firmware over the controller link (BLE wants low latency), a display update
+        // is over Wi-Fi (wants BLE to stay out of the radio's way). "" = both.
         pluginManager->trigger("ota:update:start", "component", updateComponent);
         ota->update(updateComponent != "display", updateComponent != "controller",
-                    controller->getClientController()->getClient());
+                    controller->getClientController()->getOtaSender());
         pluginManager->trigger("ota:update:end");
         updating = false;
     }
@@ -161,7 +164,7 @@ void WebUIPlugin::loop() {
         matchedReleases.request();
 #else
         ota->checkForUpdates();
-        pluginManager->trigger("ota:update:status", "value", ota->isUpdateAvailable());
+        pluginManager->trigger("ota:update:status", "value", ota->isUpdateAvailable() || ota->isUpdateAvailable(true));
 #endif
         lastUpdateCheck = now;
         updateOTAStatus(ota->getCurrentVersion());
@@ -263,10 +266,13 @@ void WebUIPlugin::setupServer() {
     server.on("/api/scales/connect", [this](AsyncWebServerRequest *request) { handleBLEScaleConnect(request); });
     server.on("/api/scales/scan", [this](AsyncWebServerRequest *request) { handleBLEScaleScan(request); });
     server.on("/api/scales/info", [this](AsyncWebServerRequest *request) { handleBLEScaleInfo(request); });
+    server.on("/api/scales/forget", [this](AsyncWebServerRequest *request) { handleBLEScaleForget(request); });
     FS *fs = &LittleFS;
     if (controller->isSDCard()) {
         fs = &SD_MMC;
     }
+    machineProfiles = new MachineProfileStore(*fs);
+    server.on("/api/machine-profiles", [this](AsyncWebServerRequest *request) { handleMachineProfiles(request); });
     server
         .on(AsyncURIMatcher::prefix("/api/history/"), HTTP_ANY,
             [](AsyncWebServerRequest *request) { request->send(503, "text/plain", "Update in progress"); })
@@ -312,6 +318,11 @@ void WebUIPlugin::setupServer() {
         request->send(response);
     });
     server.on("/api/core-dump", HTTP_GET, [this](AsyncWebServerRequest *request) { handleCoreDumpDownload(request); });
+    server.on(
+        "/api/profiles/image", HTTP_ANY, [this](AsyncWebServerRequest *request) { handleProfileImage(request); }, nullptr,
+        [this](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
+            handleProfileImageBody(request, data, len, index, total);
+        });
     // The web UI is embedded in firmware flash and served from the memory-mapped blob (see serveWebAsset). It is no
     // longer in LittleFS, so OTA never touches the partition holding profiles/shots. The catch-all onNotFound handles
     // every path not claimed by an explicit server.on()/api route above. [GM-106]
@@ -327,10 +338,22 @@ void WebUIPlugin::start() {
         // STA reconnect needs nothing done here.
         return;
     }
+    if (!pluginHooksRegistered) {
+        // Fired here, not in setup(), so plugins set up after this one still get to register before the server listens
+        Event serverEvent;
+        serverEvent.id = "webui:server:register";
+        serverEvent.setPointer("server", &server);
+        pluginManager->trigger(serverEvent);
+        Event wsEvent;
+        wsEvent.id = "webui:ws:register";
+        wsEvent.setPointer("ws", &wsHandler);
+        pluginManager->trigger(wsEvent);
+        pluginHooksRegistered = true;
+    }
     server.begin();
     ESP_LOGI("WebUIPlugin", "Started webserver");
     if (apMode) {
-        dnsServer = new DNSServer();
+        dnsServer = std::make_unique<DNSServer>();
         dnsServer->setTTL(3600);
         dnsServer->start(53, "*", WIFI_AP_IP);
         ESP_LOGI("WebUIPlugin", "Started catchall DNS for captive portal");
@@ -346,8 +369,7 @@ void WebUIPlugin::stop() {
     server.end();
     if (dnsServer != nullptr) {
         dnsServer->stop();
-        delete dnsServer;
-        dnsServer = nullptr;
+        dnsServer.reset();
     }
     serverRunning = false;
     ESP_LOGI("WebUIPlugin", "WebUIPlugin stopped (wifi disconnected)");
@@ -388,8 +410,70 @@ void WebUIPlugin::handleOTAStart(JsonDocument &request) {
 }
 
 // Booleans are only touched when present, so a partial POST keeps the rest (GM-214).
+static void writeMachineHardware(JsonObject object, const gm::MachineHardwareSettings &value) {
+    object["ntcBrewNominalResistance"] = value.ntc_brew_nominal_resistance;
+    object["ntcBrewSeriesResistance"] = value.ntc_brew_series_resistance;
+    object["ntcBrewSupplyVoltage"] = value.ntc_brew_supply_voltage;
+    object["ntcBrewBeta"] = value.ntc_brew_beta;
+    object["ntcSteamNominalResistance"] = value.ntc_steam_nominal_resistance;
+    object["ntcSteamSeriesResistance"] = value.ntc_steam_series_resistance;
+    object["ntcSteamSupplyVoltage"] = value.ntc_steam_supply_voltage;
+    object["ntcSteamBeta"] = value.ntc_steam_beta;
+    object["tankLevelEnabled"] = value.tank_level_enabled;
+    object["steamLevelEnabled"] = value.steam_level_enabled;
+    object["steamLevelDebounceChecks"] = value.steam_level_debounce_checks;
+}
+
 static bool parseBoolArg(const String &value) {
     return !(value.isEmpty() || value == "0" || value.equalsIgnoreCase("false") || value.equalsIgnoreCase("off"));
+}
+
+void WebUIPlugin::handleMachineProfiles(AsyncWebServerRequest *request) {
+    if (controller->isUpdating()) {
+        request->send(503, "application/json", "{\"error\":\"Update in progress\"}");
+        return;
+    }
+    JsonDocument doc(&psramAllocator);
+    String error;
+    bool ok = false;
+    int status = 400;
+    if (request->method() == HTTP_GET) {
+        if (request->hasArg("id")) {
+            ok = loadBuiltinMachineProfile(request->arg("id"), doc) || machineProfiles->load(request->arg("id"), doc, error);
+            status = 404;
+        } else {
+            ok = machineProfiles->list(doc.to<JsonArray>(), error);
+            if (ok)
+                addBuiltinMachineProfiles(doc.as<JsonArray>());
+            status = 500;
+        }
+    } else if (request->method() == HTTP_POST && request->hasArg("profile")) {
+        const String raw = request->arg("profile");
+        if (raw.length() > 3500 || deserializeJson(doc, raw))
+            error = "Invalid machine profile JSON";
+        else
+            ok = machineProfiles->save(doc.as<JsonVariantConst>(), error, request->arg("replace") == "1");
+    } else if (request->method() == HTTP_DELETE && request->hasArg("id")) {
+        JsonDocument active(&psramAllocator);
+        const String selection = controller->getSettings().getMachineProfileSelection();
+        if (selection.length() && deserializeJson(active, selection))
+            error = "Could not verify active machine profile";
+        else if (active["id"].as<String>() == request->arg("id"))
+            error = "Cannot delete the active machine profile";
+        else
+            ok = machineProfiles->remove(request->arg("id"), error);
+        doc["ok"] = ok;
+    } else
+        error = "Invalid machine profile request";
+    if (!ok) {
+        doc.clear();
+        doc["error"] = error;
+    }
+    AsyncResponseStream *response = request->beginResponseStream("application/json");
+    response->setCode(ok ? 200 : status);
+    response->addHeader("Cache-Control", "no-store");
+    serializeJson(doc, *response);
+    request->send(response);
 }
 
 void WebUIPlugin::handleSettings(AsyncWebServerRequest *request) const {
@@ -398,6 +482,10 @@ void WebUIPlugin::handleSettings(AsyncWebServerRequest *request) const {
         request->send(503, "application/json", "{\"error\":\"Screen update in progress\"}"); return;
     }
 #endif
+    const uint32_t previousHardwareHash = machineHardwareHash(controller->getSettings().getMachineHardware());
+    // Dual-boiler fields are only exposed when the POST validator will accept them back.
+    const bool hardwareSupported =
+        controller->getSystemInfo().capabilities.dualBoiler && !controller->getSystemInfo().protocolMismatch;
     if (request->method() == HTTP_POST) {
 #ifdef GAGGIMATE_KNOB
         const auto validLedArg = [request](const char *name, bool (*validate)(const char *)) {
@@ -420,7 +508,52 @@ void WebUIPlugin::handleSettings(AsyncWebServerRequest *request) const {
         appearanceArgs += int(request->hasArg("knobLedEnabled")) + int(request->hasArg("knobLedBrightness"));
 #endif
         const bool appearanceOnly = appearanceArgs > 0 && request->args() == appearanceArgs;
-        controller->getSettings().batchUpdate([request](Settings *settings) {
+        if (request->hasArg("setupStep")) {
+            const String step = request->arg("setupStep");
+            if (step != "machine" && step != "tests" && step != "plugins" && step != "wifi" && step != "done" &&
+                step != "custom:plugins" && step != "custom:wifi" && step != "custom:done") {
+                request->send(400, "application/json", "{\"error\":\"Invalid setup step\"}");
+                return;
+            }
+        }
+        String profileError;
+        if (!validateMachineProfileRequest(request, controller->getSystemInfo(), hardwareSupported, profileError)) {
+            JsonDocument failure;
+            failure["error"] = profileError;
+            String body;
+            serializeJson(failure, body);
+            request->send(400, "application/json", body);
+            return;
+        }
+        bool hardwareRequest = false;
+        JsonDocument currentHardware;
+        writeMachineHardware(currentHardware.to<JsonObject>(), controller->getSettings().getMachineHardware());
+        for (auto field : currentHardware.as<JsonObject>()) {
+            if (!request->hasArg(field.key().c_str()))
+                continue;
+            const String raw = request->arg(field.key().c_str());
+            hardwareRequest |= field.value().is<bool>() ? parseBoolArg(raw) != field.value().as<bool>()
+                                                        : std::fabs(raw.toFloat() - field.value().as<float>()) > 0.000001f;
+        }
+        const auto &currentSettings = controller->getSettings();
+        const bool refillRequest =
+            (request->hasArg("steamRefillMode") &&
+             request->arg("steamRefillMode").toInt() != currentSettings.getSteamRefillMode()) ||
+            (request->hasArg("steamRefillPostClearSeconds") &&
+             request->arg("steamRefillPostClearSeconds").toInt() != currentSettings.getSteamRefillPostClearSeconds());
+        const bool profileChanged =
+            request->hasArg("machineProfileSelection") &&
+            request->arg("machineProfileSelection") != controller->getSettings().getMachineProfileSelection();
+        if ((profileChanged || hardwareRequest || refillRequest) &&
+            (controller->isActive() || controller->isUpdating() || controller->isAutotuning())) {
+            request->send(409, "application/json",
+                          "{\"error\":\"Stop the current process before applying a machine configuration\"}");
+            return;
+        }
+        if (profileChanged || hardwareRequest || refillRequest)
+            controller->activateStandby();
+        bool saved = false;
+        controller->getSettings().batchUpdate([request, &saved, &profileError](Settings *settings) {
 #ifdef GAGGIMATE_KNOB
             if (request->hasArg("knobLedEnabled") || request->hasArg("knobLedBrightness")) {
                 auto value = settings->getKnobLedPreferences();
@@ -429,6 +562,55 @@ void WebUIPlugin::handleSettings(AsyncWebServerRequest *request) const {
                 settings->setKnobLedPreferences(value);
             }
 #endif
+            if (request->hasArg("machineProfileSelection") &&
+                !settings->setMachineProfileSelection(request->arg("machineProfileSelection"))) {
+                profileError = "Could not create machine profile reference; previous selection retained";
+                return;
+            }
+            if (request->hasArg("ntcBrewNominalResistance"))
+                settings->setNtcBrewNominalResistance(request->arg("ntcBrewNominalResistance").toFloat());
+            if (request->hasArg("ntcBrewSeriesResistance"))
+                settings->setNtcBrewSeriesResistance(request->arg("ntcBrewSeriesResistance").toFloat());
+            if (request->hasArg("ntcBrewSupplyVoltage"))
+                settings->setNtcBrewSupplyVoltage(request->arg("ntcBrewSupplyVoltage").toFloat());
+            if (request->hasArg("ntcBrewBeta"))
+                settings->setNtcBrewBeta(request->arg("ntcBrewBeta").toFloat());
+            if (request->hasArg("ntcSteamNominalResistance"))
+                settings->setNtcSteamNominalResistance(request->arg("ntcSteamNominalResistance").toFloat());
+            if (request->hasArg("ntcSteamSeriesResistance"))
+                settings->setNtcSteamSeriesResistance(request->arg("ntcSteamSeriesResistance").toFloat());
+            if (request->hasArg("ntcSteamSupplyVoltage"))
+                settings->setNtcSteamSupplyVoltage(request->arg("ntcSteamSupplyVoltage").toFloat());
+            if (request->hasArg("ntcSteamBeta"))
+                settings->setNtcSteamBeta(request->arg("ntcSteamBeta").toFloat());
+            if (request->hasArg("tankLevelEnabled"))
+                settings->setTankLevelEnabled(request->arg("tankLevelEnabled") == "1");
+            if (request->hasArg("steamLevelEnabled"))
+                settings->setSteamLevelEnabled(request->arg("steamLevelEnabled") == "1");
+            if (request->hasArg("systemLedFunction"))
+                settings->setSystemLedFunction(request->arg("systemLedFunction").toInt());
+            if (request->hasArg("baristaLedFunction"))
+                settings->setBaristaLedFunction(request->arg("baristaLedFunction").toInt());
+            if (request->hasArg("systemLedBrightness"))
+                settings->setSystemLedBrightness(request->arg("systemLedBrightness").toInt());
+            if (request->hasArg("systemLedMinBrightness"))
+                settings->setSystemLedMinBrightness(request->arg("systemLedMinBrightness").toInt());
+            if (request->hasArg("systemLedCycleTimeMs"))
+                settings->setSystemLedCycleTimeMs(request->arg("systemLedCycleTimeMs").toInt());
+            if (request->hasArg("baristaLedBrightness"))
+                settings->setBaristaLedBrightness(request->arg("baristaLedBrightness").toInt());
+            if (request->hasArg("baristaLedMinBrightness"))
+                settings->setBaristaLedMinBrightness(request->arg("baristaLedMinBrightness").toInt());
+            if (request->hasArg("baristaLedCycleTimeMs"))
+                settings->setBaristaLedCycleTimeMs(request->arg("baristaLedCycleTimeMs").toInt());
+            if (request->hasArg("steamRefillMode"))
+                settings->setSteamRefillMode(request->arg("steamRefillMode").toInt());
+            if (request->hasArg("steamRefillPostClearSeconds"))
+                settings->setSteamRefillPostClearSeconds(request->arg("steamRefillPostClearSeconds").toInt());
+            if (request->hasArg("steamLevelDebounceChecks"))
+                settings->setSteamLevelDebounceChecks(request->arg("steamLevelDebounceChecks").toInt());
+            if (request->hasArg("defaultSteamMode"))
+                settings->setDefaultSteamMode(request->arg("defaultSteamMode").toInt());
             if (request->hasArg("startupMode"))
                 settings->setStartupMode(request->arg("startupMode") == "brew" ? MODE_BREW : MODE_STANDBY);
             if (request->hasArg("startupProfile"))
@@ -443,6 +625,38 @@ void WebUIPlugin::handleSettings(AsyncWebServerRequest *request) const {
                 settings->setPressureOffset(request->arg("pressureOffset").toFloat());
             if (request->hasArg("pressureScaling"))
                 settings->setPressureScaling(request->arg("pressureScaling").toFloat());
+            if (request->hasArg("scaleFactor1") || request->hasArg("scaleFactor2")) {
+                float sf1 = settings->getScaleFactor1();
+                float sf2 = settings->getScaleFactor2();
+                if (request->hasArg("scaleFactor1")) {
+                    sf1 = request->arg("scaleFactor1").toFloat();
+                }
+                if (request->hasArg("scaleFactor2")) {
+                    sf2 = request->arg("scaleFactor2").toFloat();
+                }
+                settings->setScaleFactors(sf1, sf2);
+            }
+            if (request->hasArg("hardwareScaleSampleRateSps") || request->hasArg("hardwareScaleIdleAlpha") ||
+                request->hasArg("hardwareScaleActiveAlpha")) {
+                const uint16_t sampleRate = request->hasArg("hardwareScaleSampleRateSps")
+                                                ? static_cast<uint16_t>(request->arg("hardwareScaleSampleRateSps").toInt())
+                                                : settings->getHardwareScaleSampleRateSps();
+                const float idleAlpha = request->hasArg("hardwareScaleIdleAlpha")
+                                            ? request->arg("hardwareScaleIdleAlpha").toFloat()
+                                            : settings->getHardwareScaleIdleAlpha();
+                const float activeAlpha = request->hasArg("hardwareScaleActiveAlpha")
+                                              ? request->arg("hardwareScaleActiveAlpha").toFloat()
+                                              : settings->getHardwareScaleActiveAlpha();
+                settings->setHardwareScaleConfiguration(sampleRate, idleAlpha, activeAlpha);
+            }
+            if (request->hasArg("preferredScaleSource"))
+                settings->setPreferredScaleSource(request->arg("preferredScaleSource"));
+            if (request->hasArg("heaterCoordinationEnabled"))
+                settings->setHeaterCoordinationEnabled(parseBoolArg(request->arg("heaterCoordinationEnabled")));
+            if (request->hasArg("heaterHandoverMs"))
+                settings->setHeaterHandoverMs(request->arg("heaterHandoverMs").toInt());
+            if (request->hasArg("steamPid"))
+                settings->setSteamPid(request->arg("steamPid"));
             if (request->hasArg("pid"))
                 settings->setPid(request->arg("pid"));
             if (request->hasArg("pumpModelCoeffs"))
@@ -457,6 +671,10 @@ void WebUIPlugin::handleSettings(AsyncWebServerRequest *request) const {
                 settings->setWifiPassword(request->arg("wifiPassword"));
             if (request->hasArg("apPassword") && request->arg("apPassword").length() >= WIFI_AP_PASSWORD_MIN_LENGTH)
                 settings->setWifiApPassword(request->arg("apPassword"));
+            if (request->hasArg("setupStep"))
+                settings->setSetupStep(request->arg("setupStep"));
+            if (request->hasArg("setupDone"))
+                settings->setSetupDone(parseBoolArg(request->arg("setupDone")));
             if (request->hasArg("homekit"))
                 settings->setHomekit(parseBoolArg(request->arg("homekit")));
             if (request->hasArg("boilerFillActive"))
@@ -465,12 +683,32 @@ void WebUIPlugin::handleSettings(AsyncWebServerRequest *request) const {
                 settings->setStartupFillTime(request->arg("startupFillTime").toInt() * 1000);
             if (request->hasArg("steamFillTime"))
                 settings->setSteamFillTime(request->arg("steamFillTime").toInt() * 1000);
+            if (request->hasArg("smartDoseActive"))
+                settings->setSmartDoseActive(parseBoolArg(request->arg("smartDoseActive")));
+            if (request->hasArg("smartDoseAutomagic"))
+                settings->setSmartDoseAutomagic(parseBoolArg(request->arg("smartDoseAutomagic")));
+            if (request->hasArg("dosingCupEnabled"))
+                settings->setDosingCupEnabled(parseBoolArg(request->arg("dosingCupEnabled")));
+            if (request->hasArg("portafilterEnabled"))
+                settings->setPortafilterEnabled(parseBoolArg(request->arg("portafilterEnabled")));
+            if (request->hasArg("portafilterScale"))
+                settings->setPortafilterScale(request->arg("portafilterScale"));
+            if (request->hasArg("smartDoseMode"))
+                settings->setSmartDoseMode(request->arg("smartDoseMode"));
+            if (request->hasArg("manualDoseScale"))
+                settings->setManualDoseScale(request->arg("manualDoseScale"));
+            if (request->hasArg("smartDoseScale"))
+                settings->setSmartDoseScale(request->arg("smartDoseScale"));
             if (request->hasArg("smartGrindActive"))
                 settings->setSmartGrindActive(parseBoolArg(request->arg("smartGrindActive")));
             if (request->hasArg("smartGrindIp"))
                 settings->setSmartGrindIp(request->arg("smartGrindIp"));
             if (request->hasArg("smartGrindMode"))
                 settings->setSmartGrindMode(request->arg("smartGrindMode").toInt());
+            if (request->hasArg("mahlkonigActive"))
+                settings->setMahlkonigActive(parseBoolArg(request->arg("mahlkonigActive")));
+            if (request->hasArg("mahlkonigRecipeProfiles"))
+                settings->setMahlkonigRecipeProfiles(request->arg("mahlkonigRecipeProfiles"));
             if (request->hasArg("homeAssistant"))
                 settings->setHomeAssistant(parseBoolArg(request->arg("homeAssistant")));
             if (request->hasArg("haUser"))
@@ -499,6 +737,18 @@ void WebUIPlugin::handleSettings(AsyncWebServerRequest *request) const {
                 settings->setWarnScaleBattery(request->arg("warnScaleBattery").toInt());
             if (request->hasArg("warnTemperature"))
                 settings->setWarnTemperature(request->arg("warnTemperature").toInt());
+            if (request->hasArg("warnBackflush"))
+                settings->setWarnBackflush(request->arg("warnBackflush").toInt());
+            if (request->hasArg("warnDescaling"))
+                settings->setWarnDescaling(request->arg("warnDescaling").toInt());
+            if (request->hasArg("backflushIntervalDays"))
+                settings->setBackflushIntervalDays(request->arg("backflushIntervalDays").toInt());
+            if (request->hasArg("backflushIntervalShots"))
+                settings->setBackflushIntervalShots(request->arg("backflushIntervalShots").toInt());
+            if (request->hasArg("descalingIntervalWeeks"))
+                settings->setDescalingIntervalWeeks(request->arg("descalingIntervalWeeks").toInt());
+            if (request->hasArg("descalingIntervalShots"))
+                settings->setDescalingIntervalShots(request->arg("descalingIntervalShots").toInt());
             if (request->hasArg("delayAdjust"))
                 settings->setDelayAdjust(parseBoolArg(request->arg("delayAdjust")));
             if (request->hasArg("brewDelay"))
@@ -525,6 +775,10 @@ void WebUIPlugin::handleSettings(AsyncWebServerRequest *request) const {
                 settings->setSteamPumpCutoff(request->arg("steamPumpCutoff").toFloat());
             if (request->hasArg("themeMode"))
                 settings->setThemeMode(request->arg("themeMode").toInt());
+            if (request->hasArg("statusDisplayMode"))
+                settings->setStatusDisplayMode(request->arg("statusDisplayMode").toInt());
+            if (request->hasArg("albaRefillInterlock"))
+                settings->setAlbaRefillInterlock(request->arg("albaRefillInterlock") == "1");
             if (request->hasArg("sunriseIdle"))
                 settings->setSunriseIdle(request->arg("sunriseIdle"));
             if (request->hasArg("sunriseActive"))
@@ -553,6 +807,8 @@ void WebUIPlugin::handleSettings(AsyncWebServerRequest *request) const {
                 settings->setMaxPumpPower(request->arg("maxPumpPower").toFloat());
             if (request->hasArg("savedScale"))
                 settings->setSavedScale(request->arg("savedScale"));
+            if (request->hasArg("savedScaleName"))
+                settings->setSavedScaleName(request->arg("savedScaleName"));
             if (request->hasArg("autowakeupEnabled"))
                 settings->setAutoWakeupEnabled(parseBoolArg(request->arg("autowakeupEnabled")));
             if (request->hasArg("autowakeupSchedules")) {
@@ -597,27 +853,68 @@ void WebUIPlugin::handleSettings(AsyncWebServerRequest *request) const {
                 }
                 settings->setAutoWakeupSchedules(schedules);
             }
-            settings->save(true);
+            saved = settings->save(true);
         });
+        if (!saved) {
+            JsonDocument failure;
+            failure["error"] = (profileError.isEmpty() ? controller->getSettings().getSaveError() : profileError) +
+                               ". Restart cancelled; retry saving.";
+            String body;
+            serializeJson(failure, body);
+            request->send(500, "application/json", body);
+            return;
+        }
+        pluginManager->trigger("settings:changed");
 #ifdef GAGGIMATE_KNOB
         if (request->hasArg("knobLedEnabled") || request->hasArg("knobLedBrightness")) {
             guition_knob::Hardware::instance().applyLedPreferences(controller->getSettings().getKnobLedPreferences(), true);
         }
 #endif
-        pluginManager->trigger("settings:changed");
-        if(!appearanceOnly) {
-            controller->setTargetTemp(controller->getTargetTemp());
-            controller->setPumpModelCoeffs();
+        if (!appearanceOnly) {
+        controller->setTargetTemp(controller->getTargetTemp());
+        controller->setPressureScale();
+        controller->setMachineHardware();
+        controller->setScaleFactors();
+        controller->setHeaterSettings();
+        controller->setPumpModelCoeffs();
         }
+
     }
 
-    AsyncResponseStream *response = request->beginResponseStream("application/json");
     JsonDocument doc(&psramAllocator);
     Settings const &settings = controller->getSettings();
+    doc["controllerError"] = controller->getError();
+    doc["machineHardwareConfiguration"] = hardwareSupported;
+    doc["machineHardwareReady"] = controller->isMachineHardwareReady();
+    if (request->method() == HTTP_POST)
+        doc["machineHardwareApplyPending"] =
+            previousHardwareHash != machineHardwareHash(settings.getMachineHardware()) && !controller->isMachineHardwareReady();
+    doc["machineHardwareError"] = controller->isMachineHardwareError();
+    doc["steamControlsAvailable"] = controller->isSteamControlsAvailable();
+    if (hardwareSupported) {
+        doc["defaultSteamMode"] = settings.getDefaultSteamMode();
+        doc["systemLedFunction"] = settings.getSystemLedFunction();
+        doc["baristaLedFunction"] = settings.getBaristaLedFunction();
+        doc["systemLedBrightness"] = settings.getSystemLedBrightness();
+        doc["systemLedMinBrightness"] = settings.getSystemLedMinBrightness();
+        doc["systemLedCycleTimeMs"] = settings.getSystemLedCycleTimeMs();
+        doc["baristaLedBrightness"] = settings.getBaristaLedBrightness();
+        doc["baristaLedMinBrightness"] = settings.getBaristaLedMinBrightness();
+        doc["baristaLedCycleTimeMs"] = settings.getBaristaLedCycleTimeMs();
+        doc["steamRefillMode"] = settings.getSteamRefillMode();
+        doc["steamRefillPostClearSeconds"] = settings.getSteamRefillPostClearSeconds();
+        writeMachineHardware(doc.as<JsonObject>(), settings.getMachineHardware());
+    }
     doc["startupMode"] = settings.getStartupMode() == MODE_BREW ? "brew" : "standby";
     doc["startupProfile"] = settings.getStartupProfile();
     doc["targetSteamTemp"] = settings.getTargetSteamTemp();
     doc["targetWaterTemp"] = settings.getTargetWaterTemp();
+    if (!addMachineProfileSettings(doc, settings, controller->getSystemInfo(), hardwareSupported)) {
+        request->send(500, "application/json", "{\"error\":\"Could not read machine profile settings\"}");
+        return;
+    }
+    doc["setupDone"] = settings.isSetupDone();
+    doc["setupStep"] = settings.getSetupStep();
     doc["homekit"] = settings.isHomekit();
     doc["homeAssistant"] = settings.isHomeAssistant();
     doc["haUser"] = settings.getHomeAssistantUser();
@@ -625,7 +922,10 @@ void WebUIPlugin::handleSettings(AsyncWebServerRequest *request) const {
     doc["haIP"] = settings.getHomeAssistantIP();
     doc["haPort"] = settings.getHomeAssistantPort();
     doc["haTopic"] = settings.getHomeAssistantTopic();
+    doc["heaterCoordinationEnabled"] = settings.isHeaterCoordinationEnabled();
+    doc["heaterHandoverMs"] = settings.getHeaterHandoverMs();
     doc["pid"] = settings.getPid();
+    doc["steamPid"] = settings.getSteamPid();
     doc["pumpModelCoeffs"] = settings.getPumpModelCoeffs();
     doc["pumpSlipCoeffs"] = settings.getPumpSlipCoeffs();
     doc["wifiSsid"] = settings.getWifiSsid();
@@ -635,12 +935,32 @@ void WebUIPlugin::handleSettings(AsyncWebServerRequest *request) const {
     doc["temperatureOffset"] = String(settings.getTemperatureOffset());
     doc["pressureOffset"] = String(settings.getPressureOffset());
     doc["pressureScaling"] = String(settings.getPressureScaling());
+    doc["scaleFactor1"] = settings.getScaleFactor1();
+    doc["scaleFactor2"] = settings.getScaleFactor2();
+    doc["hardwareScaleSampleRateSps"] = settings.getHardwareScaleSampleRateSps();
+    doc["hardwareScaleIdleAlpha"] = settings.getHardwareScaleIdleAlpha();
+    doc["hardwareScaleActiveAlpha"] = settings.getHardwareScaleActiveAlpha();
+    doc["preferredScaleSource"] = settings.getPreferredScaleSource();
     doc["boilerFillActive"] = settings.isBoilerFillActive();
     doc["startupFillTime"] = settings.getStartupFillTime() / 1000;
     doc["steamFillTime"] = settings.getSteamFillTime() / 1000;
+    doc["smartDoseActive"] = settings.isSmartDoseActive();
+    doc["smartDoseAutomagic"] = settings.isSmartDoseAutomagic();
+    doc["dosingCupEnabled"] = settings.isDosingCupEnabled();
+    doc["portafilterEnabled"] = settings.isPortafilterEnabled();
+    doc["portafilterScale"] = settings.getPortafilterScale();
+    doc["portafilterWeight"] = settings.getPortafilterWeight();
+    doc["smartDoseMode"] = settings.getSmartDoseMode();
+    doc["smartDoseScale"] = settings.getSmartDoseScale();
+    doc["manualDoseScale"] = settings.getManualDoseScale();
+    doc["dosingCupWeight"] = settings.getDosingCupWeight();
     doc["smartGrindActive"] = settings.isSmartGrindActive();
     doc["smartGrindIp"] = settings.getSmartGrindIp();
     doc["smartGrindMode"] = settings.getSmartGrindMode();
+    doc["mahlkonigActive"] = settings.isMahlkonigActive();
+    doc["mahlkonigRecipeProfiles"] = settings.getMahlkonigRecipeProfiles();
+    doc["apMode"] = apMode; // read-only, the setup wizard offers Wi-Fi setup in AP mode
+    doc["deviceIp"] = apMode ? WIFI_AP_IP.toString() : WiFi.localIP().toString(); // read-only, for plugin setup hints
     doc["momentaryButtons"] = settings.isMomentaryButtons();
     doc["flushDuration"] = settings.getFlushDuration();
     doc["warnWaterLevel"] = settings.getWarnWaterLevel();
@@ -649,6 +969,16 @@ void WebUIPlugin::handleSettings(AsyncWebServerRequest *request) const {
     doc["warnScaleConnected"] = settings.getWarnScaleConnected();
     doc["warnScaleBattery"] = settings.getWarnScaleBattery();
     doc["warnTemperature"] = settings.getWarnTemperature();
+    doc["warnBackflush"] = settings.getWarnBackflush();
+    doc["warnDescaling"] = settings.getWarnDescaling();
+    doc["backflushIntervalDays"] = settings.getBackflushIntervalDays();
+    doc["backflushIntervalShots"] = settings.getBackflushIntervalShots();
+    doc["descalingIntervalWeeks"] = settings.getDescalingIntervalWeeks();
+    doc["descalingIntervalShots"] = settings.getDescalingIntervalShots();
+    doc["lastBackflushTime"] = settings.getLastBackflushTime();
+    doc["lastDescalingTime"] = settings.getLastDescalingTime();
+    doc["shotsSinceBackflush"] = settings.getShotsSinceBackflush();
+    doc["shotsSinceDescaling"] = settings.getShotsSinceDescaling();
     doc["brewDelay"] = settings.getBrewDelay();
     doc["grindDelay"] = settings.getGrindDelay();
     doc["delayAdjust"] = settings.isDelayAdjust();
@@ -670,6 +1000,8 @@ void WebUIPlugin::handleSettings(AsyncWebServerRequest *request) const {
     doc["knobLedEnabled"] = ledPreferences.enabled;
     doc["knobLedBrightness"] = ledPreferences.brightness;
 #endif
+    doc["statusDisplayMode"] = settings.getStatusDisplayMode();
+    doc["albaRefillInterlock"] = settings.getAlbaRefillInterlock();
     doc["sunriseIdle"] = settings.getSunriseIdle();
     doc["sunriseActive"] = settings.getSunriseActive();
     doc["sunriseFinished"] = settings.getSunriseFinished();
@@ -686,6 +1018,7 @@ void WebUIPlugin::handleSettings(AsyncWebServerRequest *request) const {
     doc["integralGain"] = settings.getIntegralGain();
     doc["maxPumpPower"] = settings.getMaxPumpPower();
     doc["savedScale"] = settings.getSavedScale();
+    doc["savedScaleName"] = settings.getSavedScaleName();
 
     // Add schedule format with days
     std::vector<AutoWakeupSchedule> autowakeupSchedules = settings.getAutoWakeupSchedules();
@@ -701,6 +1034,7 @@ void WebUIPlugin::handleSettings(AsyncWebServerRequest *request) const {
         }
     }
     doc["autowakeupSchedules"] = schedulesStr;
+    AsyncResponseStream *response = request->beginResponseStream("application/json");
     serializeJson(doc, *response);
     request->send(response);
 
@@ -750,12 +1084,27 @@ void WebUIPlugin::handleBLEScaleConnect(AsyncWebServerRequest *request) {
     request->send(response);
 }
 
+void WebUIPlugin::handleBLEScaleForget(AsyncWebServerRequest *request) {
+    if (request->method() != HTTP_POST) {
+        request->send(404);
+        return;
+    }
+    BLEScales.forget();
+    JsonDocument doc(&psramAllocator);
+    doc["success"] = true;
+    AsyncResponseStream *response = request->beginResponseStream("application/json");
+    serializeJson(doc, *response);
+    request->send(response);
+}
+
 void WebUIPlugin::handleBLEScaleInfo(AsyncWebServerRequest *request) {
     JsonDocument doc(&psramAllocator);
     doc["connected"] = BLEScales.isConnected();
     doc["name"] = BLEScales.getName();
     doc["uuid"] = BLEScales.getUUID();
     doc["rssi"] = BLEScales.getRSSI();
+    doc["saved"] = controller->getSettings().getSavedScale();
+    doc["savedName"] = controller->getSettings().getSavedScaleName();
     doc["hasBattery"] = BLEScales.hasBatteryLevel();
     // Only surface the numeric when the scale reports one — a 255 sentinel
     // (REMOTE_SCALES_BATTERY_UNKNOWN) would otherwise render as a fake "255%".
@@ -935,6 +1284,103 @@ void WebUIPlugin::updateOTAProgress(uint8_t phase, int progress) {
     wsHandler.broadcastJson(doc);
 }
 
+static String profileImageTempPath(const String &id) { return String(profile_image::DIR) + "/" + id + ".tmp"; }
+
+void WebUIPlugin::handleProfileImageBody(AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
+    if (request->method() != HTTP_POST)
+        return;
+    const String id = request->arg("id");
+    if (index == 0) {
+        if (imageUploadFile)
+            imageUploadFile.close();
+        imageUploadRequest = request;
+        imageUploadError = "";
+        if (!controller->isSDCard())
+            imageUploadError = "No SD card";
+        else if (controller->isUpdating())
+            imageUploadError = "Update in progress";
+        else if (!profile_image::isValidId(id) || !profileManager->profileExists(id))
+            imageUploadError = "Unknown profile";
+        else if (total != profile_image::FILE_BYTES || len < profile_image::HEADER_BYTES)
+            imageUploadError = "Image must be 300x300";
+        else {
+            uint32_t header = 0;
+            memcpy(&header, data, sizeof(header));
+            if (header != profile_image::HEADER)
+                imageUploadError = "Invalid image header";
+        }
+        if (imageUploadError.isEmpty()) {
+            SD_MMC.mkdir(profile_image::DIR);
+            imageUploadFile = SD_MMC.open(profileImageTempPath(id), FILE_WRITE);
+            if (!imageUploadFile)
+                imageUploadError = "Could not write to SD card";
+        }
+    }
+    if (request != imageUploadRequest || !imageUploadError.isEmpty() || !imageUploadFile)
+        return;
+    if (imageUploadFile.write(data, len) != len) {
+        imageUploadError = "Could not write to SD card";
+        imageUploadFile.close();
+        SD_MMC.remove(profileImageTempPath(id));
+        return;
+    }
+    if (index + len == total) {
+        imageUploadFile.close();
+        SD_MMC.remove(profile_image::path(id));
+        if (!SD_MMC.rename(profileImageTempPath(id).c_str(), profile_image::path(id).c_str()))
+            imageUploadError = "Could not write to SD card";
+    }
+}
+
+void WebUIPlugin::handleProfileImage(AsyncWebServerRequest *request) {
+    const String id = request->arg("id");
+    if (!controller->isSDCard()) {
+        request->send(404, "text/plain", "No SD card");
+        return;
+    }
+    if (controller->isUpdating()) {
+        request->send(503, "text/plain", "Update in progress");
+        return;
+    }
+    if (!profile_image::isValidId(id)) {
+        request->send(400, "text/plain", "Invalid profile id");
+        return;
+    }
+    switch (request->method()) {
+    case HTTP_GET:
+        if (SD_MMC.exists(profile_image::path(id)))
+            request->send(SD_MMC, profile_image::path(id), "application/octet-stream");
+        else
+            request->send(404, "text/plain", "No image");
+        return;
+    case HTTP_DELETE:
+        SD_MMC.remove(profile_image::path(id));
+        pluginManager->trigger("profiles:image:change", "id", id);
+        request->send(200, "application/json", "{}");
+        return;
+    case HTTP_POST: {
+        if (request != imageUploadRequest) {
+            request->send(400, "text/plain", "Image must be 300x300");
+            return;
+        }
+        imageUploadRequest = nullptr;
+        if (imageUploadFile) {
+            imageUploadFile.close(); // body ended short of Content-Length
+            imageUploadError = "Incomplete upload";
+        }
+        if (!imageUploadError.isEmpty()) {
+            request->send(400, "text/plain", imageUploadError);
+            return;
+        }
+        pluginManager->trigger("profiles:image:change", "id", id);
+        request->send(200, "application/json", "{}");
+        return;
+    }
+    default:
+        request->send(405);
+    }
+}
+
 void WebUIPlugin::handleCoreDumpDownload(AsyncWebServerRequest *request) {
     // Check if core dump is available
     size_t coreAddr, coreSize;
@@ -945,8 +1391,8 @@ void WebUIPlugin::handleCoreDumpDownload(AsyncWebServerRequest *request) {
 
     // Find the coredump partition
     const esp_partition_t *coredump_partition =
-        esp_partition_find_first(ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_DATA_COREDUMP, NULL);
-    if (coredump_partition == NULL) {
+        esp_partition_find_first(ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_DATA_COREDUMP, nullptr);
+    if (coredump_partition == nullptr) {
         request->send(500, "text/plain", "Core dump partition not found");
         return;
     }

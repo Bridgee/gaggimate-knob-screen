@@ -9,7 +9,9 @@ void BleServerTransport::init(const String &deviceName, bool pairingWindow) {
     _pairingWindow = pairingWindow;
     NimBLEDevice::init(deviceName.c_str());
     NimBLEDevice::setPower(ESP_PWR_LVL_P9);
-    NimBLEDevice::setMTU(256); // headroom for batched frames
+    NimBLEDevice::setMTU(BLE_MTU); // headroom for batched frames
+    if (int rc = ble_gap_write_sugg_def_data_len(BLE_DLE_OCTETS, BLE_DLE_TIME_US); rc != 0)
+        ESP_LOGW(LOG_TAG, "Setting suggested data length failed: %d", rc);
 
     // Just Works bonding + LE Secure Connections (no IO -> no MITM); keys persist in NVS across reboots.
     NimBLEDevice::setSecurityAuth(true, false, true);
@@ -36,8 +38,7 @@ void BleServerTransport::init(const String &deviceName, bool pairingWindow) {
     service->start();
 
     // OTA DFU shares the same server (separate service/UUIDs).
-    _otaDfu.configure_OTA(_server);
-    _otaDfu.start_OTA();
+    _ota.begin(_server);
 
     _deviceName = deviceName;
     _advertising = NimBLEDevice::getAdvertising();
@@ -69,8 +70,21 @@ void BleServerTransport::init(const String &deviceName, bool pairingWindow) {
                                : (_whitelistOnly ? "(whitelist only)" : "(open, pairing mode)"));
 }
 
+void BleServerTransport::setAdvertisingEnabled(bool enabled) {
+    if (_advEnabled == enabled)
+        return;
+    _advEnabled = enabled;
+    ESP_LOGI(LOG_TAG, "Advertising %s", enabled ? "resumed" : "paused");
+    if (_advertising == nullptr)
+        return;
+    if (!enabled)
+        _advertising->stop();
+    else if (!_connected)
+        startAdv();
+}
+
 void BleServerTransport::startAdv() {
-    if (_advertising == nullptr || _advertising->isAdvertising())
+    if (_advertising == nullptr || !_advEnabled || _advertising->isAdvertising())
         return;
     if (_havePairedPeer && !_pairingWindow) {
         // Low-duty directed adverts are LL-dropped by every radio except the paired display's -- invisible to other scanners.
@@ -228,7 +242,6 @@ void BleServerTransport::onConnect(NimBLEServer *server) {
     _connected = true;
     server->stopAdvertising();
     ESP_LOGI(LOG_TAG, "Client connected");
-    emitConnection(true);
 }
 
 void BleServerTransport::onConnect(NimBLEServer *server, ble_gap_conn_desc *desc) {
@@ -237,6 +250,8 @@ void BleServerTransport::onConnect(NimBLEServer *server, ble_gap_conn_desc *desc
     // Deliberately no startSecurity() here: the display is the sole initiator (dual initiation raced via EALREADY).
     if (desc)
         _connHandle = desc->conn_handle;
+    // Announced here, once the handle is known, so a rejected link can be dropped right away.
+    emitConnection(true);
 }
 
 void BleServerTransport::onAuthenticationComplete(ble_gap_conn_desc *desc) {
@@ -248,6 +263,9 @@ void BleServerTransport::onAuthenticationComplete(ble_gap_conn_desc *desc) {
         _server->disconnect(desc->conn_handle);
         return;
     }
+    // Negotiate the controller's transmit length too; ATT MTU alone leaves
+    // telemetry fragmented into small packets and can exhaust the BLE packet pool.
+    _server->setDataLen(desc->conn_handle, BLE_DLE_OCTETS);
     if (desc->sec_state.bonded)
         adoptPeer(NimBLEAddress(desc->peer_id_addr));
 }
@@ -256,6 +274,7 @@ void BleServerTransport::onDisconnect(NimBLEServer *server) {
     _connected = false;
     _connHandle = BLE_HS_CONN_HANDLE_NONE;
     ESP_LOGI(LOG_TAG, "Client disconnected");
+    _ota.onDisconnect();
     emitConnection(false);
     startAdv();
 }

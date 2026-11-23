@@ -1,5 +1,7 @@
+import { getProfilePhaseDisplayName } from './profilePhases.js';
 /** Analyzes executed phases, including target exits, delay inference, and final-phase fallbacks. */
 
+import { t } from '@lingui/core/macro';
 import {
   LAST_PHASE_ESTIMATED_DELAY_MAX_MS,
   LAST_PHASE_OVERSHOOT_MAX_G,
@@ -33,8 +35,10 @@ import {
 import { calculatePumpedWater } from './waterIntegration';
 import {
   getBrewModeLabel,
+  getPhaseExitReasonLabel,
   getPhaseExitReasonMeta,
   isKnownPhaseExitReason,
+  isWeightType,
   normalizePhaseExitReasonCode,
 } from './exitReasons.js';
 
@@ -42,7 +46,7 @@ function getPhaseSysAnomalies(samples, sysInfo) {
   const sysFieldMap = [
     ['sys_shot_vol', 'shotStartedVolumetric'],
     ['sys_curr_vol', 'currentlyVolumetric'],
-    ['sys_scale', 'bluetoothScaleConnected'],
+    ['sys_scale', 'activeScaleConnected'],
     ['sys_vol_avail', 'volumetricAvailable'],
     ['sys_ext', 'extendedRecording'],
   ];
@@ -68,12 +72,6 @@ function getPhaseSysAnomalies(samples, sysInfo) {
   return sysAnomalies;
 }
 
-function findProfilePhase(profileData, rawName) {
-  if (!profileData?.phases) return null;
-  const cleanName = rawName ? rawName.trim().toLowerCase() : '';
-  return profileData.phases.find(p => p.name.trim().toLowerCase() === cleanName) || null;
-}
-
 function getNextPhaseSamples({ phaseNum, phases, sortedPhaseKeys }) {
   const currentKeyIndex = sortedPhaseKeys.indexOf(phaseNum);
   const nextPhaseKey =
@@ -88,7 +86,7 @@ function getRecordedStopValue(exitType, samples, phaseStartTime, closingSample, 
   const stopSample = stopIndex >= 0 ? samples[stopIndex] : getPhaseEndSample(samples);
   if (!stopSample) return null;
 
-  if (exitType === 'weight' || exitType === 'volumetric') return stopSample.v;
+  if (isWeightType(exitType)) return stopSample.v;
   if (exitType === 'pressure') return stopSample.cp;
   if (exitType === 'flow') return stopSample.fl;
   if (exitType === 'pumped') {
@@ -266,7 +264,7 @@ function applyTargetMatchResult({
 }
 
 function findWeightTarget(targets) {
-  return targets.find(t => t.type === 'weight' || t.type === 'volumetric') || null;
+  return targets.find(t => isWeightType(t.type)) || null;
 }
 
 function getLastPhaseWeightSamples(samples) {
@@ -538,7 +536,7 @@ function analyzePhaseTargets({
   }
 }
 
-function getPhaseStats(samples, weightSamples, sysInfo, sysAnomalies, analyzerSystemInfo) {
+export function getPhaseStats(samples, weightSamples, sysInfo, sysAnomalies, analyzerSystemInfo) {
   return {
     p: getMetricStats(samples, 'cp'),
     tp: getMetricStats(samples, 'tp'),
@@ -554,7 +552,7 @@ function getPhaseStats(samples, weightSamples, sysInfo, sysAnomalies, analyzerSy
     sys_raw: sysInfo.raw,
     sys_shot_vol: sysInfo.shotStartedVolumetric,
     sys_curr_vol: sysInfo.currentlyVolumetric,
-    sys_scale: sysInfo.bluetoothScaleConnected,
+    sys_scale: sysInfo.activeScaleConnected,
     sys_vol_avail: sysInfo.volumetricAvailable,
     sys_ext: sysInfo.extendedRecording,
     sys_brew_mode: analyzerSystemInfo.brewModeLabel,
@@ -573,6 +571,7 @@ export function analyzeExecutedPhase({
   lastPhaseKey,
   phaseNameMap,
   phaseNum,
+  profilePhaseIndex,
   phases,
   profileData,
   pumpedWaterSource,
@@ -597,7 +596,11 @@ export function analyzeExecutedPhase({
   const weightSamples = getFinalWeightSamples(samples);
   const weightEndSample = getFinalWeightSample(samples) || getPhaseEndSample(samples);
   const rawName = phaseNameMap[phaseNum];
-  const displayName = rawName || `Phase ${phaseNum}`;
+  const displayName = getProfilePhaseDisplayName(
+    profileData,
+    profilePhaseIndex,
+    rawName || t`Phase ${phaseNum}`,
+  );
   const sysInfo = getPhaseEndSample(samples).systemInfo || {};
   const sysAnomalies = getPhaseSysAnomalies(samples, sysInfo);
   const bluetoothScaleConnection = getBluetoothScaleConnectionState(
@@ -608,7 +611,7 @@ export function analyzeExecutedPhase({
   const nextScaleConnectionBroken = scaleConnectionBrokenPermanently || scaleLostInThisPhase;
   const delayTracker = createPhaseDelayTracker(isLastPhase);
   const exitState = createExitState();
-  const profilePhase = findProfilePhase(profileData, rawName);
+  const profilePhase = profilePhaseIndex == null ? null : profileData.phases[profilePhaseIndex];
   const normalizedRecordedExitReasonCode = normalizePhaseExitReasonCode(recordedExitReasonCode);
   const hasRecordedExitReason = applyRecordedExitReason(
     exitState,
@@ -651,6 +654,7 @@ export function analyzeExecutedPhase({
   return {
     phase: {
       number: phaseNum,
+      profilePhaseIndex,
       name: rawName,
       displayName,
       start: pStart,
@@ -661,7 +665,7 @@ export function analyzeExecutedPhase({
       stats: getPhaseStats(samples, weightSamples, sysInfo, sysAnomalies, {
         brewModeLabel: getBrewModeLabel(isBrewByWeight),
         configuredScaleDelayMs: Math.max(0, Number(shotData.brewDelay) || 0),
-        recordedStopReason: getPhaseExitReasonMeta(normalizedRecordedExitReasonCode).label,
+        recordedStopReason: getPhaseExitReasonLabel(normalizedRecordedExitReasonCode),
       }),
       exit: {
         code: exitState.exitCode,

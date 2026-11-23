@@ -1,11 +1,11 @@
 {
   "schema": 1,
-  "port_version": "0.4.0-rc.9",
+  "port_version": "0.5.0-rc.1",
   "upstream": {
     "url": "https://github.com/jniebuhr/gaggimate.git",
-    "ref": "v1.9.0",
-    "version": "v1.9.0",
-    "commit": "43d2a7ba2299c196fd67c001f455985e07e57a49"
+    "ref": "v1.10.0",
+    "version": "v1.10.0",
+    "commit": "34bf9fc5f6cf89c9929636fc23092b75284092f9"
   },
   "target": "display-knob",
   "board": "Guition-K718",
@@ -18,8 +18,8 @@
   "application_offset": 65536,
   "application_size": 6553600,
   "filesystem_offset": 13172736,
-  "controller_protocol": 5,
-  "tested_controller": "GaggiMate Pro Rev1.1 v1.9.0, protocol5",
+  "controller_protocol": 16,
+  "tested_controller": "Pending hardware validation for v1.10.0",
   "tools": {
     "platformio": "6.2.0",
     "pillow": "12.3.0",
@@ -54,5 +54,5 @@
     "standby_customization"
   ],
   "release_channel": "candidate",
-  "screen_ota_qualification": true
+  "screen_ota_qualification": false
 }

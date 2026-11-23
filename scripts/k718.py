@@ -116,6 +116,7 @@ def checks(audit):
     guard_source(); check_generated()
     audit.run('publication-boundary',[sys.executable,'scripts/check_public.py'])
     audit.run('workflow-failure-cases',[sys.executable,'-m','unittest','discover','-s','test/knob_workflow'])
+    audit.run('upstream-control-parity',[sys.executable,'test/knob_native/check_upstream.py'])
     audit.run('native-ui',[sys.executable,'test/knob_native/check_ui.py'])
     audit.run('diagnostic-nonblocking',[sys.executable,'test/knob_native/check_diagnostics.py'])
     for name,source in [('screen-update-gate','test/knob_native/check_screen_update_gate.cpp'),('boot-health','test/knob_native/check_boot_health.cpp'),('geometry','test/knob_geometry/check.cpp'),('brightness','test/knob_native/check_brightness.cpp'),('hardware-policy','test/knob_native/check_hardware.cpp'),('battery-estimate','test/knob_native/check_battery_estimate.cpp'),('led-gauges','test/knob_native/check_led_gauges.cpp'),('led-wire','test/knob_native/check_led_encoding.cpp'),('led-preferences','test/knob_native/check_led_preferences.cpp'),('rotary-standby','test/knob_native/check_rotary_policy.cpp'),('official-check-queue','test/knob_native/check_official_release.cpp')]:
@@ -131,12 +132,29 @@ def export_stack(destination):
     destination.mkdir(parents=True)
     commits=git('rev-list','--reverse',cfg['upstream']['commit']+'..HEAD').splitlines()
     if not commits: raise RuntimeError('No port commits to export')
+    # A merged upstream has nonlinear history: exporting each reachable commit
+    # would include upstream changes again and format-patch omits merge commits.
+    # Export one deterministic net adaptation while retaining real provenance.
+    snapshot = bool(git('rev-list', '--min-parents=2', cfg['upstream']['commit']+'..HEAD'))
+    if snapshot:
+        epoch = git('show', '-s', '--format=%at', 'HEAD') + ' +0000'
+        environment = dict(os.environ, GIT_AUTHOR_NAME='GaggiMate Knob Screen',
+                           GIT_AUTHOR_EMAIL='maintainer@localhost.invalid',
+                           GIT_COMMITTER_NAME='GaggiMate Knob Screen',
+                           GIT_COMMITTER_EMAIL='maintainer@localhost.invalid',
+                           GIT_AUTHOR_DATE=epoch, GIT_COMMITTER_DATE=epoch)
+        subject = 'K718 adaptation snapshot for ' + cfg['upstream']['version']
+        commit = subprocess.check_output(
+            ['git', '-C', str(ROOT), '-c', 'commit.gpgsign=false', 'commit-tree',
+             git('rev-parse', 'HEAD^{tree}'), '-p', cfg['upstream']['commit']],
+            input=(subject+'\n').encode(), env=environment).decode().strip()
+        commits = [commit]
     patches=[]
     for number,commit in enumerate(commits,1):
         name=f'{number:04}.patch';path=destination/name
         path.write_bytes(subprocess.check_output(['git','-C',str(ROOT),'format-patch','--stdout','--binary','--full-index','--no-signature','-1',commit]))
         patches.append({'file':name,'sha256':digest(path),'commit':commit,'subject':git('show','-s','--format=%s',commit)})
-    write_json(destination/'series.json',{'schema':1,'upstream':cfg['upstream'],'source_commit':git('rev-parse','HEAD'),'source_tree':git('rev-parse','HEAD^{tree}'),'patches':patches,'note':'The complete ordered stack, not intermediate commits, is the build/release unit.'})
+    write_json(destination/'series.json',{'schema':1,'upstream':cfg['upstream'],'source_commit':git('rev-parse','HEAD'),'source_tree':git('rev-parse','HEAD^{tree}'),'patches':patches,'history_mode':'net-adaptation' if snapshot else 'ordered-commits','note':'The complete exported stack is the build/release unit; source_commit identifies the real source history.'})
     return destination
 
 def checked_stack(folder):
@@ -172,7 +190,26 @@ def replay(stack,destination,upstream=None,fetch_from=None):
     state['source_tree_matches_export']=state['result_tree']==data['source_tree'];write_json(report,state)
     return state
 
-def bind_upstream(version, expected_protocol):
+def bind_upstream(version, expected_protocol, upstream_ref=None):
+    if upstream_ref:
+        target = git('rev-parse', '--verify', upstream_ref+'^{commit}')
+        pending = git('rev-parse', '--verify', 'MERGE_HEAD')
+        if pending != target or git('diff', '--name-only', '--diff-filter=U'):
+            raise RuntimeError('Resolve the exact selected upstream merge before binding')
+        if protocol() != expected_protocol:
+            raise RuntimeError('Declared controller protocol does not match source')
+        cfg = config()
+        previous = json.loads(git('show', 'HEAD:port/config.json'))['upstream']
+        cfg['upstream'].update(commit=target, ref=upstream_ref, version=version)
+        cfg['controller_protocol'] = expected_protocol
+        cfg['tested_controller'] = 'Pending hardware validation for ' + version
+        write_json(ROOT/'port/config.json', cfg)
+        write_json(ROOT/'.port/merge-binding.json', {
+            'schema':1, 'previous_source':git('rev-parse','HEAD'), 'old_upstream':previous,
+            'target_commit':target, 'upstream_ref':upstream_ref, 'controller_protocol':expected_protocol,
+            'note':'Reviewed merge binding; commit, build and replay before publication. No hardware qualification.'})
+        print('Reviewed upstream merge bound. Commit, export/replay and build; hardware acceptance remains separate.')
+        return
     report=ROOT/'.port/replay.json';state=json.loads(report.read_text())
     if (ROOT/'.git/rebase-apply').exists(): raise RuntimeError('Finish git am conflict resolution first')
     count=int(git('rev-list','--count',state['target_commit']+'..HEAD'))
@@ -188,6 +225,8 @@ def web_bundle(audit):
     audit.run('npm-ci',['npm','ci'],ROOT/'web')
     audit.run('web-ota-policy',['npm','run','test:ota'],ROOT/'web')
     audit.run('web-led-settings',['npm','run','test:led'],ROOT/'web')
+    audit.run('web-upstream-regressions',['npm','run','test:upstream'],ROOT/'web')
+    audit.run('web-lint',['npm','run','lint:check'],ROOT/'web')
     audit.run('web-build',['npm','run','build'],ROOT/'web')
     dist=ROOT/'web/dist'
     gzip_assets(dist)
@@ -258,13 +297,13 @@ def main():
     p=sub.add_parser('build');p.add_argument('--out');p.add_argument('--cache-from')
     p=sub.add_parser('export');p.add_argument('--out',required=True)
     p=sub.add_parser('replay');p.add_argument('--stack',required=True);p.add_argument('--dest',required=True);p.add_argument('--upstream');p.add_argument('--fetch-from')
-    p=sub.add_parser('bind-upstream');p.add_argument('--version',required=True);p.add_argument('--controller-protocol',type=int,required=True)
+    p=sub.add_parser('bind-upstream');p.add_argument('--ref');p.add_argument('--version',required=True);p.add_argument('--controller-protocol',type=int,required=True)
     args=parser.parse_args()
     try:
         if args.command=='doctor':print(json.dumps(doctor(),indent=2))
         elif args.command=='export':print(export_stack(args.out))
         elif args.command=='replay':print(json.dumps(replay(args.stack,args.dest,args.upstream,args.fetch_from),indent=2))
-        elif args.command=='bind-upstream':bind_upstream(args.version,args.controller_protocol)
+        elif args.command=='bind-upstream':bind_upstream(args.version,args.controller_protocol,args.ref)
         elif args.command=='verify-repro':
             from k718_flash import verified_release
             target=Path(args.out)

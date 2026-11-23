@@ -1,7 +1,11 @@
+import { grindAvailable } from '../../utils/grind.js';
 import { computed } from '@preact/signals';
 import { useContext, useEffect, useState } from 'preact/hooks';
 import { useQuery } from 'preact-fetching';
 import { ApiServiceContext, machine } from '../../services/ApiService.js';
+import { MODES } from './utils.js';
+import { t } from '@lingui/core/macro';
+import { computeWaterLevel } from '../../utils/waterLevel.js';
 
 const status = computed(() => machine.value.status);
 const capabilities = computed(() => machine.value.capabilities);
@@ -19,7 +23,7 @@ export function useDashboardState() {
   const systemReady = connected.value && (!s.system || s.system.state === 'ready');
   // Only a not-ready state carries a message; ready leaves the default standby text in place.
   const systemMessage = !connected.value
-    ? 'Connecting to the machine...'
+    ? t`Connecting to the machine...`
     : systemReady
       ? ''
       : s.system.message || s.system.state;
@@ -43,30 +47,43 @@ export function useDashboardState() {
 
   const isSmartGrindEnabled = settings?.smartGrindActive || false;
   const altRelayFunction = settings?.altRelayFunction ?? 1;
-  const isGrindAvailable = isSmartGrindEnabled || altRelayFunction === 1;
+  const isGrindAvailable = grindAvailable(settings, caps);
   const showGrindTab = isGrindAvailable || isGrinding;
+  // Dual boilers steam and dispense water from brew mode; keep a hidden tab while it is the current mode.
+  const steamWaterAvailable = !caps?.dualBoiler;
+  const visibleModes = MODES.filter(m => {
+    if (m.id === mode) return true;
+    if (m.id === 4) return showGrindTab;
+    if (m.id === 2 || m.id === 3) return steamWaterAvailable;
+    return true;
+  });
 
   // ── water level (Alba) ────────────────────────────────────
+  // The tank card follows an Alba with its percentage sensor; null means "attached but not calibrated".
   const ledControl = caps?.ledControl || false;
-  const emptyTankDistance = settings?.emptyTankDistance || 0;
-  const fullTankDistance = settings?.fullTankDistance || 0;
-  const albaCalibrated = emptyTankDistance > 0 && fullTankDistance > 0;
-  const waterLevelPercent =
-    ledControl && albaCalibrated
-      ? Math.max(
-          0,
-          Math.min(
-            100,
-            ((emptyTankDistance - s.tofDistance) / (emptyTankDistance - fullTankDistance)) * 100,
-          ),
-        )
-      : null;
+  const albaWaterLevelAvailable = !!s.albaWaterLevelAvailable;
+  const waterLevelPercent = albaWaterLevelAvailable
+    ? computeWaterLevel({
+        empty: settings?.emptyTankDistance,
+        full: settings?.fullTankDistance,
+        distance: s.tofDistance,
+      })
+    : null;
 
   // ── handlers ─────────────────────────────────────────────
   const send = tp => apiService.send({ tp });
 
+  const toggleSteam = () => {
+    if (systemReady && caps.dualBoiler && mode !== 0 && s.steamControlsAvailable !== false)
+      send('req:steam:toggle');
+  };
+
   const changeMode = newMode => {
     if (!systemReady) return; // locked in standby until the controller is ready
+    if (caps.dualBoiler && newMode === 2) {
+      toggleSteam();
+      return;
+    }
     apiService.send({ tp: 'req:change-mode', mode: newMode });
   };
 
@@ -114,11 +131,21 @@ export function useDashboardState() {
 
   return {
     // raw status
+    smartDose: s.smartDose,
+    albaWaterLevelAvailable,
+    hasTankLevel: !!s.hasTankLevel,
+    tankLevelOK: s.tankLevelOK ?? null,
+    hasSteamLevel: !!s.hasSteamLevel,
+    steamBoilerLow: s.steamBoilerLow ?? null,
     mode,
     systemReady,
     systemMessage,
     currentTemperature: s.currentTemperature,
     targetTemperature: s.targetTemperature,
+    currentSteamTemperature: s.currentSteamTemperature,
+    targetSteamTemperature: s.targetSteamTemperature,
+    steamActive: !!s.steamActive,
+    steamControlsAvailable: s.steamControlsAvailable !== false,
     currentPressure: s.currentPressure,
     targetPressure: s.targetPressure,
     currentFlow: s.currentFlow,
@@ -140,6 +167,7 @@ export function useDashboardState() {
     processInfo: p,
     tofDistance: s.tofDistance,
     warnings: s.warnings ?? [],
+    dualBoiler: caps.dualBoiler,
     // derived
     isActive,
     isFinished,
@@ -147,19 +175,18 @@ export function useDashboardState() {
     isGrinding,
     isGrindAvailable,
     showGrindTab,
+    visibleModes,
     // water level
     ledControl,
-    albaCalibrated,
     waterLevelPercent,
     // settings
     isSmartGrindEnabled,
     altRelayFunction,
-    emptyTankDistance,
-    fullTankDistance,
     // action state
     isFlushing,
     // handlers
     changeMode,
+    toggleSteam,
     activate,
     deactivate,
     clear,

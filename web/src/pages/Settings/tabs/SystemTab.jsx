@@ -1,5 +1,6 @@
 import { FirmwareVersions, OfficialUpdateChannel, canInstallOta } from './FirmwareVersions';
 import { useCallback, useContext, useEffect, useRef, useState } from 'preact/hooks';
+import { Trans, useLingui } from '@lingui/react/macro';
 import { ApiServiceContext, machine } from '../../../services/ApiService.js';
 import { downloadJson } from '../../../utils/download.js';
 import { SystemTabSkeleton } from '../../../components/skeletons/SettingsSkeletons.jsx';
@@ -7,6 +8,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCheck } from '@fortawesome/free-solid-svg-icons/faCheck';
 import { Spinner } from '../../../components/Spinner.jsx';
 import Section from '../../../components/Card.jsx';
+import { PatchNotes } from '../PatchNotes.jsx';
 
 const imageUrlToBase64 = async blob => {
   return new Promise((onSuccess, onError) => {
@@ -31,21 +33,28 @@ const getRssiStatusClass = rssi => {
   return 'status-success';
 };
 
-function OtaProgressView({ phase, progress }) {
+// A wire has no signal strength to grade; only BLE can be weak.
+const getLinkStatusClass = (link, rssi) => {
+  if (link === 'none') return 'status-error';
+  return link === 'ble' ? getRssiStatusClass(rssi) : 'status-success';
+};
+
+function OtaProgressView({ phase, progress, headless }) {
+  const { t } = useLingui();
   const finished = phase === 4;
   const failed = phase === 5;
   const getOtaPhaseText = p => {
     switch (p) {
       case 1:
-        return 'Updating Display firmware';
+        return headless ? t`Updating Headless firmware` : t`Updating Display firmware`;
       case 2:
-        return 'Updating Display filesystem';
+        return headless ? t`Updating Headless filesystem` : t`Updating Display filesystem`;
       case 3:
-        return 'Updating controller firmware';
+        return t`Updating controller firmware`;
       case 5:
-        return 'Update failed';
+        return t`Update failed`;
       default:
-        return 'Finished';
+        return t`Finished`;
     }
   };
 
@@ -55,15 +64,17 @@ function OtaProgressView({ phase, progress }) {
       <span className='text-base-content text-xl font-medium'>{getOtaPhaseText(phase)}</span>
       {failed ? (
         <span role='alert' className='text-base-content/70 max-w-md text-center'>
-          The update could not be completed and the device kept its current firmware. Check the
-          network connection and start the update again.
+          <Trans>
+            The update could not be completed and the device kept its current firmware. Check the
+            network connection and start the update again.
+          </Trans>
         </span>
       ) : (
         <span className='text-base-content text-lg font-medium'>{finished ? 100 : progress}%</span>
       )}
       {(finished || failed) && (
         <a href='/' className='btn btn-primary'>
-          Back
+          <Trans>Back</Trans>
         </a>
       )}
     </div>
@@ -71,12 +82,15 @@ function OtaProgressView({ phase, progress }) {
 }
 
 function StorageAndMemorySection({ formData }) {
+  const { t } = useLingui();
   return (
-    <Section title='Storage & Memory' className='h-full'>
+    <Section title={t`Storage & Memory`} className='h-full'>
       <div className='grid grid-cols-1 gap-6'>
         {formData.spiffsTotal !== undefined && (
           <div className='flex flex-col space-y-2'>
-            <span className='text-base-content/70 text-sm font-medium'>Storage (LittleFS)</span>
+            <span className='text-base-content/70 text-sm font-medium'>
+              <Trans>Storage (LittleFS)</Trans>
+            </span>
             <div className='bg-base-300 h-3 w-full overflow-hidden rounded'>
               <div
                 className='bg-primary h-full transition-all'
@@ -92,7 +106,9 @@ function StorageAndMemorySection({ formData }) {
 
         {formData.sdTotal !== undefined && (
           <div className='flex flex-col space-y-2'>
-            <span className='text-base-content/70 text-sm font-medium'>Storage (SD-Card)</span>
+            <span className='text-base-content/70 text-sm font-medium'>
+              <Trans>Storage (SD-Card)</Trans>
+            </span>
             <div className='bg-base-300 h-3 w-full overflow-hidden rounded'>
               <div
                 className='bg-primary h-full transition-all'
@@ -108,7 +124,9 @@ function StorageAndMemorySection({ formData }) {
 
         {formData.heapTotal !== undefined && (
           <div className='flex flex-col space-y-2'>
-            <span className='text-base-content/70 text-sm font-medium'>Free Memory (Heap)</span>
+            <span className='text-base-content/70 text-sm font-medium'>
+              <Trans>Free Memory (Heap)</Trans>
+            </span>
             <div className='bg-base-300 h-3 w-full overflow-hidden rounded'>
               <div
                 className='bg-primary h-full transition-all'
@@ -124,7 +142,7 @@ function StorageAndMemorySection({ formData }) {
                 ? ((formData.heapTotal - formData.heapFree) / formData.heapTotal) * 100
                 : 0
               ).toFixed(2)}
-              %) (Frag:{' '}
+              %) ({t`Frag:`}{' '}
               {(formData.heapFree > 0
                 ? 100 - (formData.heapLargest * 100) / formData.heapFree
                 : 0
@@ -145,12 +163,19 @@ function MaintenanceSection({
   rebuilt,
   rebuildProgress,
 }) {
+  const { t } = useLingui();
+  const current = rebuildProgress.current;
+  const total = rebuildProgress.total;
   return (
-    <Section title='Maintenance & Support' className='h-full'>
+    <Section title={t`Maintenance & Support`} className='h-full'>
       <div className='flex flex-col flex-wrap gap-4 sm:flex-row'>
         <button type='button' className='btn btn-outline btn-sm' onClick={downloadSupportData}>
-          Download Support Data
+          <Trans>Download Support Data</Trans>
         </button>
+
+        <a href='/setup' className='btn btn-outline btn-sm'>
+          <Trans>Run Setup Wizard</Trans>
+        </a>
 
         <button
           type='button'
@@ -158,7 +183,7 @@ function MaintenanceSection({
           onClick={onHistoryRebuild}
           disabled={rebuilding}
         >
-          Rebuild Shot History
+          <Trans>Rebuild Shot History</Trans>
           {rebuilding && (
             <>
               <Spinner size={4} className='ml-2' />
@@ -183,8 +208,8 @@ function MaintenanceSection({
             {rebuildProgress.status === 'starting' ||
             rebuildProgress.status === 'scanning' ||
             rebuildProgress.total === 0
-              ? 'Scanning shot history files...'
-              : `Processing shot history files (${rebuildProgress.current}/${rebuildProgress.total})`}
+              ? t`Scanning shot history files...`
+              : t`Processing shot history files (${current}/${total})`}
           </div>
           <div className='bg-base-300 h-2 w-full overflow-hidden rounded'>
             <div
@@ -206,6 +231,7 @@ function MaintenanceSection({
 }
 
 export function SystemTab() {
+  const { t } = useLingui();
   const apiService = useContext(ApiServiceContext);
   const [isLoading, setIsLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -213,8 +239,11 @@ export function SystemTab() {
   const [phase, setPhase] = useState(0);
   const [progress, setProgress] = useState(0);
   const rssi = machine.value.status.rssi;
+  // Firmware without the link field only ever talks BLE.
+  const controllerLink = machine.value.status.controllerLink ?? 'ble';
   const lat = machine.value.status.lat;
   const rtx = machine.value.status.rtx;
+  const headless = !!machine.value.capabilities.headless;
 
   const downloadSupportData = useCallback(async () => {
     try {
@@ -317,7 +346,7 @@ export function SystemTab() {
   }, [apiService]);
 
   if (phase > 0) {
-    return <OtaProgressView phase={phase} progress={progress} />;
+    return <OtaProgressView phase={phase} progress={progress} headless={headless} />;
   }
 
   if (isLoading) {
@@ -327,7 +356,7 @@ export function SystemTab() {
   return (
     <div className='space-y-4 sm:space-y-6 lg:grid lg:grid-cols-2 lg:gap-4'>
       {/* Firmware updates channel */}
-      <Section title='System Version & Updates' className='h-full'>
+      <Section title={t`System Version & Updates`} className='h-full'>
         {!formData.pairSupported && (
           <OfficialUpdateChannel
             settings={formData}
@@ -339,17 +368,31 @@ export function SystemTab() {
 
         <div className='border-base-content/5 mt-6 grid grid-cols-1 gap-6 border-t pt-6 md:grid-cols-2'>
           <div className='flex flex-col space-y-1'>
-            <span className='text-base-content/70 text-sm font-medium'>Hardware</span>
+            <span className='text-base-content/70 text-sm font-medium'>
+              <Trans>Hardware</Trans>
+            </span>
             <span className='text-base-content font-semibold'>{formData.hardware}</span>
           </div>
 
           <div className='flex flex-col space-y-1'>
             <span className='text-base-content/70 text-sm font-medium'>
-              Controller Signal Strength
+              <Trans>Controller Connection</Trans>
             </span>
             <span className='text-base-content flex items-center gap-2 font-semibold'>
-              {rssi}dB (Roundtrip: {lat} ms, Resends: {rtx})
-              <span className={`indicator-item status ${getRssiStatusClass(rssi)}`} />
+              {controllerLink === 'uart' && (
+                <Trans>
+                  UART (Roundtrip: {lat} ms, Resends: {rtx})
+                </Trans>
+              )}
+              {controllerLink === 'ble' && (
+                <Trans>
+                  Bluetooth, {rssi}dB (Roundtrip: {lat} ms, Resends: {rtx})
+                </Trans>
+              )}
+              {controllerLink === 'none' && <Trans>Not connected</Trans>}
+              <span
+                className={`indicator-item status ${getLinkStatusClass(controllerLink, rssi)}`}
+              />
             </span>
           </div>
 
@@ -369,6 +412,19 @@ export function SystemTab() {
               />
             </div>
           )}
+          {/* Own grid row, so the update buttons below stay on one line */}
+          <div className='flex md:col-span-2'>
+            <PatchNotes
+              channel={formData.channel}
+              // shortcut: when both are behind, the display wins even if the controller is older; both share one build.
+              installedVersion={
+                formData.displayUpdateAvailable || !formData.controllerUpdateAvailable
+                  ? (formData.officialDisplayVersion ?? formData.displayVersion)
+                  : formData.controllerVersion
+              }
+              latestVersion={formData.latestVersion}
+            />
+          </div>
         </div>
       </Section>
 

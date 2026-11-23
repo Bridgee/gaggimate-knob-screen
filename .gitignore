@@ -37,3 +37,9 @@ AGENTS.md
 
 # Local EEZ editor state
 *.eez-project-ui-state
+
+# Upstream generated/staged outputs
+lib/OTA/src/ca_bundle.c
+web/dist-app/
+web/store/
+out/
