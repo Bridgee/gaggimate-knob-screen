@@ -20,7 +20,7 @@ This is a display port. The original controller/PID/process behavior and coffee-
 | Rotary input | `EncoderDetents.h`, `KnobAdjustment.*` | Decode direction contacts; select a field and invoke its existing +/− action |
 | Standby appearance | `StandbyDisplay.*`, `Settings.*`, General web settings | Optional custom text or centered clock with original wake behavior |
 | Startup/network memory | `src/display/main.cpp`, `BufferedProfileImage.h`, K718 image-response integration | PSRAM allocation, static Wi-Fi buffers and nonblocking image-body admission |
-| Validation-only target | `src/display/validation/`, guarded display-facade injection | Synthetic framed replay, command sink, visible simulation labels and isolated screen OTA qualification |
+| Validation-only target | `src/display/validation/`, guarded display-facade injection | Synthetic framed replay, command sink, visible simulation labels, isolated settings/profiles/images and screen OTA qualification |
 | Build/maintenance | `port/`, `scripts/k718*.py`, `test/knob*` | Locked inputs, checks, source replay, artifact identity and checked installation |
 
 ## Rendering and interaction

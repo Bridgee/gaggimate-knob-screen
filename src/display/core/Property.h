@@ -57,6 +57,9 @@ class PropertyBase {
     virtual void load(Preferences &prefs) = 0;
     virtual void store(Preferences &prefs) = 0;
     virtual bool isDirty() const = 0;
+#ifdef GAGGIMATE_KNOB_VALIDATION
+    virtual void persist() = 0; // Copy loaded values into the isolated test namespace.
+#endif
 };
 
 using PropertyRegistry = std::vector<PropertyBase *>;

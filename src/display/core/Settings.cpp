@@ -120,7 +120,11 @@ Settings::Settings() {
     if (bootLoadOk && !preferences.isKey("validation_seed")) {
         Preferences source;
         if (source.begin("controller", true)) {
-            for (auto *property : registry) { property->load(source); property->persist(); }
+            for (auto *property : registry) {
+                property->load(source);
+                property->persist();
+                property->store(preferences);
+            }
             source.end();
         }
         preferences.putBool("validation_seed", true);

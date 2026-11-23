@@ -11,7 +11,11 @@ constexpr uint32_t COLOR_FORMAT = 4; // LV_IMG_CF_TRUE_COLOR
 constexpr uint32_t HEADER = COLOR_FORMAT | (SIZE << 10) | (SIZE << 21);
 constexpr size_t HEADER_BYTES = 4;
 constexpr size_t FILE_BYTES = HEADER_BYTES + SIZE * SIZE * 2;
+#ifdef GAGGIMATE_KNOB_VALIDATION
+constexpr const char *DIR = "/validation/pi";
+#else
 constexpr const char *DIR = "/pi";
+#endif
 
 // Profile ids are UUIDs; anything else could escape the image directory.
 inline bool isValidId(const String &id) {

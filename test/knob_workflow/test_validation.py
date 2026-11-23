@@ -1,4 +1,4 @@
-import json,struct,sys,tempfile,unittest
+import json,struct,subprocess,sys,tempfile,unittest
 from pathlib import Path
 from unittest.mock import patch
 ROOT=Path(__file__).resolve().parents[2]
@@ -49,3 +49,16 @@ class ValidationIsolationTest(unittest.TestCase):
                 if target.endswith('validation'):
                     config=json.loads((root/'port/config.json').read_text());config.update(release_channel='stable',port_version='0.5.0');(root/'port/config.json').write_text(json.dumps(config))
                     with self.assertRaisesRegex(RuntimeError,'candidate'):exec(compile((ROOT/'scripts/knob_firmware_version.py').read_text(),'version','exec'),namespace)
+
+    def test_profile_image_directory_is_compile_time_isolated(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root=Path(folder)
+            (root/'Arduino.h').write_text('#pragma once\n#include <cstdint>\n#include <cstddef>\n#include <cctype>\n#include <string>\nclass String: public std::string {\n public: using std::string::string;\n String(std::string value):std::string(std::move(value)) {}\n bool isEmpty() const { return empty(); }\n char charAt(size_t i) const { return at(i); }\n};\n')
+            source=root/'test.cpp'
+            source.write_text('#include <display/core/ProfileImage.h>\n#include <cassert>\nint main(){assert(profile_image::path("sample") == EXPECTED_PATH);assert(!profile_image::isValidId("../sample"));}\n')
+            for validation in [False,True]:
+                binary=root/('test' if validation else 'normal')
+                flags=['-DGAGGIMATE_KNOB_VALIDATION'] if validation else []
+                expected='/validation/pi/sample.bin' if validation else '/pi/sample.bin'
+                subprocess.run(['clang++','-std=c++17','-Wall','-Wextra','-Werror','-I'+str(root),'-I'+str(ROOT/'src'),*flags,'-DEXPECTED_PATH="'+expected+'"',str(source),'-o',str(binary)],check=True)
+                subprocess.run([str(binary)],check=True)
