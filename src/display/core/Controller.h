@@ -35,6 +35,9 @@ enum SystemState {
     SYSTEM_ERROR
 };
 const char *systemStateKey(SystemState state);
+#ifdef GAGGIMATE_KNOB_VALIDATION
+namespace knob_validation { enum class Action; enum class Trace; }
+#endif
 
 class Controller {
   public:
@@ -76,6 +79,7 @@ class Controller {
     bool tryBeginScreenUpdate();
     bool canCommitScreenUpdate(unsigned protocol, const char *version) const;
 #ifdef GAGGIMATE_KNOB_VALIDATION
+    bool requestValidationReplay(knob_validation::Action action, knob_validation::Trace trace);
     bool tryBeginStandaloneScreenUpdate();
     bool canCommitStandaloneScreenUpdate() const;
 #endif

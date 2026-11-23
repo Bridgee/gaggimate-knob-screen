@@ -272,7 +272,7 @@ void WebUIPlugin::setupServer() {
             if (trace == "warmup") chosen = knob_validation::Trace::Warmup;
             else if (trace == "shot") chosen = knob_validation::Trace::Shot;
             else if (trace.length() && trace != "idle") { request->send(400); return; }
-            if (!knob_validation::peer().request(command, chosen)) { request->send(409); return; }
+            if (!controller->requestValidationReplay(command, chosen)) { request->send(409); return; }
         }
         const auto state = knob_validation::peer().snapshot();
         JsonDocument doc(&psramAllocator);

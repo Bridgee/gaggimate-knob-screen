@@ -33,9 +33,20 @@ jobs:
         run: python scripts/check_public.py
       - name: Build and verify firmware
         run: python scripts/k718.py build --out dist/release
+      - name: Select candidate-only validation role
+        id: validation
+        run: |
+          python - <<'PYTHON' >> "$GITHUB_OUTPUT"
+          import json
+          config = json.load(open('port/config.json'))
+          enabled = config.get('release_channel') == 'candidate' and '-' in config['port_version']
+          print('enabled=' + str(enabled).lower())
+          PYTHON
       - name: Build isolated validation firmware
+        if: steps.validation.outputs.enabled == 'true'
         run: python scripts/k718.py build-validation --out dist/validation
       - name: Prepare validation-only bundle
+        if: steps.validation.outputs.enabled == 'true'
         run: python scripts/package_validation.py dist/validation --out dist/validation-publish
       - name: Prepare shareable firmware package
         run: python scripts/package_release.py dist/release --out dist/publish
@@ -52,6 +63,7 @@ jobs:
           path: dist/paired/
           if-no-files-found: error
       - uses: actions/upload-artifact@v4
+        if: steps.validation.outputs.enabled == 'true'
         with:
           name: gaggimate-knob-validation-${{ github.sha }}
           path: dist/validation-publish/

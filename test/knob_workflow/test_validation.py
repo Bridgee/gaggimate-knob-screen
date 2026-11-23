@@ -36,7 +36,8 @@ class ValidationIsolationTest(unittest.TestCase):
         for target in ['display-knob','display-knob-validation']:
             with tempfile.TemporaryDirectory() as folder:
                 root=Path(folder);(root/'src').mkdir();(root/'port').mkdir();(root/'scripts').mkdir()
-                (root/'port/config.json').write_text((ROOT/'port/config.json').read_text())
+                config=json.loads((ROOT/'port/config.json').read_text());config.update(release_channel='candidate',port_version='0.5.0-rc.12')
+                (root/'port/config.json').write_text(json.dumps(config))
                 (root/'scripts/k718_ota_config.py').write_text((ROOT/'scripts/k718_ota_config.py').read_text())
                 class Env:
                     def subst(self,value):return target if value=='$PIOENV' else str(root)

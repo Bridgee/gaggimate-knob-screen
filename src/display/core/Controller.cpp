@@ -816,6 +816,11 @@ bool Controller::tryBeginScreenUpdate() {
     updating = true; return true;
 }
 #ifdef GAGGIMATE_KNOB_VALIDATION
+bool Controller::requestValidationReplay(knob_validation::Action action, knob_validation::Trace trace) {
+    // Same lock order as OTA reservation: process mutex, then replay mutex.
+    std::lock_guard<std::recursive_mutex> guard(processMutex);
+    return !updating && knob_validation::peer().request(action, trace);
+}
 bool Controller::tryBeginStandaloneScreenUpdate() {
     std::lock_guard<std::recursive_mutex> guard(processMutex);
     if (updating || autotuning || isErrorState() || mode != MODE_STANDBY || currentProcess ||
