@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.0-rc.11
+
+- Report installed official base/protocol and controller compatibility independently of available releases. Distinguish disconnected, unidentified, protocol and version mismatches.
+- Wire guarded screen web selection, frozen confirmation and progress to the own-repository endpoint; correlate replies, reject stale choices and avoid automatic retry after a lost reply. Keep both normal OTA permissions and candidate qualification disabled.
+- Add gated candidate bench controls and an independent USB-controller test procedure; update release/compatibility documentation. This candidate has no new physical or OTA acceptance.
+
 ## 0.5.0-rc.10
 
 - Retain the two-response image-body quota and normal TCP filling; remove per-dispatch pacing, which made some individual reads exceed their deadline in rc9 despite avoiding DMA exhaustion.

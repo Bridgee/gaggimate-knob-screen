@@ -31,6 +31,14 @@ int main(int argc, char **argv) {
     assert(std::string(compatibility(pair, 5, 8, true, "v1.9.0")) == "incompatible");
     assert(std::string(compatibility(pair, 8, 5, true, "v1.9.0")) == "incompatible");
     assert(std::string(compatibility(pair, 5, 5, true, "v1.10.0")) == "incompatible");
+    // Installed-pair compatibility is available without a published update.
+    assert(std::string(installedCompatibility("v1.10.0", 16, 16, true, "v1.10.0")) == "matched");
+    assert(std::string(installedCompatibility("v1.10.0", 16, 16, true, "1.10.0+build")) == "matched");
+    assert(std::string(installedCompatibility("v1.10.0", 16, 5, false, "v1.9.0")) == "controller-disconnected");
+    assert(std::string(installedCompatibility("v1.10.0", 16, 0, true, "")) == "controller-unidentified");
+    assert(std::string(installedCompatibility("v1.10.0", 16, 16, true, "broken")) == "controller-unidentified");
+    assert(std::string(installedCompatibility("v1.10.0", 16, 5, true, "v1.9.0")) == "protocol-mismatch");
+    assert(std::string(installedCompatibility("v1.10.0", 16, 16, true, "v1.10.1")) == "controller-version-mismatch");
     assert(order("0.3.10", "0.3.9") > 0 && order("0.3.7-rc.2", "0.3.7-rc.1") > 0);
     assert(order("0.3.7", "0.3.7-rc.2") > 0);
     assert(order("0.3.7-rc.10", "0.3.7-rc.2") > 0);

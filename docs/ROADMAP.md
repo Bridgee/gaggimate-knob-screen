@@ -7,13 +7,13 @@
 - Custom standby text/clock and callable speaker/microphone interfaces.
 - English firmware repository, exact official-base source reconstruction and reproducible-build tooling.
 - Matched packages containing our screen image and a hash-pinned, unmodified official controller image.
-- Read-only matched-release discovery, independent component versions and compatibility status; official upstream notices retained. Both OTA installers remain disabled.
+- Matched-release discovery, independent installed/release compatibility, and own-release screen web selection/confirmation/progress; official notices retained. Both OTA installers remain disabled.
 
 Implemented does not mean that every new binary has completed hardware acceptance. See the release notes for the exact tested package.
 
 ## Stable-release requirements
 
-When an installed controller is paired to another screen, continue the [controller-free validation route](VALIDATION.md#validation-without-changing-an-installed-machine). Preserve the pairing. Current host checks and prior peripheral acceptance reduce repeated work, but leave the focused current-binary controller checks pending; they do not silently satisfy them.
+When an installed controller is paired to another screen, continue the [controller-free validation route](VALIDATION.md#validation-without-changing-an-installed-machine). Use the [independent USB bench](TESTING.md) for later radio/OTA acceptance and preserve the daily-use pairing. Current host checks and prior peripheral acceptance reduce repeated work, but leave the focused current-binary controller checks pending; they do not silently satisfy them.
 
 - Validate the current candidate on the target: real GitHub metadata refresh, separate component versions/compatibility, retained official notices and disabled installation controls.
 - Check normal operation after the update and restart: controller reconnection/telemetry, display/touch, rotary adjustment, LED preferences, standby/wake and saved settings. Reuse established peripheral evidence; repeat basic hardware tests only when their implementation or inputs change.
@@ -28,12 +28,12 @@ When an installed controller is paired to another screen, continue the [controll
 
 ## Next development stage: screen OTA
 
-Read-only preflight, separate disabled permissions, two-slot USB recovery/trials and local startup-health confirmation are implemented in development. Recovery/health have been exercised on a development build. The explicit candidate-only interface passed USB-bench download/readback, interrupted staging, unconfirmed-boot rollback, healthy installation, settings and UI checks in 0.4.0-rc.8. Normal web installation remains disabled; the tested backend has not yet been connected to the ordinary update buttons.
+Read-only preflight, separate disabled permissions, two-slot USB recovery/trials and local startup-health confirmation are implemented in development. Recovery/health have been exercised on a development build. The explicit candidate-only interface passed USB-bench download/readback, interrupted staging, unconfirmed-boot rollback, healthy installation, settings and UI checks in 0.4.0-rc.8. The web action is now connected to the own-release backend, with confirmation, stale-selection rejection and progress. Normal web installation remains disabled; current-protocol bench and normal-flow qualification are still pending.
 
 1. Implemented: bind installation requests to a freshly validated own-repository release and exact manifest/image hashes.
 2. Exercised on hardware: support USB recovery from either application slot and application health-gated boot confirmation.
 3. Exercised on hardware: own-repository screen download/install, length/hash/SDK/readback verification, interrupted staging and unconfirmed-boot recovery. Malformed/corrupt-image cases also have host tests.
-4. Integrate the ordinary screen update action with the verified own-release path, retaining the legacy installer block and separate disabled controller permission; validate that user-facing flow before enabling it. Record physical power loss and other untested cases explicitly.
+4. Implemented: wire the screen web action to the own-release path, retaining the legacy installer block and separate disabled controller permission. Pending: qualify that exact user-facing flow on the protocol-16 bench before enabling normal installation. Record physical power loss and other untested cases explicitly.
 
 Keep the old K718 installer denied. Controller OTA needs independent qualification; combined updates follow later. These stages do not block the existing USB stable release.
 

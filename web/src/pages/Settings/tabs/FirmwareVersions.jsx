@@ -1,3 +1,10 @@
+import {
+  screenOtaRequest,
+  selectionCurrent,
+  otaStateText,
+  installedPairText,
+} from '../../../utils/screenOta.js';
+
 export function canInstallOta(settings, component, submitting = false) {
   return (
     (component === 'display' || component === 'controller') &&
@@ -15,7 +22,7 @@ const componentStates = {
   unknown: 'Installed version unavailable',
 };
 
-export function MatchedVersions({ settings, onCheckPair }) {
+export function MatchedVersions({ settings, onCheckPair, onScreenUpdate, submitting = false }) {
   const ready = settings.pairStatus === 'ready';
   const checking = settings.pairStatus === 'checking';
   const compatibility = {
@@ -38,19 +45,31 @@ export function MatchedVersions({ settings, onCheckPair }) {
           <button
             type='button'
             className='btn btn-secondary btn-sm'
-            disabled={checking || Boolean(settings.updating)}
+            disabled={checking || Boolean(settings.updating) || submitting}
             onClick={onCheckPair}
           >
             {checking ? 'Checking…' : 'Check matched releases'}
           </button>
         </div>
+        <p className='text-base-content/70 text-sm'>
+          Screen updates: Bridgee/gaggimate-knob-screen. Controller image: unmodified official
+          GaggiMate, pinned to the version required by each pair. Controller OTA remains disabled.
+        </p>
+        <p role='status' className='text-sm'>
+          Installed screen base: {settings.displayUpstreamVersion || 'Unknown'} · Protocol{' '}
+          {settings.displayProtocol || 'Unknown'}.{' '}
+          {installedPairText(settings.installedCompatibility)}
+        </p>
         {ready ? (
           <div className='flex flex-wrap items-center gap-2'>
             <a href={settings.pairReleaseUrl} target='_blank' rel='noreferrer' className='link'>
               {settings.pairReleaseTag}
             </a>
             {settings.pairPrerelease && <span className='badge badge-warning'>Pre-release</span>}
-            <span className='text-base-content/70 text-sm'>Protocol {settings.pairProtocol}</span>
+            <span className='text-base-content/70 text-sm'>
+              Based on official {settings.pairUpstreamVersion || settings.pairControllerVersion} ·
+              Protocol {settings.pairProtocol}
+            </span>
           </div>
         ) : (
           <p role='status' className='text-base-content/70 text-sm'>
@@ -85,8 +104,12 @@ export function MatchedVersions({ settings, onCheckPair }) {
             <button
               type='button'
               className='btn btn-secondary btn-sm self-start'
-              disabled
+              disabled={component !== 'display' || !screenOtaRequest(settings, {}, submitting)}
               aria-describedby='ota-installation-notice'
+              onClick={() => {
+                if (component === 'display' && screenOtaRequest(settings, {}, submitting))
+                  onScreenUpdate?.({});
+              }}
             >
               Update {label}
             </button>
@@ -110,28 +133,124 @@ export function MatchedVersions({ settings, onCheckPair }) {
       )}
       {settings.screenOtaPhase && settings.screenOtaPhase !== 'idle' && (
         <div role='status' className='text-sm md:col-span-2'>
-          Screen update test: {settings.screenOtaPhase} ({settings.screenOtaProgress || 0}%).
-          {settings.screenOtaError && ` ${settings.screenOtaError}`}
+          Screen update: {otaStateText(settings.screenOtaPhase)} ({settings.screenOtaProgress || 0}
+          %).
+          {settings.screenOtaError && <span role='alert'> Error: {settings.screenOtaError}</span>}
+          {settings.screenOtaVerified && <p>Image hash and flash readback verified.</p>}
+          {settings.screenOtaPhase === 'rebooting' && (
+            <p>Startup health: {settings.screenBootHealth || 'Waiting'}</p>
+          )}
         </div>
       )}
       <div id='ota-installation-notice' role='note' className='alert alert-info md:col-span-2'>
         <div>
-          <p className='font-semibold'>Web installation not enabled</p>
-          <p>
-            {settings.screenOtaQualificationAvailable
-              ? 'This development build includes a screen OTA test interface. Installation from this page is not enabled yet.'
-              : 'Screen installation from this page is not enabled.'}
+          <p className='font-semibold'>
+            {settings.screenOtaInstallationAllowed === true
+              ? 'Screen web updates'
+              : 'Web installation not enabled'}
           </p>
-          <p>Use the K718 USB package for manual updates. Controller OTA remains disabled.</p>
+          <p>{otaStateText(settings.screenOtaPreflight)}</p>
+          {settings.screenOtaInstallationAllowed !== true && (
+            <p>
+              Use the K718 USB package for manual screen updates. This build keeps normal web
+              installation disabled.
+            </p>
+          )}
+          <p>Controller OTA remains disabled. Official notices do not authorize an installation.</p>
         </div>
       </div>
+      {settings.screenOtaQualificationAvailable === true && (
+        <details className='rounded-lg border p-4 md:col-span-2'>
+          <summary className='cursor-pointer font-semibold'>Screen OTA bench tests</summary>
+          <p className='my-3 text-sm'>
+            Candidate-only qualification on a separate controller bench. Verify only writes the
+            inactive screen slot without changing boot selection. Test install reboots into the
+            verified image.
+          </p>
+          <div className='flex flex-wrap gap-2'>
+            {[true, false].map(verifyOnly => (
+              <button
+                key={String(verifyOnly)}
+                type='button'
+                className='btn btn-outline btn-sm'
+                disabled={
+                  !screenOtaRequest(settings, { qualification: true, verifyOnly }, submitting)
+                }
+                onClick={() => {
+                  const options = { qualification: true, verifyOnly };
+                  if (screenOtaRequest(settings, options, submitting)) onScreenUpdate?.(options);
+                }}
+              >
+                {verifyOnly ? 'Verify inactive image' : 'Test screen install'}
+              </button>
+            ))}
+          </div>
+        </details>
+      )}
     </>
   );
 }
 
-export function FirmwareVersions({ settings, submitting, onUpdate, onCheckPair }) {
+export function ScreenUpdateConfirmation({ selection, settings, submitting, onCancel, onConfirm }) {
+  if (!selection) return null;
+  const current = selectionCurrent(settings, selection.request, submitting);
+  return (
+    <div
+      role='dialog'
+      aria-modal='true'
+      aria-labelledby='screen-update-title'
+      className='fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4'
+    >
+      <div className='bg-base-100 max-h-full w-full max-w-lg overflow-auto rounded-xl p-6 shadow-xl'>
+        <h3 id='screen-update-title' className='mb-3 text-lg font-semibold'>
+          {selection.request.verifyOnly ? 'Verify screen image' : 'Confirm screen update'}
+        </h3>
+        <p>
+          Knob Screen {selection.request.tag}, based on official {selection.upstreamVersion}.
+        </p>
+        <p>
+          Required controller: {selection.controllerVersion} · Protocol {selection.protocol}.
+        </p>
+        <p className='my-3 text-sm'>
+          {selection.request.verifyOnly
+            ? 'The inactive screen slot will be written and verified. No boot selection change or restart.'
+            : 'The verified screen image will be installed and the screen will restart. Keep USB power connected.'}{' '}
+          Controller firmware, pairing, settings and profiles are not written by this operation.
+        </p>
+        {selection.request.qualification && (
+          <p className='text-warning'>Candidate bench test; not ordinary OTA qualification.</p>
+        )}
+        {!current && <p role='alert'>{otaStateText('selection-changed')}</p>}
+        <div className='mt-4 flex justify-end gap-2'>
+          <button type='button' className='btn btn-ghost' disabled={submitting} onClick={onCancel}>
+            Cancel
+          </button>
+          <button
+            type='button'
+            className='btn btn-primary'
+            disabled={!current}
+            onClick={() => {
+              if (current) onConfirm();
+            }}
+          >
+            Confirm
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function FirmwareVersions({ settings, submitting, onUpdate, onCheckPair, onScreenUpdate }) {
   if (settings.pairSupported)
-    return <MatchedVersions settings={settings} onCheckPair={onCheckPair} />;
+    return (
+      <MatchedVersions
+        settings={settings}
+        submitting={submitting}
+        onCheckPair={onCheckPair}
+        onScreenUpdate={onScreenUpdate}
+      />
+    );
   const blocked = settings.otaAllowed === false;
   return (
     <>
@@ -226,6 +345,11 @@ export function OfficialUpdateChannel({ settings, submitting, formRef, onSubmit 
           checked separately using the matched releases above. Changing this channel does not enable
           installation or controller OTA.
         </p>
+        {settings.officialCheckStatus && (
+          <p role='status' className='text-sm'>
+            Official check: {settings.officialCheckStatus}. {settings.officialCheckMessage || ''}
+          </p>
+        )}
         {form}
       </div>
     </details>

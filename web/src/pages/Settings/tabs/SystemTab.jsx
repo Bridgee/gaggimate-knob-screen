@@ -1,4 +1,10 @@
-import { FirmwareVersions, OfficialUpdateChannel, canInstallOta } from './FirmwareVersions';
+import { screenOtaRequest, selectionCurrent, otaStateText } from '../../../utils/screenOta.js';
+import {
+  FirmwareVersions,
+  OfficialUpdateChannel,
+  ScreenUpdateConfirmation,
+  canInstallOta,
+} from './FirmwareVersions';
 import { useCallback, useContext, useEffect, useRef, useState } from 'preact/hooks';
 import { Trans, useLingui } from '@lingui/react/macro';
 import { ApiServiceContext, machine } from '../../../services/ApiService.js';
@@ -238,6 +244,12 @@ export function SystemTab() {
   const [formData, setFormData] = useState({});
   const [phase, setPhase] = useState(0);
   const [progress, setProgress] = useState(0);
+  const [screenSelection, setScreenSelection] = useState(null);
+  const [screenMessage, setScreenMessage] = useState('');
+  const [screenSubmitting, setScreenSubmitting] = useState(false);
+  const screenRequestPending = useRef(false);
+  const liveOtaSettings = useRef(formData);
+  liveOtaSettings.current = formData;
   const rssi = machine.value.status.rssi;
   // Firmware without the link field only ever talks BLE.
   const controllerLink = machine.value.status.controllerLink ?? 'ble';
@@ -310,6 +322,63 @@ export function SystemTab() {
       apiService.send({ tp: 'req:ota-settings' });
     }, 500);
   }, [apiService]);
+
+  // Recheck live conditions and progress even after an update-page reconnect.
+  useEffect(() => {
+    if (!formData.pairSupported) return;
+    const timer = setInterval(
+      () => {
+        try {
+          apiService.send({ tp: 'req:ota-settings' });
+        } catch {
+          /* WebSocket reconnect will refresh the page state. */
+        }
+      },
+      formData.updating ? 2000 : 15000,
+    );
+    return () => clearInterval(timer);
+  }, [apiService, formData.pairSupported, formData.updating]);
+
+  const prepareScreenUpdate = options => {
+    const request = screenOtaRequest(formData, options, screenRequestPending.current);
+    if (!request) return;
+    setScreenMessage('');
+    setScreenSelection({
+      request,
+      upstreamVersion: formData.pairUpstreamVersion,
+      controllerVersion: formData.pairControllerVersion,
+      protocol: formData.pairProtocol,
+    });
+  };
+  const confirmScreenUpdate = async () => {
+    if (screenRequestPending.current) return;
+    if (!selectionCurrent(liveOtaSettings.current, screenSelection?.request)) {
+      setScreenMessage(otaStateText('selection-changed'));
+      return;
+    }
+    const request = screenSelection.request;
+    screenRequestPending.current = true;
+    setScreenSubmitting(true);
+    try {
+      const result = await apiService.request(request);
+      setScreenSelection(null);
+      setScreenMessage(result.accepted ? otaStateText('queued') : otaStateText(result.state));
+    } catch {
+      // A missing reply does not prove that staging failed. Never auto-resubmit.
+      setScreenSelection(null);
+      setScreenMessage(
+        'The update reply was interrupted. Reconnect and check screen status before retrying.',
+      );
+    } finally {
+      screenRequestPending.current = false;
+      setScreenSubmitting(false);
+      try {
+        apiService.send({ tp: 'req:ota-settings' });
+      } catch {
+        /* The installed screen may be restarting. */
+      }
+    }
+  };
 
   const formRef = useRef();
 
@@ -398,9 +467,22 @@ export function SystemTab() {
 
           <FirmwareVersions
             settings={formData}
-            submitting={submitting}
+            submitting={submitting || screenSubmitting}
             onUpdate={onUpdate}
+            onScreenUpdate={prepareScreenUpdate}
             onCheckPair={() => apiService.send({ tp: 'req:ota-settings', refreshPair: true })}
+          />
+          {screenMessage && (
+            <p role='status' className='text-sm md:col-span-2'>
+              {screenMessage}
+            </p>
+          )}
+          <ScreenUpdateConfirmation
+            selection={screenSelection}
+            settings={formData}
+            submitting={screenSubmitting}
+            onCancel={() => setScreenSelection(null)}
+            onConfirm={confirmScreenUpdate}
           />
           {formData.pairSupported && (
             <div className='md:col-span-2'>

@@ -155,6 +155,17 @@ inline const char *componentState(const std::string &current, const std::string 
     const int comparison = order(published, current);
     return comparison > 0 ? "update-available" : comparison < 0 ? "local-newer" : "up-to-date";
 }
+// Current installed-pair health is independent of release discovery.
+inline const char *installedCompatibility(const std::string &upstreamVersion, unsigned localProtocol,
+                                         unsigned controllerProtocol, bool connected,
+                                         const std::string &controllerVersion) {
+    if (!connected) return "controller-disconnected";
+    if (!localProtocol || !controllerProtocol || !version(upstreamVersion) || !version(controllerVersion))
+        return "controller-unidentified";
+    if (localProtocol != controllerProtocol) return "protocol-mismatch";
+    if (order(upstreamVersion, controllerVersion) != 0) return "controller-version-mismatch";
+    return "matched";
+}
 inline const char *compatibility(const Pair &pair, unsigned localProtocol, unsigned controllerProtocol, bool connected,
                                   const std::string &controllerVersion) {
     if (pair.protocol != localProtocol) return "incompatible";

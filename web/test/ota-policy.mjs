@@ -9,8 +9,13 @@ const server = await createServer({
   optimizeDeps: { noDiscovery: true, entries: [] },
 });
 try {
-  const { FirmwareVersions, MatchedVersions, OfficialUpdateChannel, canInstallOta } =
-    await server.ssrLoadModule('/src/pages/Settings/tabs/FirmwareVersions.jsx');
+  const {
+    FirmwareVersions,
+    MatchedVersions,
+    OfficialUpdateChannel,
+    ScreenUpdateConfirmation,
+    canInstallOta,
+  } = await server.ssrLoadModule('/src/pages/Settings/tabs/FirmwareVersions.jsx');
   const settings = {
     controllerVersion: 'v1.9.0',
     displayVersion: 'v1.9.0-k718.0.3.5-rc.2+example',
@@ -104,12 +109,12 @@ try {
   const candidateHtml = renderToString(
     MatchedVersions({ settings: { ...pair, screenOtaQualificationAvailable: true } }),
   );
-  assert.match(candidateHtml, /includes a screen OTA test interface/);
-  assert.match(candidateHtml, /Installation from this page is not enabled yet/);
+  assert.match(candidateHtml, /Screen OTA bench tests/);
+  assert.match(candidateHtml, /Verify inactive image/);
   const stableHtml = renderToString(
     MatchedVersions({ settings: { ...pair, screenOtaQualificationAvailable: false } }),
   );
-  assert.doesNotMatch(stableHtml, /includes a screen OTA test interface/);
+  assert.doesNotMatch(stableHtml, /Screen OTA bench tests/);
   const notices = OfficialUpdateChannel({ settings: { ...pair, channel: 'nightly' } });
   assert.equal(notices.type, 'details');
   assert.equal(notices.props.open, undefined); // advanced upstream controls start collapsed
@@ -169,6 +174,170 @@ try {
       MatchedVersions({ settings: { ...pair, pairCompatibility: state } }),
     );
     assert.doesNotMatch(html, /Target, protocol and controller version match/);
+  }
+  const { screenOtaRequest, selectionCurrent, otaStateText, installedPairText } =
+    await server.ssrLoadModule('/src/utils/screenOta.js');
+  const ready = {
+    ...pair,
+    pairReleaseTag: 'v0.5.0-rc.12',
+    pairDisplayVersion: '0.5.0-rc.12',
+    pairControllerVersion: 'v1.10.0',
+    pairUpstreamVersion: 'v1.10.0',
+    pairProtocol: 16,
+    displayUpstreamVersion: 'v1.10.0',
+    displayProtocol: 16,
+    installedCompatibility: 'matched',
+    pairDisplayState: 'update-available',
+    screenOtaPreflight: 'metadata-ready',
+    screenOtaInstallationAllowed: true,
+    screenOtaSelectionTag: 'v0.5.0-rc.12',
+    screenOtaManifestSha256: 'a'.repeat(64),
+    screenOtaImageSha256: 'b'.repeat(64),
+  };
+  const request = screenOtaRequest(ready);
+  assert.equal(Object.isFrozen(request), true);
+  assert.deepEqual(request, {
+    tp: 'req:screen-ota-start',
+    component: 'display',
+    tag: 'v0.5.0-rc.12',
+    manifestSha256: 'a'.repeat(64),
+    imageSha256: 'b'.repeat(64),
+    qualification: false,
+    verifyOnly: false,
+  });
+  assert.equal('url' in request, false);
+  for (const changes of [
+    { pairSupported: false },
+    { screenOtaInstallationAllowed: false },
+    { screenOtaInstallationAllowed: undefined },
+    { screenOtaInstallationAllowed: 'true' },
+    { pairStatus: 'checking' },
+    { pairStatus: 'error' },
+    { pairStatus: 'no-release' },
+    { pairCompatibility: 'unknown' },
+    { pairCompatibility: 'incompatible' },
+    { pairDisplayState: 'up-to-date' },
+    { pairDisplayState: 'local-newer' },
+    { screenOtaSelectionTag: 'v0.5.0-rc.13' },
+    { screenOtaImageSha256: 'bad' },
+    { screenOtaManifestSha256: 'A'.repeat(64) },
+    { updating: true },
+  ])
+    assert.equal(screenOtaRequest({ ...ready, ...changes }), null);
+  assert.equal(screenOtaRequest(ready, {}, true), null);
+  assert.equal(screenOtaRequest(ready, { verifyOnly: true }), null);
+  for (const state of [
+    'refresh-required',
+    'busy',
+    'controller-disconnected',
+    'controller-unidentified',
+    'protocol-mismatch',
+    'controller-version-mismatch',
+    'startup-unverified',
+    'restart-required',
+    'standby-required',
+    'unsupported-partitions',
+    'invalid-release',
+    'preview-excluded',
+  ]) {
+    assert.equal(screenOtaRequest({ ...ready, screenOtaPreflight: state }), null);
+    assert.notEqual(otaStateText(state), otaStateText('unknown-future-state'));
+  }
+  let selected = [];
+  const wired = buttons(
+    MatchedVersions({ settings: ready, onScreenUpdate: value => selected.push(value) }),
+  );
+  assert.deepEqual(
+    wired.map(b => !!b.props.disabled),
+    [false, true, false],
+  );
+  wired[1].props.onClick();
+  wired[2].props.onClick();
+  assert.deepEqual(selected, [{}]); // controller action never routes into either installer
+  assert.equal(canInstallOta(ready, 'display'), false); // legacy endpoint remains locked
+  assert.equal(screenOtaRequest(ready, { qualification: true }), null);
+  const bench = {
+    ...ready,
+    screenOtaInstallationAllowed: false,
+    screenOtaQualificationAvailable: true,
+  };
+  const verify = screenOtaRequest(bench, { qualification: true, verifyOnly: true });
+  assert.equal(verify.verifyOnly, true);
+  assert.equal(verify.qualification, true);
+  assert.equal(screenOtaRequest(bench), null);
+  selected = [];
+  const benchControls = buttons(
+    MatchedVersions({ settings: bench, onScreenUpdate: v => selected.push(v) }),
+  );
+  assert.deepEqual(
+    benchControls.map(b => !!b.props.disabled),
+    [false, true, true, false, false],
+  );
+  benchControls[3].props.onClick();
+  benchControls[4].props.onClick();
+  assert.deepEqual(selected, [
+    { qualification: true, verifyOnly: true },
+    { qualification: true, verifyOnly: false },
+  ]);
+  const selection = {
+    request,
+    upstreamVersion: 'v1.10.0',
+    controllerVersion: 'v1.10.0',
+    protocol: 16,
+  };
+  assert.equal(selectionCurrent(ready, request), true);
+  let confirmed = 0;
+  const confirmation = ScreenUpdateConfirmation({
+    selection,
+    settings: ready,
+    onConfirm: () => confirmed++,
+  });
+  assert.match(renderToString(confirmation), /based on official v1.10.0/);
+  assert.match(renderToString(confirmation), /Required controller: v1.10.0/);
+  buttons(confirmation)[1].props.onClick();
+  assert.equal(confirmed, 1);
+  for (const changes of [
+    { screenOtaImageSha256: 'c'.repeat(64) },
+    { updating: true },
+    { screenOtaPreflight: 'refresh-required' },
+    { screenOtaInstallationAllowed: false },
+  ]) {
+    const changed = { ...ready, ...changes };
+    assert.equal(selectionCurrent(changed, request), false);
+    const dialog = ScreenUpdateConfirmation({
+      selection,
+      settings: changed,
+      onConfirm: () => confirmed++,
+    });
+    assert.equal(buttons(dialog)[1].props.disabled, true);
+    buttons(dialog)[1].props.onClick();
+    assert.equal(confirmed, 1);
+  }
+  assert.equal(ScreenUpdateConfirmation({ selection: null, settings: ready }), null);
+  for (const state of [
+    'controller-disconnected',
+    'protocol-mismatch',
+    'controller-version-mismatch',
+  ]) {
+    const html = renderToString(
+      MatchedVersions({ settings: { ...ready, installedCompatibility: state } }),
+    );
+    assert.match(html, new RegExp(installedPairText(state).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+    assert.doesNotMatch(html, /installed screen and controller versions match/);
+  }
+  for (const phase of [
+    'downloading',
+    'readback',
+    'verified',
+    'rebooting',
+    'error',
+    'recovery-required',
+  ]) {
+    const html = renderToString(
+      MatchedVersions({ settings: { ...ready, screenOtaPhase: phase, screenOtaProgress: 80 } }),
+    );
+    assert.match(html, /Screen update:/);
+    assert.equal(html.includes(otaStateText(phase)), true);
   }
   console.log(
     'OTA web policy: disabled controls, guarded actions, update notices and legacy behavior passed.',

@@ -81,7 +81,9 @@ int main() {
         if (kind == 2) bad.controllerProtocol = 8;
         if (kind == 3) bad.localProtocol = 8;
         if (kind == 4) bad.controllerVersion = "v1.10.0";
-        state(inspect(true, release, pair, bad, true), "incompatible-controller");
+        const char *expected[] = {"controller-disconnected", "controller-unidentified", "protocol-mismatch",
+                                  "protocol-mismatch", "controller-version-mismatch"};
+        state(inspect(true, release, pair, bad, true), expected[kind]);
     }
     auto busy = local; busy.activeProcess = true;
     state(inspect(true, release, pair, busy, true), "busy");

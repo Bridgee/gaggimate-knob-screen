@@ -53,11 +53,13 @@ inline Preflight inspect(bool metadataValidated, const matched_release::Release 
     if (preview && !previews) return {"preview-excluded", {}};
     if (matched_release::order(pair.screenVersion, local.portVersion) <= 0) return {"not-newer", {}};
     if (local.activeProcess || local.updating) return {"busy", {}};
-    if (!pair.protocol || pair.protocol != local.localProtocol ||
-        !matched_release::version(pair.controllerVersion) || pair.controllerVersion != pair.upstreamVersion ||
-        std::strcmp(matched_release::compatibility(pair, local.localProtocol, local.controllerProtocol,
-            local.controllerReady, local.controllerVersion), "matched") != 0)
-        return {"incompatible-controller", {}};
+    if (!pair.protocol || pair.protocol != local.localProtocol)
+        return {"protocol-mismatch", {}};
+    if (!matched_release::version(pair.controllerVersion) || pair.controllerVersion != pair.upstreamVersion)
+        return {"invalid-release", {}};
+    const auto match = matched_release::installedCompatibility(pair.controllerVersion, pair.protocol,
+        local.controllerProtocol, local.controllerReady, local.controllerVersion);
+    if (std::strcmp(match, "matched") != 0) return {match, {}};
     if (!local.bootHealthy) return {"startup-unverified", {}};
     if (!local.bootSelectionCurrent) return {"restart-required", {}};
     if (!local.standby) return {"standby-required", {}};

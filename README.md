@@ -16,7 +16,7 @@ This is an independent port maintained by [Bridgee](https://github.com/Bridgee).
 - Optional LED-ring temperature/pressure bars, following the screen colors. Enable the ring and set its brightness in **Settings → General → LED Ring**; saved preferences survive restarts.
 - Custom standby text or a centered clock, with both themes and touch wake.
 - Callable speaker and microphone interfaces. The temporary hardware-test page has been removed.
-- Read-only discovery of our matched releases, with separate screen/controller versions and compatibility status. Official upstream notices remain available.
+- Matched-release discovery, separate installed/release compatibility and a guarded own-repository screen web-update flow. Installation permissions remain disabled pending qualification; official notices stay separate.
 - Locked build inputs, official-base patch replay and reproducible firmware builds.
 
 ## Feature previews
@@ -85,13 +85,13 @@ See [Port architecture and migration](docs/PORTING.md) for the implementation ma
 
 ## Releases and compatibility
 
-The development branch targets official v1.10.0 / protocol 16. [Port configuration](port/config.json) records the current port version and exact upstream commit. It requires an official v1.10.0 controller; hardware validation is pending and all OTA installation is disabled for this migration candidate. The latest USB stable release is [0.3.8](https://github.com/Bridgee/gaggimate-knob-screen/releases/tag/v0.3.8), based on GaggiMate v1.9.0 / protocol 5. Available versioned packages are listed under [Releases](https://github.com/Bridgee/gaggimate-knob-screen/releases). Each package has its own source identity, artifact checksums and validation scope.
+The development branch targets official v1.10.0 / protocol 16. [Port configuration](port/config.json) records the current port version and exact upstream commit. It requires an official v1.10.0 controller; hardware validation is pending and all OTA installation is disabled for this migration candidate. The web update flow is described in [Firmware updates](docs/UPDATES.md); current candidate notes are in [0.5.0-rc.11](docs/RELEASE-0.5.0-rc.11.md). The latest USB stable release is [0.3.8](https://github.com/Bridgee/gaggimate-knob-screen/releases/tag/v0.3.8), based on GaggiMate v1.9.0 / protocol 5. Available versioned packages are listed under [Releases](https://github.com/Bridgee/gaggimate-knob-screen/releases). Each package has its own source identity, artifact checksums and validation scope.
 
 Stable builds check only stable matched releases; pre-releases are excluded. Candidate builds also include explicitly labelled pre-releases.
 
 **Validation limit:** real brewing dynamics, including changing temperature/pressure and LED following during a shot, remain unverified and are excluded from the USB validation scope. This does not block the USB stable build. No brewing or OTA qualification is implied.
 
-- Update the display over **USB using a K718 build**. Development candidates may include an explicitly enabled bench-test interface for our own screen releases; it is not enabled in stable builds or ordinary update buttons. Normal OTA installation for both the display and controller is disabled in the knob-screen firmware. Official update checks and notifications remain enabled; update notices do not confirm port compatibility.
+- Update the display over **USB using a K718 build**. Development candidates may include an explicitly enabled bench-test interface for our own screen releases; it is not enabled in stable builds or ordinary update buttons. Normal OTA installation for both the display and controller remains disabled; the screen web action is wired to the guarded own-release backend for later qualification. Official update checks and notifications remain enabled; update notices do not confirm port compatibility.
 - Battery percentage is uncalibrated. The lightning symbol means external power, not measured charging current.
 - LED-ring preferences are saved on the screen. The ring remains off in standby and while the controller is disconnected.
 - Speaker/microphone interfaces have been exercised; continuous audio, audio quality and optional haptics are not qualified.
@@ -132,6 +132,8 @@ Build commands never flash a device automatically. See [Building and flashing](d
 - [Port architecture and migration](docs/PORTING.md)
 - [Maintaining and updating the port](docs/MAINTAINING.md)
 - [Validation scope and upstream baseline](docs/VALIDATION.md)
+- [Testing without interrupting a daily-use machine](docs/TESTING.md)
+- [Firmware updates and compatibility messages](docs/UPDATES.md)
 - [Roadmap](docs/ROADMAP.md)
 - [Changelog](CHANGELOG.md)
 

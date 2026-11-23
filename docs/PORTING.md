@@ -31,7 +31,7 @@ Checks preserve the ten upstream pages, all 74 page event handlers and the flow 
 Rotary changes normally call existing button handlers. Grind uses 0.5 seconds or 0.5 grams per detent through the existing controller setters, retaining the original limits, change events and save behavior. Its time label includes tenths, mirrored by the web dashboard. Original touch-button steps remain unchanged. Multi-field pages require touch selection first. Profile browsing reuses the original previous/next actions, without an additional highlight or automatic load; the existing checkmark confirms the preview.
 
 The additional power icon, rotary highlight, LED mirror, standby options and web attribution are extensions. Brightness updates and theme-cache handling are compatibility fixes.
-OTA installation is an explicit functional difference: both display and controller installation are blocked in this port until a compatible OTA path is implemented. Official release discovery and notifications remain enabled. Use compatible firmware over USB; an official LilyGO binary does not contain the K718 driver.
+OTA installation is an explicit functional difference: both display and controller installation are blocked in this port until a compatible OTA path is implemented. Official release discovery and notifications remain enabled. The web screen action now targets our guarded own-release backend, but its permission remains disabled pending qualification; see [Updates](UPDATES.md). Use compatible firmware over USB; an official LilyGO binary does not contain the K718 driver.
 
 ## Reconstruct from official firmware
 

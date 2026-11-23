@@ -1163,9 +1163,12 @@ void WebUIPlugin::handleScreenOTAStart(JsonDocument &request) {
     const bool accepted = valid && screenInstaller.queue(preflight, selected);
     JsonDocument response(&psramAllocator);
     response["tp"] = "res:screen-ota-start";
+    if (request["rid"].is<const char *>()) response["rid"] = request["rid"];
     response["accepted"] = accepted;
+    const bool permission = selected.qualification ? BUILD_SCREEN_OTA_QUALIFICATION != 0 :
+        screen_ota::screenInstallationAllowed && !selected.verifyOnly;
     response["state"] = accepted ? "queued" : (!valid ? "invalid-request" :
-        (preflight.ready() ? "installation-disabled-or-selection-changed" : preflight.state));
+        (!permission ? "installation-disabled" : (!preflight.ready() ? preflight.state : "selection-changed")));
     wsHandler.broadcastJson(response);
     updateOTAStatus(ota->getCurrentVersion());
 }
@@ -1200,6 +1203,15 @@ void WebUIPlugin::updateOTAStatus(const String &version) {
     const auto pair = matchedReleases.snapshot();
     const auto system = controller->getSystemInfo();
     const bool ready = pair.status == "ready";
+    doc["displayPortVersion"] = BUILD_PORT_VERSION;
+    doc["displayUpstreamVersion"] = BUILD_UPSTREAM_VERSION;
+    doc["officialDisplayVersion"] = BUILD_UPSTREAM_VERSION;
+    doc["displayProtocol"] = gm_proto::PROTOCOL_VERSION;
+    doc["controllerProtocol"] = system.protocolVersion;
+    doc["controllerConnected"] = controller->getSystemState() == SYSTEM_READY;
+    doc["installedCompatibility"] = matched_release::installedCompatibility(BUILD_UPSTREAM_VERSION,
+        gm_proto::PROTOCOL_VERSION, system.protocolVersion, controller->getSystemState() == SYSTEM_READY,
+        system.version.c_str());
     doc["pairSupported"] = true;
     doc["pairStatus"] = pair.status;
     doc["pairMessage"] = pair.message;
@@ -1211,6 +1223,7 @@ void WebUIPlugin::updateOTAStatus(const String &version) {
     doc["pairDisplayVersion"] = pair.pair.screenVersion;
     doc["pairControllerVersion"] = pair.pair.controllerVersion;
     doc["pairProtocol"] = pair.pair.protocol;
+    doc["pairUpstreamVersion"] = pair.pair.upstreamVersion;
     doc["pairDisplayState"] = ready ? matched_release::componentState(BUILD_PORT_VERSION, pair.pair.screenVersion) : "unknown";
     doc["pairControllerState"] = ready ? matched_release::componentState(system.version.c_str(), pair.pair.controllerVersion) : "unknown";
     doc["pairCompatibility"] = ready ? matched_release::compatibility(pair.pair, gm_proto::PROTOCOL_VERSION,
