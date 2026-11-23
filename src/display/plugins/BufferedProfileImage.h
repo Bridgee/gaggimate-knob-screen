@@ -1,5 +1,6 @@
 #pragma once
 #include <algorithm>
+#include <atomic>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
@@ -54,5 +55,43 @@ class PacedImage {
   private:
     BufferedImage image;
     bool yield = false;
+};
+// A permit is retained until the HTTP response's final owner is destroyed,
+// including disconnects. Waiting callbacks yield without occupying a slot.
+class SendSlots {
+  public:
+    explicit SendSlots(unsigned limit) : limit(limit) {}
+    bool acquire() {
+        auto n = active.load(std::memory_order_relaxed);
+        while (n < limit) {
+            if (active.compare_exchange_weak(n, n + 1, std::memory_order_relaxed)) return true;
+        }
+        return false;
+    }
+    void release() { active.fetch_sub(1, std::memory_order_relaxed); }
+    unsigned used() const { return active.load(std::memory_order_relaxed); }
+  private:
+    const unsigned limit;
+    std::atomic<unsigned> active{0};
+};
+class ImageTransfer {
+  public:
+    ImageTransfer(BufferedImage image, SendSlots &slots) : length(image.size()), response(std::move(image)), slots(slots) {}
+    ImageTransfer(const ImageTransfer &) = delete;
+    ImageTransfer &operator=(const ImageTransfer &) = delete;
+    ~ImageTransfer() { if (owned) slots.release(); }
+    size_t copy(uint8_t *destination, size_t capacity, size_t offset) {
+        if (!destination || !capacity || offset >= length) return 0;
+        if (!owned) {
+            if (!slots.acquire()) return PacedImage::Retry;
+            owned = true;
+        }
+        return response.copy(destination, capacity, offset);
+    }
+  private:
+    const size_t length;
+    PacedImage response;
+    SendSlots &slots;
+    bool owned = false;
 };
 } // namespace profile_http

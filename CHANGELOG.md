@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.0-rc.9
+
+- Admit at most two active K718 image bodies; additional HTTP responses yield without advancing content, retaining normal successful image responses. Hold permits until final response destruction, including disconnects.
+- Test quota bounds, shared-owner lifetime, blocked offsets and permit release with sanitizers. RC8 returned all six-way image bytes but concurrent metadata reads still hit DMA pressure; that combined outcome remains required.
+
 ## 0.5.0-rc.8
 
 - Yield K718 image responses after each 2 KiB batch using the pinned server retry signal, reducing simultaneous TCP-window bursts without sleeps or changed image bytes.

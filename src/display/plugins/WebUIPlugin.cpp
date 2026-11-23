@@ -1361,9 +1361,11 @@ void WebUIPlugin::handleProfileImage(AsyncWebServerRequest *request) {
             file.close();
             if (!image) { request->send(503, "text/plain", "Could not buffer profile image"); return; }
             static_assert(profile_http::PacedImage::Retry == RESPONSE_TRY_AGAIN, "Review server retry semantics");
+            static profile_http::SendSlots slots(2);
+            auto transfer = std::make_shared<profile_http::ImageTransfer>(image, slots);
             request->send(request->beginResponse("application/octet-stream", profile_image::FILE_BYTES,
-                [response = profile_http::PacedImage(image)](uint8_t *buffer, size_t length, size_t offset) mutable {
-                    return response.copy(buffer, length, offset);
+                [transfer](uint8_t *buffer, size_t length, size_t offset) {
+                    return transfer->copy(buffer, length, offset);
                 }));
         }
 #else

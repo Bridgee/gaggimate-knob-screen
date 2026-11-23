@@ -71,6 +71,30 @@ int main() {
             assert(paced.copy(nullptr, window, 0) == 0);
         }
     }
+    {
+        source.open = true;
+        auto owner = profile_http::BufferedImage::load(source, Size, Header, allocate);
+        source.open = false;
+        profile_http::SendSlots slots(2);
+        auto first = std::make_shared<profile_http::ImageTransfer>(owner, slots);
+        auto held = first;
+        auto secondTransfer = std::make_shared<profile_http::ImageTransfer>(owner, slots);
+        auto waiting = std::make_shared<profile_http::ImageTransfer>(owner, slots);
+        uint8_t out[4096];
+        assert(first->copy(nullptr, sizeof(out), 0) == 0 && slots.used() == 0);
+        assert(first->copy(out, sizeof(out), Size) == 0 && slots.used() == 0);
+        assert(first->copy(out, sizeof(out), 0) == 2048);
+        assert(secondTransfer->copy(out, sizeof(out), 0) == 2048 && slots.used() == 2);
+        assert(waiting->copy(out, sizeof(out), 0) == profile_http::PacedImage::Retry);
+        first.reset(); // another response owner still holds the permit
+        assert(slots.used() == 2);
+        held.reset(); // disconnect/final response destruction releases it
+        assert(slots.used() == 1);
+        assert(waiting->copy(out, sizeof(out), 0) == 2048);
+        assert(std::memcmp(out, source.data.data(), 2048) == 0 && slots.used() == 2);
+        secondTransfer.reset(); waiting.reset();
+        assert(slots.used() == 0);
+    }
     uint8_t guard[4] = {9,9,9,9};
     assert(callback(guard,4,Size-2) == 2 && guard[2] == 9 && guard[3] == 9);
     assert(callback(guard,4,Size) == 0);
