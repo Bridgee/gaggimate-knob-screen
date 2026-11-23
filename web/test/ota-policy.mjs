@@ -179,6 +179,8 @@ try {
     await server.ssrLoadModule('/src/utils/screenOta.js');
   const ready = {
     ...pair,
+    controllerConnected: true,
+    displayVersion: 'v1.10.0-k718.0.5.0-rc.11+example',
     pairReleaseTag: 'v0.5.0-rc.12',
     pairDisplayVersion: '0.5.0-rc.12',
     pairControllerVersion: 'v1.10.0',
@@ -208,6 +210,8 @@ try {
   assert.equal('url' in request, false);
   for (const changes of [
     { pairSupported: false },
+    { controllerConnected: false },
+    { controllerConnected: undefined },
     { screenOtaInstallationAllowed: false },
     { screenOtaInstallationAllowed: undefined },
     { screenOtaInstallationAllowed: 'true' },
@@ -339,6 +343,25 @@ try {
     assert.match(html, /Screen update:/);
     assert.equal(html.includes(otaStateText(phase)), true);
   }
+  const disconnected = renderToString(
+    MatchedVersions({
+      settings: {
+        ...ready,
+        controllerConnected: false,
+        controllerVersion: 'v1.9.0',
+        pairControllerState: 'up-to-date',
+        installedCompatibility: 'controller-disconnected',
+        displayPortVersion: '0.5.0-rc.11',
+        screenBootHealth: 'confirmed',
+      },
+    }),
+  );
+  assert.match(disconnected, /Not connected/);
+  assert.match(disconnected, /Installed version unavailable/);
+  assert.doesNotMatch(disconnected, /v1.9.0|Same version/);
+  assert.doesNotMatch(disconnected, /Target, protocol and controller version match/);
+  assert.match(disconnected, /Current running screen: 0.5.0-rc.11/);
+  assert.match(disconnected, /Startup health: confirmed/);
   console.log(
     'OTA web policy: disabled controls, guarded actions, update notices and legacy behavior passed.',
   );

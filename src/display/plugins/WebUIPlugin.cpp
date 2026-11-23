@@ -1208,7 +1208,9 @@ void WebUIPlugin::updateOTAStatus(const String &version) {
     doc["officialDisplayVersion"] = BUILD_UPSTREAM_VERSION;
     doc["displayProtocol"] = gm_proto::PROTOCOL_VERSION;
     doc["controllerProtocol"] = system.protocolVersion;
-    doc["controllerConnected"] = controller->getSystemState() == SYSTEM_READY;
+    const bool controllerReady = controller->getSystemState() == SYSTEM_READY;
+    doc["controllerConnected"] = controllerReady;
+    if (!controllerReady) doc["controllerVersion"] = "";
     doc["installedCompatibility"] = matched_release::installedCompatibility(BUILD_UPSTREAM_VERSION,
         gm_proto::PROTOCOL_VERSION, system.protocolVersion, controller->getSystemState() == SYSTEM_READY,
         system.version.c_str());
@@ -1225,7 +1227,7 @@ void WebUIPlugin::updateOTAStatus(const String &version) {
     doc["pairProtocol"] = pair.pair.protocol;
     doc["pairUpstreamVersion"] = pair.pair.upstreamVersion;
     doc["pairDisplayState"] = ready ? matched_release::componentState(BUILD_PORT_VERSION, pair.pair.screenVersion) : "unknown";
-    doc["pairControllerState"] = ready ? matched_release::componentState(system.version.c_str(), pair.pair.controllerVersion) : "unknown";
+    doc["pairControllerState"] = ready && controllerReady ? matched_release::componentState(system.version.c_str(), pair.pair.controllerVersion) : "unknown";
     doc["pairCompatibility"] = ready ? matched_release::compatibility(pair.pair, gm_proto::PROTOCOL_VERSION,
         system.protocolVersion, controller->getSystemState() == SYSTEM_READY, system.version.c_str()) : "unknown";
     const auto preflight = screenPreflight();

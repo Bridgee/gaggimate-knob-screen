@@ -8,6 +8,7 @@ export function screenOtaRequest(settings, options = {}, submitting = false) {
     : settings.screenOtaInstallationAllowed === true;
   if (
     !settings.pairSupported ||
+    settings.controllerConnected !== true ||
     !permission ||
     submitting ||
     settings.updating ||

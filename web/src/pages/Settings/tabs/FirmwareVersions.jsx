@@ -60,6 +60,12 @@ export function MatchedVersions({ settings, onCheckPair, onScreenUpdate, submitt
           {settings.displayProtocol || 'Unknown'}.{' '}
           {installedPairText(settings.installedCompatibility)}
         </p>
+        <p role='status' className='text-base-content/70 text-xs'>
+          Current running screen:{' '}
+          {settings.displayPortVersion || settings.displayVersion || 'Unknown'}. Startup health:{' '}
+          {settings.screenBootHealth || 'Unknown'}
+          {settings.screenBootPending === true ? ' (trial confirmation pending)' : ''}.
+        </p>
         {ready ? (
           <div className='flex flex-wrap items-center gap-2'>
             <a href={settings.pairReleaseUrl} target='_blank' rel='noreferrer' className='link'>
@@ -91,14 +97,18 @@ export function MatchedVersions({ settings, onCheckPair, onScreenUpdate, submitt
           <div key={component} className='flex flex-col space-y-2'>
             <span className='text-base-content/70 text-sm font-medium'>{label} Version</span>
             <span className='text-base-content font-semibold break-all'>
-              {settings[`${component}Version`] || 'Not connected'}
+              {component === 'controller' && settings.controllerConnected === false
+                ? 'Not connected'
+                : settings[`${component}Version`] || 'Not connected'}
             </span>
             <span className='text-base-content/70 text-sm'>
               Published: {ready ? settings[`pair${key}Version`] : 'Unavailable'}
             </span>
             {ready && (
               <span className='text-sm'>
-                {componentStates[settings[`pair${key}State`]] || componentStates.unknown}
+                {component === 'controller' && settings.controllerConnected === false
+                  ? componentStates.unknown
+                  : componentStates[settings[`pair${key}State`]] || componentStates.unknown}
               </span>
             )}
             <button
@@ -120,7 +130,9 @@ export function MatchedVersions({ settings, onCheckPair, onScreenUpdate, submitt
         <div role='status' className='text-base-content/70 text-sm md:col-span-2'>
           {settings.updating
             ? 'Screen update in progress.'
-            : compatibility[settings.pairCompatibility] || compatibility.unknown}
+            : compatibility[
+                settings.controllerConnected === false ? 'unknown' : settings.pairCompatibility
+              ] || compatibility.unknown}
         </div>
       )}
       {(settings.displayUpdateAvailable || settings.controllerUpdateAvailable) && (
@@ -137,9 +149,6 @@ export function MatchedVersions({ settings, onCheckPair, onScreenUpdate, submitt
           %).
           {settings.screenOtaError && <span role='alert'> Error: {settings.screenOtaError}</span>}
           {settings.screenOtaVerified && <p>Image hash and flash readback verified.</p>}
-          {settings.screenOtaPhase === 'rebooting' && (
-            <p>Startup health: {settings.screenBootHealth || 'Waiting'}</p>
-          )}
         </div>
       )}
       <div id='ota-installation-notice' role='note' className='alert alert-info md:col-span-2'>
