@@ -49,7 +49,7 @@ A new battery session needs three valid readings (about four seconds after the f
 
 ## Memory allocation
 
-K718 startup lowers the framework ordinary-allocation PSRAM threshold from4096 to512 bytes when PSRAM is present. Larger general-purpose buffers prefer PSRAM; capability-specific internal/DMA allocations retain their requirements. This preserves scarce internal RAM when many profiles and HTTP transfers coexist. Periodic nonblocking diagnostics include free, largest and minimum internal heap. The change needs current-device transfer and interaction acceptance; it does not establish a root cause for every network timeout.
+K718 startup prefers PSRAM for ordinary allocations (threshold 0) when PSRAM is present, rather than the framework default 4096-byte internal preference. Capability-specific internal/DMA allocations retain their requirements. This preserves scarce internal RAM when many profiles, HTTPS checks and HTTP transfers coexist. Nonblocking diagnostics report free, largest and minimum internal heap, plus failed allocation size/capabilities. Current-device combined-load and interaction acceptance remains required; this does not establish a root cause for every network timeout.
 
 ## HTTP interfaces
 

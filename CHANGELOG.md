@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.0-rc.6
+
+- Prefer PSRAM for all ordinary K718 allocations; keep explicit internal/DMA capability requests unchanged. Add nonblocking allocation-failure diagnostics.
+- RC5 completed one-time image migration, but concurrent release refresh and image reads still exhausted internal memory. This candidate requires that combined-load regression before stability can be claimed.
+
 ## 0.5.0-rc.5
 
 - Prefer PSRAM for K718 ordinary allocations above512 bytes before startup, preserving internal RAM for networking, task stacks and explicit DMA allocations. The framework default threshold is4096 bytes.

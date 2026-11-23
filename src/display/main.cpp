@@ -19,8 +19,12 @@ void setup() {
     // Preserve internal RAM for Wi-Fi/TCP, RTOS stacks and DMA. The framework
     // otherwise keeps ordinary allocations up to4096 bytes in internal RAM.
     // Capability-specific allocations retain their explicit requirements.
-    if (psramFound()) heap_caps_malloc_extmem_enable(512);
+    if (psramFound()) heap_caps_malloc_extmem_enable(0);
     knobDiagnosticBegin();
+    heap_caps_register_failed_alloc_callback([](size_t bytes, uint32_t caps, const char *function) {
+        knobDiagnosticPrintf("K718 allocation failed: bytes=%u caps=0x%x function=%s\n",
+                             static_cast<unsigned>(bytes), static_cast<unsigned>(caps), function ? function : "?");
+    });
     guition_knob::bootHealthBegin();
     knobDiagnosticPrintf("K718 display: starting original UI; nonblocking diagnostics\n");
 #endif
