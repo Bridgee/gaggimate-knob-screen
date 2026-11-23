@@ -13,6 +13,8 @@ Implemented does not mean that every new binary has completed hardware acceptanc
 
 ## Stable-release requirements
 
+When an installed controller is paired to another screen, continue the [controller-free validation route](VALIDATION.md#validation-without-changing-an-installed-machine). Preserve the pairing. Current host checks and prior peripheral acceptance reduce repeated work, but leave the focused current-binary controller checks pending; they do not silently satisfy them.
+
 - Validate the current candidate on the target: real GitHub metadata refresh, separate component versions/compatibility, retained official notices and disabled installation controls.
 - Check normal operation after the update and restart: controller reconnection/telemetry, display/touch, rotary adjustment, LED preferences, standby/wake and saved settings. Reuse established peripheral evidence; repeat basic hardware tests only when their implementation or inputs change.
 - Record the scope of real-machine use. Dynamic temperature/pressure and LED following during brewing remain unverified and are explicitly excluded from the USB validation scope. They do not block this USB release; complete that check before claiming brewing acceptance.

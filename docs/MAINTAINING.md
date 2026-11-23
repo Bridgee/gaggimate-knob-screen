@@ -75,9 +75,11 @@ Build the same committed stack in two clean directories, then compare:
 python scripts/k718.py verify-repro FIRST_PACKAGE SECOND_PACKAGE   --out dist/reproducibility.json
 ```
 
-The seven firmware artifacts must match byte for byte for identical supported build environments and inputs. Logs may differ in paths and audit times. Same-host reproducibility has been demonstrated; byte equality between local and CI hosts, across operating systems, or with historical official controller binaries is not established.
+The seven firmware artifacts must match byte for byte for identical supported build environments and inputs. Logs may differ in paths and audit times. Same-host reproducibility has been demonstrated. For the exact 0.5.0-rc.2 source `5eb279b5` / tree `22a02e3a`, all seven local artifacts matched the downloaded CI45129517870 artifacts byte for byte after normalizing project-relative dependency paths. This is evidence for that supported local/hosted environment pair, not arbitrary operating systems, future commits or historical official controller binaries. Compare each new build rather than inheriting that result.
 
 ## Stable-release acceptance
+
+[Validation scope](VALIDATION.md) separates historical device evidence, source equivalence, current host execution and pending physical checks. Use that route when a controller is already paired to an installed display; software work can proceed without changing the pairing.
 
 The [roadmap](ROADMAP.md) separates release requirements from ongoing maintenance and optional work. OTA installation, controller self-builds, extra host platforms and battery calibration are not prerequisites for a USB-only stable release.
 

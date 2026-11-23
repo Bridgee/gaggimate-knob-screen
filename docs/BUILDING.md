@@ -72,4 +72,5 @@ python scripts/k718.py check
 ```
 
 The second command needs the pinned LVGL dependencies installed by the build, or by `python scripts/k718.py deps`.
-Software checks do not automatically qualify a binary as hardware-tested.
+The full build also runs `test/knob_native/check_protocol.py` after firmware generation, against its exact nanopb schema/runtime. For a targeted rerun, build the firmware first, then run that script.
+Software checks do not automatically qualify a binary as hardware-tested; see [Validation scope](VALIDATION.md).

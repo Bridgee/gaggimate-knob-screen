@@ -163,6 +163,40 @@ int main(int argc, char **argv) {
             updateKnobStatusBattery(statusRow, guition_knob::PowerSource::External, -1);
             assert(lv_color_to32(lv_obj_get_style_img_recolor(battery, LV_PART_MAIN)) == lv_color_to32(lv_color_hex(theme_colors[theme][0])));
             lv_timer_handler();
+            // Real EEZ visibility expressions and LVGL flex layout: all four
+            // icons, every connection/update combination, on all status rows.
+            for (unsigned mask = 0; mask < 8; ++mask) {
+                auto system = SystemStatusValue(eez::flow::getGlobalVariable(FLOW_GLOBAL_VARIABLE_SYSTEM));
+                system.wifi(mask & 1); system.bluetooth(mask & 2); system.update_available(mask & 4);
+                eez::flow::setGlobalVariable(FLOW_GLOBAL_VARIABLE_SYSTEM, system);
+                for (int i = 0; i < 3; ++i) { ticks += 30; ui_tick(); lv_timer_handler(); }
+                updateKnobStatusBattery(statusRow, guition_knob::PowerSource::Battery, 60);
+                lv_obj_update_layout(statusRow);
+                lv_area_t rowBounds; lv_obj_get_coords(statusRow, &rowBounds);
+                int previousRight = -1;
+                for (unsigned iconIndex = 0; iconIndex < 4; ++iconIndex) {
+                    auto *icon = lv_obj_get_child(statusRow, iconIndex);
+                    const bool visible = iconIndex == 3 || (mask & (1u << iconIndex));
+                    assert(lv_obj_has_flag(icon, LV_OBJ_FLAG_HIDDEN) == !visible);
+                    if (!visible) continue;
+                    lv_area_t bounds; lv_obj_get_coords(icon, &bounds);
+                    assert(bounds.x1 > previousRight);
+                    assert(bounds.x1 >= rowBounds.x1 && bounds.x2 <= rowBounds.x2);
+                    assert(bounds.y1 >= rowBounds.y1 && bounds.y2 <= rowBounds.y2);
+                    previousRight = bounds.x2;
+                    for (int x : {bounds.x1, bounds.x2}) for (int y : {bounds.y1, bounds.y2})
+                        assert((x - 179.5) * (x - 179.5) + (y - 179.5) * (y - 179.5) <= 180 * 180);
+                    assertPreviewPixels(icon);
+                }
+                if (mask == 7) {
+                    char filename[96]; snprintf(filename, sizeof(filename), "status-all-four-%02d.ppm", screen);
+                    saveFrame(argv[1], filename);
+                }
+            }
+            publish();
+            ticks += 30; ui_tick();
+            updateKnobStatusBattery(statusRow, guition_knob::PowerSource::External, -1);
+            lv_timer_handler();
         }
         assert(lv_obj_get_width(lv_scr_act()) == 360 && lv_obj_get_height(lv_scr_act()) == 360);
         if (screen == SCREEN_ID_NEW_PROFILE_SCREEN)

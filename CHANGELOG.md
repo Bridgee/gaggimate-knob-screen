@@ -2,6 +2,8 @@
 
 ## 0.5.0-rc.2
 
+- Add hardware-independent checks of the firmware-generated protocol codec/queue and every four-icon status-row combination in both themes. Separate historical hardware evidence from current software validation, and document release-tag versus upstream-master differences.
+
 - Normalize both absolute and project-relative dependency paths in compiler metadata. This covers CI caches inside `.tools/` and external local caches, which previously produced different framework path strings.
 - Retain all 1.10.0 / protocol-16 adaptations from rc.1; hardware acceptance remains pending and all OTA installers remain disabled.
 

@@ -34,10 +34,12 @@ LED 0 is at 12 o'clock, numbering clockwise; LED 6 is at the bottom. UI mode fol
 
 Low-level `/api/hardware/led` settings remain temporary overrides until the next explicit LED-preference save or reboot. `Hardware::applyLedPreferences()` retries once the driver is ready/not busy.
 
-These interfaces have been exercised on the target board. Reuse their known configuration; new features need checks for their own behavior, not repeated pin discovery.
+These interfaces were exercised on earlier protocol-5 target builds. Reuse their known configuration; new features need checks for their own behavior, not repeated pin discovery. The protocol-16 candidate has not completed physical acceptance. See [Validation scope](VALIDATION.md) for the distinction between retained drivers, host tests and current-binary hardware evidence.
 Battery capacity is not calibrated, charge-only adapters can be ambiguous, audio quality is not qualified, and optional haptics are not validated.
 
 ## Battery estimate stability
+
+This newer filter has host-test coverage; its battery-only stability has not yet been accepted on a physical device.
 
 The 2-second sampler trims the two lowest/highest ADC values from each 16-reading burst. During battery supply, a three-burst median and a quarter-weight moving filter stabilize the SYS-voltage estimate. Changes of at least two percentage points must persist for three samples before the displayed estimate changes. Downward low/critical warning crossings take priority; sustained critical voltage bypasses the slower filter. Real voltage recovery can raise the estimate.
 

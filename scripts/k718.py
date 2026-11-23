@@ -251,6 +251,7 @@ def build(destination=None,cache=None):
     if output.exists():raise RuntimeError('Release output already exists; choose a new --out to retain evidence')
     deps(audit,cache);environment=doctor();checks(audit);web_bundle(audit)
     audit.run('firmware',[sys.executable,'-m','platformio','run','-e','display-knob'])
+    audit.run('protocol-codec',[sys.executable,'test/knob_native/check_protocol.py'])
     # PlatformIO may clean the build directory when switching to buildfs.
     # Capture application outputs immediately; never rely on old leftovers.
     staged=audit.path/'staging'/'display-knob';staged.mkdir(parents=True)
