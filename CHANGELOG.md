@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.0-rc.7
+
+- Select the pinned framework static Wi-Fi TX/RX pools before initialization and report DMA-specific heap diagnostics. Avoid on-demand allocation of up to 32 DMA TX buffers during image/HTTPS traffic.
+- RC6 passed 55 repeated/two-connection image reads, but six browser-like connections plus refresh exposed 1,626-byte internal/DMA allocation failures. Keep that larger regression pending for this candidate.
+
 ## 0.5.0-rc.6
 
 - Prefer PSRAM for all ordinary K718 allocations; keep explicit internal/DMA capability requests unchanged. Add nonblocking allocation-failure diagnostics.

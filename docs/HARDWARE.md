@@ -51,6 +51,8 @@ A new battery session needs three valid readings (about four seconds after the f
 
 K718 startup prefers PSRAM for ordinary allocations (threshold 0) when PSRAM is present, rather than the framework default 4096-byte internal preference. Capability-specific internal/DMA allocations retain their requirements. This preserves scarce internal RAM when many profiles, HTTPS checks and HTTP transfers coexist. Nonblocking diagnostics report free, largest and minimum internal heap, plus failed allocation size/capabilities. Current-device combined-load and interaction acceptance remains required; this does not establish a root cause for every network timeout.
 
+The board also selects `WiFi.useStaticBuffers(true)` before Wi-Fi initialization. The pinned SDK reserves eight TX and eight RX buffers, instead of the Arduino dynamic path allowing up to 32 DMA TX buffers on demand. Ordinary PSRAM cannot satisfy those DMA requests. Diagnostics report DMA-capable free/largest/minimum heap separately.
+
 ## HTTP interfaces
 
 - `GET /api/hardware`: hardware snapshot.

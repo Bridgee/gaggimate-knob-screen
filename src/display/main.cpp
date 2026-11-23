@@ -4,6 +4,7 @@
 #include "drivers/GuitionKnob/Hardware.h"
 #include "drivers/GuitionKnob/BootHealth.h"
 #include <esp_heap_caps.h>
+#include <WiFi.h>
 #include <esp32-hal-psram.h>
 #endif
 
@@ -20,6 +21,9 @@ void setup() {
     // otherwise keeps ordinary allocations up to4096 bytes in internal RAM.
     // Capability-specific allocations retain their explicit requirements.
     if (psramFound()) heap_caps_malloc_extmem_enable(0);
+    // Reserve the pinned SDK Wi-Fi TX/RX pools instead of allocating up to32
+    // DMA TX buffers on demand while profile images and HTTPS share the link.
+    WiFi.useStaticBuffers(true);
     knobDiagnosticBegin();
     heap_caps_register_failed_alloc_callback([](size_t bytes, uint32_t caps, const char *function) {
         knobDiagnosticPrintf("K718 allocation failed: bytes=%u caps=0x%x function=%s\n",
@@ -45,6 +49,10 @@ void loop() {
                              ESP.getFreeHeap(), heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT),
                              heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT),
                              ESP.getFreePsram(), knobDiagnosticDropped());
+        constexpr uint32_t dmaCaps = MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA | MALLOC_CAP_8BIT;
+        knobDiagnosticPrintf("K718 DMA: free=%u largest=%u min=%u\n",
+                             heap_caps_get_free_size(dmaCaps), heap_caps_get_largest_free_block(dmaCaps),
+                             heap_caps_get_minimum_free_size(dmaCaps));
         const auto h = guition_knob::Hardware::instance().snapshot();
         knobDiagnosticPrintf("K718 hardware: ready=%d encoder=%d ticks=%ld SYS=%umV batteryEstimate=%d busy=%d\n",
                              h.ready, h.encoderReady, static_cast<long>(h.encoderTicks), h.railMv, h.batteryPercent, h.busy);
