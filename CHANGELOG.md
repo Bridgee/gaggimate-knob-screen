@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.0-rc.10
+
+- Retain the two-response image-body quota and normal TCP filling; remove per-dispatch pacing, which made some individual reads exceed their deadline in rc9 despite avoiding DMA exhaustion.
+- Keep validated PSRAM images, nonblocking admission and response-owned permit cleanup. Cover cancellation before and after acquiring permits.
+
 ## 0.5.0-rc.9
 
 - Admit at most two active K718 image bodies; additional HTTP responses yield without advancing content, retaining normal successful image responses. Hold permits until final response destruction, including disconnects.

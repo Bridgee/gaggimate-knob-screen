@@ -36,26 +36,6 @@ class BufferedImage {
     std::shared_ptr<uint8_t> bytes;
     size_t length = 0;
 };
-// End each server fill dispatch after one bounded batch. Retry is the pinned
-// server's nonblocking RESPONSE_TRY_AGAIN marker; it does not advance offsets.
-class PacedImage {
-  public:
-    static constexpr size_t Retry = 0xffffffffu;
-    static constexpr size_t BatchBytes = 2048;
-    explicit PacedImage(BufferedImage image) : image(std::move(image)) {}
-    size_t copy(uint8_t *destination, size_t capacity, size_t offset) {
-        if (!destination || !capacity || offset >= image.size()) return 0;
-        if (yield) { yield = false; return Retry; }
-        const auto count = image.copy(destination, std::min(capacity, BatchBytes), offset);
-        // A full small window already ends this dispatch; do not burn the
-        // following ACK on a retry (which would wait for a later poll).
-        yield = count != 0 && count < capacity;
-        return count;
-    }
-  private:
-    BufferedImage image;
-    bool yield = false;
-};
 // A permit is retained until the HTTP response's final owner is destroyed,
 // including disconnects. Waiting callbacks yield without occupying a slot.
 class SendSlots {
@@ -76,6 +56,7 @@ class SendSlots {
 };
 class ImageTransfer {
   public:
+    static constexpr size_t Retry = 0xffffffffu;
     ImageTransfer(BufferedImage image, SendSlots &slots) : length(image.size()), response(std::move(image)), slots(slots) {}
     ImageTransfer(const ImageTransfer &) = delete;
     ImageTransfer &operator=(const ImageTransfer &) = delete;
@@ -83,14 +64,14 @@ class ImageTransfer {
     size_t copy(uint8_t *destination, size_t capacity, size_t offset) {
         if (!destination || !capacity || offset >= length) return 0;
         if (!owned) {
-            if (!slots.acquire()) return PacedImage::Retry;
+            if (!slots.acquire()) return Retry;
             owned = true;
         }
         return response.copy(destination, capacity, offset);
     }
   private:
     const size_t length;
-    PacedImage response;
+    BufferedImage response;
     SendSlots &slots;
     bool owned = false;
 };

@@ -53,7 +53,7 @@ K718 startup prefers PSRAM for ordinary allocations (threshold 0) when PSRAM is 
 
 The board also selects `WiFi.useStaticBuffers(true)` before Wi-Fi initialization. The pinned SDK reserves eight TX and eight RX buffers, instead of the Arduino dynamic path allowing up to 32 DMA TX buffers on demand. Ordinary PSRAM cannot satisfy those DMA requests. Diagnostics report DMA-capable free/largest/minimum heap separately.
 
-Profile image responses preload validated bytes in PSRAM and yield after each 2 KiB fill batch using the server retry signal. At most two image bodies send concurrently; additional responses yield until a permit is released. Permits follow the final response owner, including disconnects. Retry does not advance the content offset; callbacks never sleep or access SD while sending. This limits multi-client send bursts while preserving the original raw image format.
+Profile image responses preload validated bytes in PSRAM. At most two image bodies send concurrently; additional responses use the server retry signal until a permit is released. Retry does not advance the content offset. Permits follow the final response owner, including disconnects. Active responses use normal TCP filling, without added pacing delays or SD access in callbacks; the original raw image format is preserved.
 
 ## HTTP interfaces
 

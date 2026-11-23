@@ -41,36 +41,6 @@ int main() {
         while (offset < Size) offset += callback(result.data() + offset, chunk, offset);
         assert(offset == Size && result == source.data && source.reads == 1);
     }
-    // Model the real server's repeated fills in one dispatch. Every batch must
-    // yield without consuming content, including small TCP windows.
-    {
-        for (size_t window : {size_t(1), size_t(137), size_t(2920), size_t(8192)}) {
-            auto owner = profile_http::BufferedImage::load(
-                source, Size, Header, allocate); // closed file is rejected
-            assert(!owner);
-            source.open = true;
-            owner = profile_http::BufferedImage::load(source, Size, Header, allocate);
-            source.open = false;
-            profile_http::PacedImage paced(owner);
-            std::vector<uint8_t> body(Size);
-            size_t position = 0, retries = 0;
-            while (position < Size) {
-                size_t room = window, dispatchBytes = 0;
-                while (room && position < Size) {
-                    const auto n = paced.copy(body.data() + position, room, position);
-                    if (n == profile_http::PacedImage::Retry) {
-                        assert(dispatchBytes > 0); ++retries; break;
-                    }
-                    assert(n > 0 && n <= room && n <= 2048);
-                    dispatchBytes += n; position += n; room -= n;
-                }
-                assert(dispatchBytes <= std::min(window, size_t(2048)));
-            }
-            assert(body == source.data && (window <= 2048 || retries > 0));
-            assert(paced.copy(body.data(), window, Size) == 0);
-            assert(paced.copy(nullptr, window, 0) == 0);
-        }
-    }
     {
         source.open = true;
         auto owner = profile_http::BufferedImage::load(source, Size, Header, allocate);
@@ -83,15 +53,18 @@ int main() {
         uint8_t out[4096];
         assert(first->copy(nullptr, sizeof(out), 0) == 0 && slots.used() == 0);
         assert(first->copy(out, sizeof(out), Size) == 0 && slots.used() == 0);
-        assert(first->copy(out, sizeof(out), 0) == 2048);
-        assert(secondTransfer->copy(out, sizeof(out), 0) == 2048 && slots.used() == 2);
-        assert(waiting->copy(out, sizeof(out), 0) == profile_http::PacedImage::Retry);
+        assert(first->copy(out, sizeof(out), 0) == sizeof(out));
+        assert(secondTransfer->copy(out, sizeof(out), 0) == sizeof(out) && slots.used() == 2);
+        assert(waiting->copy(out, sizeof(out), 0) == profile_http::ImageTransfer::Retry);
+        auto cancelled = std::make_shared<profile_http::ImageTransfer>(owner, slots);
+        assert(cancelled->copy(out, sizeof(out), 0) == profile_http::ImageTransfer::Retry);
+        cancelled.reset(); assert(slots.used() == 2);
         first.reset(); // another response owner still holds the permit
         assert(slots.used() == 2);
         held.reset(); // disconnect/final response destruction releases it
         assert(slots.used() == 1);
-        assert(waiting->copy(out, sizeof(out), 0) == 2048);
-        assert(std::memcmp(out, source.data.data(), 2048) == 0 && slots.used() == 2);
+        assert(waiting->copy(out, sizeof(out), 0) == sizeof(out));
+        assert(std::memcmp(out, source.data.data(), sizeof(out)) == 0 && slots.used() == 2);
         secondTransfer.reset(); waiting.reset();
         assert(slots.used() == 0);
     }

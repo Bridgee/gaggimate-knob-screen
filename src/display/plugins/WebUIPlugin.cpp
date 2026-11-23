@@ -1360,7 +1360,7 @@ void WebUIPlugin::handleProfileImage(AsyncWebServerRequest *request) {
                 });
             file.close();
             if (!image) { request->send(503, "text/plain", "Could not buffer profile image"); return; }
-            static_assert(profile_http::PacedImage::Retry == RESPONSE_TRY_AGAIN, "Review server retry semantics");
+            static_assert(profile_http::ImageTransfer::Retry == RESPONSE_TRY_AGAIN, "Review server retry semantics");
             static profile_http::SendSlots slots(2);
             auto transfer = std::make_shared<profile_http::ImageTransfer>(image, slots);
             request->send(request->beginResponse("application/octet-stream", profile_image::FILE_BYTES,
