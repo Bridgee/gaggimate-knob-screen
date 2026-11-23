@@ -132,7 +132,7 @@ Build commands never flash a device automatically. See [Building and flashing](d
 - [Port architecture and migration](docs/PORTING.md)
 - [Maintaining and updating the port](docs/MAINTAINING.md)
 - [Validation scope and upstream baseline](docs/VALIDATION.md)
-- [Testing without interrupting a daily-use machine](docs/TESTING.md)
+- [Testing with one installed controller](docs/TESTING.md)
 - [Firmware updates and compatibility messages](docs/UPDATES.md)
 - [Roadmap](docs/ROADMAP.md)
 - [Changelog](CHANGELOG.md)

@@ -1,18 +1,18 @@
-# Testing without interrupting a daily-use machine
+# Testing with one installed controller
 
-Keep the installed LilyGO display and its controller paired. Do not use that controller for repeated development updates or fault injection. A passing host test is not a replacement for a real BLE endpoint.
+The supported maintenance workflow assumes **one controller**, installed in a daily-use machine and paired to its LilyGO screen. Extra controller hardware is not a requirement. Leave that firmware and pairing unchanged during routine port development.
 
-## Three reusable levels
+Official v1.10.0 uses a single paired display, directed advertising and an allowlist. Adopting a replacement display prunes foreign bonds. Disconnecting the LilyGO does not create a second read-only Knob connection, and temporary re-pairing is not a routine test step.
+
+## Reusable validation levels
 
 | Level | Equipment and checks | Evidence |
 | --- | --- | --- |
 | Host regression | Locked tools; native LVGL pages/handlers, both themes, status icons, rotary policies, generated protocol/queue, web update states, downloads and package reconstruction | Repeatable source and software checks; no physical radio or controller qualification |
-| Knob alone | Knob on USB; checked installation/readback, startup health, web/profile/image loading, settings retention, standby/wake and battery-only behavior when convenient | Local screen and network evidence without changing an installed controller's pairing; disconnected state is expected |
-| Independent controller bench | Spare matching GaggiMate controller board, original official firmware and its required sensors; USB only, with no machine loads connected | Real BLE handshake/reconnection, ambient telemetry, connected screen behavior and OTA/recovery tests |
+| Knob alone | Knob and USB; checked installation/readback, startup health, web/profile/image loading, settings retention, standby/wake and battery behavior | Physical screen and network evidence without changing the installed machine; disconnected state is expected |
+| Existing controller, when intentionally switching to Knob | A planned user-controlled changeover, followed by focused connection/telemetry and interaction checks | Real BLE acceptance; deferred while the daily-use LilyGO remains in service |
 
-A spare controller is the simplest durable test fixture. Use the same board variant and the unmodified official image pinned in `port/controller-release.json`. Consult the official hardware documentation for its power and sensor requirements. A generic ESP32 board, mocked telemetry or a desktop simulator must not be labelled equivalent to that controller. The bench never needs a heater, pump, grinder or coffee machine attached.
-
-If no bench controller is available, continue levels one and two and distribute an accurately labelled candidate. Do not silently promote historical protocol-5 acceptance to protocol 16 or disturb a daily-use pairing to finish a checklist.
+Reuse earlier peripheral acceptance when source and relevant inputs are unchanged. Repeat real-controller checks when protocol, transport, bonding, hardware configuration or relevant dependencies change. A software-verified candidate can be shared with explicit limits; do not convert missing radio evidence into a hardware pass.
 
 ## Host checks
 
@@ -24,31 +24,30 @@ python scripts/k718.py export --out dist/port-stack
 python scripts/k718.py replay --stack dist/port-stack --dest ../knob-rebuild
 ```
 
-The full build runs the generated-protocol test, rendered OTA web tests, upstream web regressions and package checks. Use a new output directory and a clean committed source. Compare real CI artifacts when claiming reproducibility; a source replay alone does not establish binary equality.
+The full build runs generated-protocol, rendered OTA web, upstream web and package checks. Use a new output directory and clean committed source. Compare actual CI artifacts when claiming hosted reproducibility. An exact source replay alone is not binary equality.
 
-## Focused controller-bench acceptance
+## Knob-only development
 
-Record the exact screen version/application hash, official controller version/protocol and results. Keep private identities and raw evidence outside this repository.
+Current controller-free checks cover USB recovery/trial boot, local startup health, saved data, web image traffic and disconnected behavior. Local health confirmation does not require Wi-Fi or a controller.
 
-1. Pair the Knob with the bench controller once. Confirm the expected controller version/protocol, ambient temperature and plausible idle pressure; no process start is needed.
-2. Restart the Knob, then disconnect/reconnect only the bench controller's USB supply. Check reconnection, fresh telemetry and correct disconnected/version-mismatch messages.
-3. Check changed connected pages, profile/list browsing, parameter focus and Grind half-steps, LED gauges/preferences, both themes and standby/wake. Turn targets only; do not press brew, steam, water or grinder start.
-4. Repeat profile/image loading and release refresh while interacting. Check saved settings after an ordinary restart without a serial reader attached.
-5. Exercise the exact final stable package after generating its final identity. Keep earlier receipts attached to their original image; do not rename an RC image as a stable build.
+A test-only protocol replay/simulated peer is a next development step for exercising connected page states, synthetic temperature/pressure changes, rotary actions and LED following on the physical Knob. It must remain isolated from production communication and clearly labelled as simulated. It is **not implemented or qualified by this document**, and cannot establish real BLE pairing, timing or controller behavior. Existing host codec/UI tests are not that physical replay harness.
 
-Reuse accepted pin assignments, rotary direction and LED orientation unless those inputs change. Real brewing dynamics are explicitly outside this USB acceptance scope.
+Do not add a production setting that pretends an absent controller is connected. Do not forward test control commands to the installed machine. Raw recordings, device identities and backups stay outside the public repository.
 
-## OTA qualification on the same isolated bench
+## Screen OTA without a second controller
 
-Normal screen and controller installation permissions remain off. A candidate may explicitly enable `screen_ota_qualification` for the separate **Screen OTA bench tests** controls; this flag cannot enable normal or controller OTA. Candidate bench controls use the same own-release selection, confirmation and staging backend as the future normal screen button.
+Screen image download, inactive-slot writes/readback, trial boot and recovery can be investigated on the Knob independently of controller firmware. This is the next qualification route to implement, not an existing bypass.
 
-Use two immutable, published candidate versions with complete matching assets; drafts are not discovered. Start in idle standby with a healthy settled boot and a compatible bench controller. Keep a known compatible USB package and private backup available.
+**The current network installer still requires a compatible connected controller and idle standby.** Normal screen/controller permissions and candidate qualification remain disabled. A future disconnected screen-only qualification path must be explicit, isolated from normal installation, preserve running-image/USB recovery and never claim controller compatibility. It must not weaken the production preflight to make a test pass.
 
-- First use **Verify inactive image**: require complete download/hash/SDK/flash-readback success and unchanged boot selection. This writes the inactive slot, not the running application.
-- Use **Test screen install** for the forward candidate; confirm the new exact version, startup health, retained settings, reconnection and local UI.
-- Check interrupted staging and unconfirmed-boot recovery with the documented USB fallback. Host tests additionally cover malformed images, wrong size/hash, stale selections and changed guards. Do not mark physical power-loss recovery passed unless it was actually exercised.
-- Verify rejection when busy, not in standby, disconnected, mismatched, metadata-expired or an old confirmation is submitted. No failed preflight should begin a transfer.
+Use immutable own-repository candidate images and exact manifests; drafts are not discovered. For the future isolated path, verify complete length/hash/SDK/readback before boot selection, interrupted staging, unconfirmed-boot rollback, retained data and recovery. Record physical power-loss behavior only if actually tested. Current-protocol ordinary connected web flow remains unverified until exercised with the existing controller.
 
-Only after current-protocol qualification should normal screen web permission be enabled and that exact normal user flow tested. Controller OTA requires a separate official-image BLE-transfer, reboot/reconnect, settings-retention, interruption and USB-recovery qualification. Combined or cross-protocol updates remain separate work.
+Controller OTA is separate: actual receiver/reboot/recovery qualification requires the one real controller. Defer enabling it until a planned controller update can be validated with an available USB recovery route. It is not a prerequisite for USB screen releases or screen-only development. No routine fault injection is assumed on the daily-use controller.
 
-See [Updates](UPDATES.md), [Validation scope](VALIDATION.md) and [Building and flashing](BUILDING.md).
+## Focused acceptance at the eventual changeover
+
+When the user is ready to use Knob with the existing controller, record the exact final screen image, official controller version/protocol and backup/recovery route before changing pairing. Do not promise that the old bond can be restored by simply turning LilyGO back on.
+
+Check handshake/reconnection, fresh ambient telemetry, changed connected pages, profiles, rotary focus/half-steps, LED preferences, standby/wake and restart retention. Reuse accepted geometry/pins/LED orientation. Process activation or real brewing is not needed for this USB scope; brewing dynamics remain explicitly unverified.
+
+Stable publication still needs its declared focused final-package acceptance. The absence of a spare board is not a reason to repeat hardware discovery, disturb the daily-use pairing or hold software/candidate development open indefinitely. See [Validation scope](VALIDATION.md), [Updates](UPDATES.md) and [Building and flashing](BUILDING.md).

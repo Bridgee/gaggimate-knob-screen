@@ -11,13 +11,13 @@ Required controller: official **v1.10.0**. The matched package carries its unmod
 - Report installed screen/base/protocol and controller compatibility independently of release discovery.
 - Wire screen web selection, explicit confirmation and progress to the own-repository installer. Distinguish disconnected, unknown-version, protocol/version mismatch, expired metadata, standby, boot and partition guards.
 - Keep normal screen/controller/combined installation disabled. Explicit candidate-only bench controls remain gated by the build permission, which is false in this package. Official notices remain separate.
-- Document an independent USB-controller bench, update behavior and stable-release requirements.
+- Document staged validation, update behavior and stable-release requirements. The current maintenance workflow assumes one installed controller; see [Testing](TESTING.md).
 
 ## Validation and limits
 
 This is a software-validation candidate, not a stable or OTA-qualified release. See the matching build/CI and package hashes for its exact source identity. Earlier rc.10 standalone USB/data/network tests and historical protocol-5 peripheral/OTA tests remain evidence for those earlier packages, not physical acceptance of this image.
 
-Current-protocol connected BLE/telemetry, changed physical interaction and the web-install/recovery flow require the isolated bench. Real brewing dynamics remain explicitly unverified and outside USB acceptance. Battery percentage is uncalibrated; continuous audio/haptics are not qualified.
+Current-protocol BLE/telemetry and connected user-flow acceptance remain deferred until an intentional changeover to the existing controller. No spare board is assumed. Knob-only simulated-peer and disconnected screen-OTA qualification paths are planned, not implemented by this package. Real brewing dynamics remain explicitly unverified and outside USB acceptance. Battery percentage is uncalibrated; continuous audio/haptics are not qualified.
 
 ## Installation and rollback
 
