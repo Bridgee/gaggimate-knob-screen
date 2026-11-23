@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.0-rc.2
+
+- Normalize both absolute and project-relative dependency paths in compiler metadata. This covers CI caches inside `.tools/` and external local caches, which previously produced different framework path strings.
+- Retain all 1.10.0 / protocol-16 adaptations from rc.1; hardware acceptance remains pending and all OTA installers remain disabled.
+
 ## 0.5.0-rc.1
 
 - Adopt official GaggiMate v1.10.0 and controller protocol 16; pair with the hash-pinned, unmodified official controller image. Previous protocol-5 controllers are incompatible.

@@ -96,9 +96,18 @@ def compiler_settings(root, tools, core, epoch):
     epoch = str(epoch)
     if not epoch.isascii() or not epoch.isdecimal() or int(epoch) > 0xffffffff:
         raise RuntimeError('A uint32 SOURCE_DATE_EPOCH is required')
-    maps = [(Path(root).resolve(), '/k718/src'), (Path(tools).resolve(), '/k718/tools'),
+    root = Path(root).resolve()
+    maps = [(root, '/k718/src'), (Path(tools).resolve(), '/k718/tools'),
             (Path(core).resolve(), '/k718/tools/pio-core')]
-    return {'epoch': epoch, 'flags': [f'-ffile-prefix-map={a}={b}' for a, b in maps],
+    aliases = list(maps)
+    # PlatformIO passes framework sources relative to the project when its
+    # cache lives inside the checkout (CI's .tools), but absolute paths when
+    # using an external cache. Normalize both spellings before __FILE__/DWARF.
+    for source, target in maps[1:]:
+        relative = os.path.relpath(source, root).replace(os.sep, '/')
+        if relative != '.':
+            aliases.extend([(relative+'/', target+'/'), ('./'+relative+'/', target+'/')])
+    return {'epoch': epoch, 'flags': [f'-ffile-prefix-map={a}={b}' for a, b in aliases],
             'define': ('K718_SOURCE_DATE_EPOCH', epoch)}
 
 

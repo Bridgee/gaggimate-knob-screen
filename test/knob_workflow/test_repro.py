@@ -81,6 +81,21 @@ class ManagedToolTest(unittest.TestCase):
         self.assertIn('/k718/src', settings['flags'][0])
 
 
+    def test_absolute_and_ci_relative_framework_paths_compile_identically(self):
+        tools = self.root / '.tools'
+        core = tools / 'pio-core'
+        source = core / 'framework' / 'probe.cpp'
+        source.parent.mkdir(parents=True)
+        source.write_text('const char *path = __FILE__;\n')
+        settings = compiler_settings(self.root, tools, core, '1793249420')
+        expected = None
+        for filename in [str(source.resolve()), '.tools/pio-core/framework/probe.cpp', './.tools/pio-core/framework/probe.cpp']:
+            result = subprocess.check_output(['c++', '-E', '-P', *settings['flags'], filename], cwd=self.root)
+            self.assertIn(b'/k718/tools/pio-core/framework/probe.cpp', result)
+            if expected is None: expected = result
+            self.assertEqual(result, expected)
+
+
 class ArtifactComparisonTest(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(); self.addCleanup(self.temp.cleanup)
