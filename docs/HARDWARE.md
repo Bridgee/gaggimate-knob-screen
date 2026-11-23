@@ -47,6 +47,10 @@ A new battery session needs three valid readings (about four seconds after the f
 
 `railMv` remains the current trimmed SYS reading for supply detection; `batteryFilteredMv` reports the battery-only filtered reading, or zero when unavailable. Filtering reduces jitter; the generic voltage-to-percentage table remains uncalibrated and does not establish cell capacity or trustworthy charging SOC.
 
+## Memory allocation
+
+K718 startup lowers the framework ordinary-allocation PSRAM threshold from4096 to512 bytes when PSRAM is present. Larger general-purpose buffers prefer PSRAM; capability-specific internal/DMA allocations retain their requirements. This preserves scarce internal RAM when many profiles and HTTP transfers coexist. Periodic nonblocking diagnostics include free, largest and minimum internal heap. The change needs current-device transfer and interaction acceptance; it does not establish a root cause for every network timeout.
+
 ## HTTP interfaces
 
 - `GET /api/hardware`: hardware snapshot.

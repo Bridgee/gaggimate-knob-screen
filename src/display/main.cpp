@@ -3,6 +3,8 @@
 #ifdef GAGGIMATE_KNOB
 #include "drivers/GuitionKnob/Hardware.h"
 #include "drivers/GuitionKnob/BootHealth.h"
+#include <esp_heap_caps.h>
+#include <esp32-hal-psram.h>
 #endif
 
 #ifndef GAGGIMATE_HEADLESS
@@ -14,6 +16,10 @@ Controller controller;
 void setup() {
     Serial.begin(115200);
 #ifdef GAGGIMATE_KNOB
+    // Preserve internal RAM for Wi-Fi/TCP, RTOS stacks and DMA. The framework
+    // otherwise keeps ordinary allocations up to4096 bytes in internal RAM.
+    // Capability-specific allocations retain their explicit requirements.
+    if (psramFound()) heap_caps_malloc_extmem_enable(512);
     knobDiagnosticBegin();
     guition_knob::bootHealthBegin();
     knobDiagnosticPrintf("K718 display: starting original UI; nonblocking diagnostics\n");
@@ -31,8 +37,10 @@ void loop() {
     static unsigned long lastDiagnostic = 0;
     if (millis() - lastDiagnostic >= 30000) {
         lastDiagnostic = millis();
-        knobDiagnosticPrintf("K718 display: alive; heap=%u, PSRAM free=%u logDropped=%u\n",
-                             ESP.getFreeHeap(), ESP.getFreePsram(), knobDiagnosticDropped());
+        knobDiagnosticPrintf("K718 display: alive; heap=%u largest=%u min=%u PSRAM free=%u logDropped=%u\n",
+                             ESP.getFreeHeap(), heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT),
+                             heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT),
+                             ESP.getFreePsram(), knobDiagnosticDropped());
         const auto h = guition_knob::Hardware::instance().snapshot();
         knobDiagnosticPrintf("K718 hardware: ready=%d encoder=%d ticks=%ld SYS=%umV batteryEstimate=%d busy=%d\n",
                              h.ready, h.encoderReady, static_cast<long>(h.encoderTicks), h.railMv, h.batteryPercent, h.busy);

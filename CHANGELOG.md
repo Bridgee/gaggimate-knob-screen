@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.0-rc.5
+
+- Prefer PSRAM for K718 ordinary allocations above512 bytes before startup, preserving internal RAM for networking, task stacks and explicit DMA allocations. The framework default threshold is4096 bytes.
+- Include largest/minimum internal heap in nonblocking diagnostics. This candidate investigates observed image-transfer stalls and network ENOMEM; device regression checks remain required.
+
 ## 0.5.0-rc.4
 
 - Disable the optional ESPAsyncWebServer chunk-inflight gate only for K718; retain the pinned library and buffered image responses.
