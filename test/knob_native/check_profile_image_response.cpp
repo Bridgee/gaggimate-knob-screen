@@ -41,6 +41,36 @@ int main() {
         while (offset < Size) offset += callback(result.data() + offset, chunk, offset);
         assert(offset == Size && result == source.data && source.reads == 1);
     }
+    // Model the real server's repeated fills in one dispatch. Every batch must
+    // yield without consuming content, including small TCP windows.
+    {
+        for (size_t window : {size_t(1), size_t(137), size_t(2920), size_t(8192)}) {
+            auto owner = profile_http::BufferedImage::load(
+                source, Size, Header, allocate); // closed file is rejected
+            assert(!owner);
+            source.open = true;
+            owner = profile_http::BufferedImage::load(source, Size, Header, allocate);
+            source.open = false;
+            profile_http::PacedImage paced(owner);
+            std::vector<uint8_t> body(Size);
+            size_t position = 0, retries = 0;
+            while (position < Size) {
+                size_t room = window, dispatchBytes = 0;
+                while (room && position < Size) {
+                    const auto n = paced.copy(body.data() + position, room, position);
+                    if (n == profile_http::PacedImage::Retry) {
+                        assert(dispatchBytes > 0); ++retries; break;
+                    }
+                    assert(n > 0 && n <= room && n <= 2048);
+                    dispatchBytes += n; position += n; room -= n;
+                }
+                assert(dispatchBytes <= std::min(window, size_t(2048)));
+            }
+            assert(body == source.data && (window <= 2048 || retries > 0));
+            assert(paced.copy(body.data(), window, Size) == 0);
+            assert(paced.copy(nullptr, window, 0) == 0);
+        }
+    }
     uint8_t guard[4] = {9,9,9,9};
     assert(callback(guard,4,Size-2) == 2 && guard[2] == 9 && guard[3] == 9);
     assert(callback(guard,4,Size) == 0);

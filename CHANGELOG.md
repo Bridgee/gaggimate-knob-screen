@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.0-rc.8
+
+- Yield K718 image responses after each 2 KiB batch using the pinned server retry signal, reducing simultaneous TCP-window bursts without sleeps or changed image bytes.
+- Extend sanitizer tests across fragmented windows, retry offsets, complete content and buffer lifetime. RC7 completed all image reads but still recorded DMA pressure during six-way image loading and metadata refresh.
+
 ## 0.5.0-rc.7
 
 - Select the pinned framework static Wi-Fi TX/RX pools before initialization and report DMA-specific heap diagnostics. Avoid on-demand allocation of up to 32 DMA TX buffers during image/HTTPS traffic.

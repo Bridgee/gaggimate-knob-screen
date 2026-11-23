@@ -1360,8 +1360,11 @@ void WebUIPlugin::handleProfileImage(AsyncWebServerRequest *request) {
                 });
             file.close();
             if (!image) { request->send(503, "text/plain", "Could not buffer profile image"); return; }
+            static_assert(profile_http::PacedImage::Retry == RESPONSE_TRY_AGAIN, "Review server retry semantics");
             request->send(request->beginResponse("application/octet-stream", profile_image::FILE_BYTES,
-                [image](uint8_t *buffer, size_t length, size_t offset) { return image.copy(buffer, length, offset); }));
+                [response = profile_http::PacedImage(image)](uint8_t *buffer, size_t length, size_t offset) mutable {
+                    return response.copy(buffer, length, offset);
+                }));
         }
 #else
         if (SD_MMC.exists(profile_image::path(id)))
