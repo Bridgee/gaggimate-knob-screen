@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.0-rc.4
+
+- Disable the optional ESPAsyncWebServer chunk-inflight gate only for K718; retain the pinned library and buffered image responses.
+- Reproduce gate starvation after a final ACK and a temporarily reduced send window using the actual pinned gate code. Hardware bulk-transfer qualification remains separate.
+
 ## 0.5.0-rc.3
 
 - Buffer K718 profile-image responses in PSRAM before sending HTTP chunks, so TCP response callbacks do not read from SD. Keep the original image format/API and other display targets unchanged.
