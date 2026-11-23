@@ -17,6 +17,8 @@ The native status-row test exercises all eight Wi-Fi/Bluetooth/update visibility
 
 The K718 board definition, panel initialization, rotary decoder, LED mapping/encoding, battery artwork, parameter policies and standby renderer retain their accepted implementations. Startup health callbacks and the new upstream UI integration are changes. The battery stability filter was introduced after the last physical acceptance: its software cases pass, but its current battery-only behavior remains unverified on hardware. Voltage-based capacity remains uncalibrated.
 
+K718 startup allocation, Wi-Fi buffer policy and HTTP image-response ownership/admission also changed during this migration; see [Hardware interfaces](HARDWARE.md#memory-allocation). Reuse prior pin and peripheral configuration, but include these shared runtime inputs when selecting current-binary regressions. HTTP concurrency, interrupted reads and restart persistence need their own evidence; they cannot qualify BLE timing or physical input behavior.
+
 ## Validation without changing an installed machine
 
 1. Compare the previous official release, physically accepted port, new official release and candidate source. Record unchanged modules and changed integrations separately.

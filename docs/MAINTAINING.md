@@ -89,6 +89,8 @@ The [roadmap](ROADMAP.md) separates release requirements from ongoing maintenanc
 4. Generate the stable version/channel, run software/CI checks and test the resulting final package. Do not rename an RC binary or transfer its acceptance automatically to a different hash. Stable discovery excludes prereleases, so validate its channel behavior too.
 5. Publish immutable versioned assets with checksums, compatibility and concise acceptance/limitation notes. Retain the previous compatible application and documented USB rollback path privately; do not imply that an unperformed rollback test passed.
 
+Documentation-only commits still change the Git tree embedded in future builds. Record the documentation/source head separately from the last built, installed and accepted package. Earlier hardware or CI receipts remain bound to their original commit and image hash; do not relabel them for a newer head.
+
 Keep private maintenance status as a current summary with evidence links. Archive superseded snapshots instead of retaining contradictory active pending lists. Completed pin discovery, LED persistence and previously accepted interaction features are not new tasks unless a change requires regression testing.
 
 ## Releases

@@ -19,6 +19,7 @@ This is a display port. The original controller/PID/process behavior and coffee-
 | LED gauges | `KnobLedGauges.h`, `LedGaugePolicy.h`, `LedPreferences.h`, `LedSpiEncoding.h` | Mirror visible meter values/colors through the hardware worker |
 | Rotary input | `EncoderDetents.h`, `KnobAdjustment.*` | Decode direction contacts; select a field and invoke its existing +/− action |
 | Standby appearance | `StandbyDisplay.*`, `Settings.*`, General web settings | Optional custom text or centered clock with original wake behavior |
+| Startup/network memory | `src/display/main.cpp`, `BufferedProfileImage.h`, K718 image-response integration | PSRAM allocation, static Wi-Fi buffers and nonblocking image-body admission |
 | Build/maintenance | `port/`, `scripts/k718*.py`, `test/knob*` | Locked inputs, checks, source replay, artifact identity and checked installation |
 
 ## Rendering and interaction
@@ -50,7 +51,7 @@ Hardware APIs and tested configuration are documented in [Hardware interfaces](H
 
 ## Official 1.10.0 migration
 
-K718 profile-image HTTP responses preload the fixed-size image into PSRAM, validate its header and close the file before TCP pulls chunks. The immutable response owns its buffer until transmission ends; callbacks only copy bounded memory. Other display targets retain the upstream file response. The K718 target also disables the pinned HTTP library's optional chunk-inflight gate; a native test exercises its reduced-window starvation case. This is a target transport setting, not a controller/protocol change; validate large and concurrent transfers on the device.
+K718 profile-image HTTP responses preload the fixed-size image into PSRAM, validate its header and close the file before TCP pulls chunks. The response owns its immutable buffer until transmission ends; callbacks only copy bounded memory. At most two image bodies send concurrently; waiting responses retry without advancing their offsets. Permits are released with the final response owner, including disconnects. Other display targets retain the upstream file response. The K718 target also disables the pinned HTTP library's optional chunk-inflight gate; a native test exercises its reduced-window starvation case. This is a target transport setting, not a controller/protocol change; validate large and concurrent transfers on the device.
 
 The target adopts upstream protocol 16 and controller APIs without renumbering the old protocol. The new EEZ input has 74 handlers and 262 geometry sites; `port/ui-contract.json` pins the reviewed structure. The removed legacy ProfileScreen is replaced by upstream NewProfileScreen; knob browsing uses its original previous/next actions and explicit touch confirmation, including its list view. Native generation supports the new SVG/indexed artwork; dynamic profile images retain per-image zoom.
 
