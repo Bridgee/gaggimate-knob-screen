@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.0-rc.3
+
+- Buffer K718 profile-image responses in PSRAM before sending HTTP chunks, so TCP response callbacks do not read from SD. Keep the original image format/API and other display targets unchanged.
+- Check image size/header, short reads, allocation failure, fragmented reads and response-buffer lifetime with native sanitizers. Target transfer/network regression checks remain required.
+
 ## 0.5.0-rc.2
 
 - Add hardware-independent checks of the firmware-generated protocol codec/queue and every four-icon status-row combination in both themes. Separate historical hardware evidence from current software validation, and document release-tag versus upstream-master differences.

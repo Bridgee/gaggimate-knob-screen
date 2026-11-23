@@ -27,6 +27,7 @@
 #include <Protocol.h>
 #include "ScreenOtaPolicy.h"
 #include "NetworkWorker.h"
+#include "BufferedProfileImage.h"
 #include <display/drivers/GuitionKnob/BootHealth.h>
 #include <esp_ota_ops.h>
 #endif
@@ -1348,10 +1349,26 @@ void WebUIPlugin::handleProfileImage(AsyncWebServerRequest *request) {
     }
     switch (request->method()) {
     case HTTP_GET:
+#ifdef GAGGIMATE_KNOB
+        {
+            File file = SD_MMC.open(profile_image::path(id), FILE_READ);
+            if (!file) { request->send(404, "text/plain", "No image"); return; }
+            auto image = profile_http::BufferedImage::load(file, profile_image::FILE_BYTES, profile_image::HEADER,
+                [](size_t size) {
+                    auto *bytes = static_cast<uint8_t *>(heap_caps_malloc(size, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
+                    return std::shared_ptr<uint8_t>(bytes, [](uint8_t *p) { heap_caps_free(p); });
+                });
+            file.close();
+            if (!image) { request->send(503, "text/plain", "Could not buffer profile image"); return; }
+            request->send(request->beginResponse("application/octet-stream", profile_image::FILE_BYTES,
+                [image](uint8_t *buffer, size_t length, size_t offset) { return image.copy(buffer, length, offset); }));
+        }
+#else
         if (SD_MMC.exists(profile_image::path(id)))
             request->send(SD_MMC, profile_image::path(id), "application/octet-stream");
         else
             request->send(404, "text/plain", "No image");
+#endif
         return;
     case HTTP_DELETE:
         SD_MMC.remove(profile_image::path(id));

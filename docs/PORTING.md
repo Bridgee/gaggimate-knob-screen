@@ -50,6 +50,8 @@ Hardware APIs and tested configuration are documented in [Hardware interfaces](H
 
 ## Official 1.10.0 migration
 
+K718 profile-image HTTP responses preload the fixed-size image into PSRAM, validate its header and close the file before TCP pulls chunks. The immutable response owns its buffer until transmission ends; callbacks only copy bounded memory. Other display targets retain the upstream file response.
+
 The target adopts upstream protocol 16 and controller APIs without renumbering the old protocol. The new EEZ input has 74 handlers and 262 geometry sites; `port/ui-contract.json` pins the reviewed structure. The removed legacy ProfileScreen is replaced by upstream NewProfileScreen; knob browsing uses its original previous/next actions and explicit touch confirmation, including its list view. Native generation supports the new SVG/indexed artwork; dynamic profile images retain per-image zoom.
 
 The original live charts, profile images, setup/welcome flow and settings persistence checks remain present. The welcome status row also receives the shared battery icon. Screen-only LED/standby changes keep their isolated save path. Original upstream language catalogs and CA certificate fingerprints have exact-content publication exceptions; port documentation stays English and private-path/secret checks still apply.
