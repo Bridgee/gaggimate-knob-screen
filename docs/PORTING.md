@@ -20,6 +20,7 @@ This is a display port. The original controller/PID/process behavior and coffee-
 | Rotary input | `EncoderDetents.h`, `KnobAdjustment.*` | Decode direction contacts; select a field and invoke its existing +/− action |
 | Standby appearance | `StandbyDisplay.*`, `Settings.*`, General web settings | Optional custom text or centered clock with original wake behavior |
 | Startup/network memory | `src/display/main.cpp`, `BufferedProfileImage.h`, K718 image-response integration | PSRAM allocation, static Wi-Fi buffers and nonblocking image-body admission |
+| Validation-only target | `src/display/validation/`, guarded display-facade injection | Synthetic framed replay, command sink, visible simulation labels and isolated screen OTA qualification |
 | Build/maintenance | `port/`, `scripts/k718*.py`, `test/knob*` | Locked inputs, checks, source replay, artifact identity and checked installation |
 
 ## Rendering and interaction
@@ -58,3 +59,7 @@ The target adopts upstream protocol 16 and controller APIs without renumbering t
 The original live charts, profile images, setup/welcome flow and settings persistence checks remain present. The welcome status row also receives the shared battery icon. Screen-only LED/standby changes keep their isolated save path. Original upstream language catalogs and CA certificate fingerprints have exact-content publication exceptions; port documentation stays English and private-path/secret checks still apply.
 
 This candidate has not completed hardware acceptance. Screen OTA qualification from the prior v1.9.0 candidate does not transfer to it; the test interface and ordinary installers remain disabled. Matching controller packages use the original official v1.10.0 application, verified by size/hash/image digest.
+
+## Validation build boundary
+
+`display-knob-validation` is an explicit candidate-only environment. Its conditional display-facade injection reuses the original message builders, typed handlers and Endpoint without initializing BLE or UART. Two facade source files have validation-only branches; the production projection is checked against upstream. Local fixture traces do not identify themselves as an official controller. Normal release/pair tooling rejects the separate target and embedded marker. See [Testing](TESTING.md) for the implemented boundary and remaining physical acceptance.

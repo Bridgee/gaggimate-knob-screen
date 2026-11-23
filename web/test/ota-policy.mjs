@@ -206,6 +206,7 @@ try {
     imageSha256: 'b'.repeat(64),
     qualification: false,
     verifyOnly: false,
+    screenOnly: false,
   });
   assert.equal('url' in request, false);
   for (const changes of [
@@ -362,6 +363,53 @@ try {
   assert.doesNotMatch(disconnected, /Target, protocol and controller version match/);
   assert.match(disconnected, /Current running screen: 0.5.0-rc.11/);
   assert.match(disconnected, /Startup health: confirmed/);
+  const solo = {
+    ...ready,
+    validationBuild: true,
+    controllerConnected: false,
+    pairCompatibility: 'simulated',
+    installedCompatibility: 'simulated',
+    screenOtaInstallationAllowed: false,
+    screenOtaStandaloneQualificationAvailable: true,
+    screenOtaStandalonePreflight: 'metadata-ready',
+  };
+  const soloOptions = { qualification: true, screenOnly: true, verifyOnly: true };
+  const soloRequest = screenOtaRequest(solo, soloOptions);
+  assert.equal(soloRequest.screenOnly, true);
+  assert.equal(screenOtaRequest(solo), null);
+  for (const changes of [
+    { validationBuild: false },
+    { controllerConnected: true },
+    { screenOtaStandaloneQualificationAvailable: false },
+    { screenOtaStandalonePreflight: 'replay-stop-required' },
+    { screenOtaStandalonePreflight: 'busy' },
+  ])
+    assert.equal(screenOtaRequest({ ...solo, ...changes }, soloOptions), null);
+  assert.equal(screenOtaRequest(solo, { screenOnly: true }), null);
+  assert.ok(screenOtaRequest({ ...solo, pairDisplayState: 'up-to-date' }, soloOptions));
+  const soloHtml = renderToString(MatchedVersions({ settings: solo }));
+  assert.match(soloHtml, /Isolated screen OTA qualification/);
+  const soloDialog = renderToString(
+    ScreenUpdateConfirmation({ selection: { ...selection, request: soloRequest }, settings: solo }),
+  );
+  assert.match(soloDialog, /Physical controller compatibility is not checked/);
+  assert.doesNotMatch(soloDialog, /Required controller:/);
+  const { ReplayControls } = await server.ssrLoadModule(
+    '/src/pages/Settings/tabs/KnobValidationPanel.jsx',
+  );
+  let replayActions = [];
+  buttons(ReplayControls({ onAction: (...args) => replayActions.push(args) })).forEach(b =>
+    b.props.onClick(),
+  );
+  assert.equal(replayActions.length, 6);
+  replayActions = [];
+  buttons(ReplayControls({ busy: true, onAction: (...args) => replayActions.push(args) })).forEach(
+    b => {
+      assert.equal(b.props.disabled, true);
+      b.props.onClick();
+    },
+  );
+  assert.equal(replayActions.length, 0);
   console.log(
     'OTA web policy: disabled controls, guarded actions, update notices and legacy behavior passed.',
   );

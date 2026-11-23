@@ -1,3 +1,4 @@
+import KnobValidationPanel from './KnobValidationPanel.jsx';
 import { screenOtaRequest, selectionCurrent, otaStateText } from '../../../utils/screenOta.js';
 import {
   FirmwareVersions,
@@ -41,6 +42,7 @@ const getRssiStatusClass = rssi => {
 
 // A wire has no signal strength to grade; only BLE can be weak.
 const getLinkStatusClass = (link, rssi) => {
+  if (link === 'replay') return 'status-warning';
   if (link === 'none') return 'status-error';
   return link === 'ble' ? getRssiStatusClass(rssi) : 'status-success';
 };
@@ -458,6 +460,7 @@ export function SystemTab() {
                   Bluetooth, {rssi}dB (Roundtrip: {lat} ms, Resends: {rtx})
                 </Trans>
               )}
+              {controllerLink === 'replay' && <span>Simulated local replay</span>}
               {controllerLink === 'none' && <Trans>Not connected</Trans>}
               <span
                 className={`indicator-item status ${getLinkStatusClass(controllerLink, rssi)}`}
@@ -465,6 +468,9 @@ export function SystemTab() {
             </span>
           </div>
 
+          {formData.validationBuild === true && (
+            <KnobValidationPanel updating={Boolean(formData.updating)} />
+          )}
           <FirmwareVersions
             settings={formData}
             submitting={submitting || screenSubmitting}

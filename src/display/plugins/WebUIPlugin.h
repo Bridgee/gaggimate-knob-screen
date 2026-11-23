@@ -76,7 +76,7 @@ class WebUIPlugin : public Plugin {
     official_release::Discovery officialReleases;
     screen_ota::Installer screenInstaller;
     bool screenUpdateActive = false;
-    screen_ota::Preflight screenPreflight() const;
+    screen_ota::Preflight screenPreflight(bool screenOnly = false) const;
     void handleScreenOTAStart(JsonDocument &);
     std::atomic<bool> officialRefreshRequested{true};
     std::atomic<bool> pairRefreshRequested{true};

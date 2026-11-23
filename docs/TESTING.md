@@ -30,18 +30,36 @@ The full build runs generated-protocol, rendered OTA web, upstream web and packa
 
 Current controller-free checks cover USB recovery/trial boot, local startup health, saved data, web image traffic and disconnected behavior. Local health confirmation does not require Wi-Fi or a controller.
 
-A test-only protocol replay/simulated peer is a next development step for exercising connected page states, synthetic temperature/pressure changes, rotary actions and LED following on the physical Knob. It must remain isolated from production communication and clearly labelled as simulated. It is **not implemented or qualified by this document**, and cannot establish real BLE pairing, timing or controller behavior. Existing host codec/UI tests are not that physical replay harness.
+The dedicated **display-knob-validation** image now implements local replay through the actual generated nanopb frames, LinkSelector, Endpoint and display facade callbacks. It never initializes the physical BLE/wired client. Idle, warmup and shot traces interpolate synthetic temperature/pressure/weight; pause/reset/disconnect are deterministic controls. Outbound commands terminate locally, with ACK/dedup and bounded command counters. This is data replay, not a thermal model or a controller substitute.
 
+Build it separately from the normal image:
+
+```sh
+python scripts/k718.py build-validation --out dist/validation
+python scripts/package_validation.py dist/validation --out dist/validation-publish
+```
+
+On that image, open **Settings → System → Local data replay**. The screen and web UI identify simulated data. `GET /api/validation` returns replay status; a form `POST` accepts `action=play|pause|reset|disconnect` and `trace=idle|warmup|shot`. The endpoint and local transport do not exist in normal firmware. Start at idle, inspect parameters/rotary/LED behavior, then replay the other traces; process starts and autotuning are disabled.
+
+Validation settings use `knob-test` NVS, seeded once from read-only screen settings; profiles use `/validation/p`. The physical bond store is not initialized or cleared. HomeKit/MQTT/mDNS, Bluetooth-scale and external-grinder integrations are not started. History and machine-profile stores are unavailable to the validation API. This preserves the production workflow while allowing local parameter tests.
+
+Host tests compile the real replay transport and generated codec with sanitizers, including malformed bounds, ACK/dedup, pause/reset/disconnect, hardware-status messages and concurrent command production. The ESP32 validation build uses the real Endpoint dispatch task. Neither a successful host test nor compilation establishes physical display, RTOS timing, real BLE or controller acceptance.
 Do not add a production setting that pretends an absent controller is connected. Do not forward test control commands to the installed machine. Raw recordings, device identities and backups stay outside the public repository.
 
 ## Screen OTA without a second controller
 
-Screen image download, inactive-slot writes/readback, trial boot and recovery can be investigated on the Knob independently of controller firmware. This is the next qualification route to implement, not an existing bypass.
+The validation image now has a separate **Isolated screen OTA qualification** entry. Ordinary screen/controller permissions remain off, and normal preflight still requires the matching physical controller. The isolated entry does not assert controller compatibility or fabricate a connected controller.
 
-**The current network installer still requires a compatible connected controller and idle standby.** Normal screen/controller permissions and candidate qualification remain disabled. A future disconnected screen-only qualification path must be explicit, isolated from normal installation, preserve running-image/USB recovery and never claim controller compatibility. It must not weaken the production preflight to make a test pass.
+1. Stop/disconnect replay and enter standby. The actual queue must be quiescent, startup healthy and boot selection settled. The validation firmware owns no physical controller link.
+2. Refresh own-repository matched metadata. Only the pinned K718 target/protocol, asset URLs and manifest/image hashes are accepted; drafts are ignored. A matching release must be published before a real network test. Same-version staging is permitted only on this qualification path; downgrades are rejected.
+3. **Verify screen image only** writes and verifies the inactive slot without changing boot selection. It checks full length/SHA-256, SDK validation and flash readback.
+4. **Test-install screen image** additionally commits the verified slot and restarts. The selected image is a normal own-release screen image; after boot it leaves replay firmware. Keep the previous compatible image and checked USB recovery available.
 
-Use immutable own-repository candidate images and exact manifests; drafts are not discovered. For the future isolated path, verify complete length/hash/SDK/readback before boot selection, interrupted staging, unconfirmed-boot rollback, retained data and recovery. Record physical power-loss behavior only if actually tested. Current-protocol ordinary connected web flow remains unverified until exercised with the existing controller.
+Requests use the existing `req:screen-ota-start` endpoint with explicit `qualification: true`, `screenOnly: true`, `verifyOnly`, and frozen tag/manifest/image hashes. Both metadata preflight and queue permissions are recomputed by the server. Runtime reservations refuse replay/process changes during staging and recheck local isolation/standby before committing. An ordinary image cannot gain this permission through a web/NVS setting.
 
+The downloader, sequential erasure, image checks, inactive-slot readback, trial boot and USB fallback are shared with the existing installer. Validate interruption, unconfirmed-boot rollback and retained data on the Knob when physical testing is scheduled. Record physical power loss only when actually tested. Current-protocol real connected user flow remains unverified until exercised with the existing controller.
+
+Validation packages have target `display-knob-validation`, an embedded role marker and `validation_only: true`. Normal publication/pair and USB tools reject them. The checked USB tool requires explicit `--test-image` and `--validation` for a validation image; it still requires a verified screen identity and backup. These are code/build capabilities, not a claim that any current image has passed physical qualification.
 Controller OTA is separate: actual receiver/reboot/recovery qualification requires the one real controller. Defer enabling it until a planned controller update can be validated with an available USB recovery route. It is not a prerequisite for USB screen releases or screen-only development. No routine fault injection is assumed on the daily-use controller.
 
 ## Focused acceptance at the eventual changeover

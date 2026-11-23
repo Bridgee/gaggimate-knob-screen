@@ -13,7 +13,7 @@ core = Path(os.environ.get("PLATFORMIO_CORE_DIR", Path.home() / ".platformio"))
 esptool = core / "packages/tool-esptoolpy/esptool.py"
 boot_app = core / "packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin"
 parser = argparse.ArgumentParser()
-parser.add_argument("--target", action="append", choices=("display-knob",))
+parser.add_argument("--target", action="append", choices=("display-knob", "display-knob-validation"))
 parser.add_argument("--build-root", type=Path, default=root / ".pio/build")
 args = parser.parse_args()
 targets = args.target or ("display-knob",)
@@ -28,7 +28,7 @@ for target in targets:
     build = args.build_root / target
     parts = [(0, build / "bootloader.bin"), (0x8000, build / "partitions.bin"),
              (0xe000, boot_app), (0x10000, build / "firmware.bin")]
-    if target == "display-knob":
+    if target in ("display-knob", "display-knob-validation"):
         parts.append((0xc90000, build / "littlefs.bin"))
     target_dir = output / target
     target_dir.mkdir(exist_ok=True)

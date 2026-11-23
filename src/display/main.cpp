@@ -12,10 +12,17 @@
 #include <lvgl.h>
 #endif
 
+#ifdef GAGGIMATE_KNOB_VALIDATION
+#include "validation/ValidationMarker.h"
+#endif
+
 Controller controller;
 
 void setup() {
     Serial.begin(115200);
+#ifdef GAGGIMATE_KNOB_VALIDATION
+    Serial.println(knob_validation::imageMarker());
+#endif
 #ifdef GAGGIMATE_KNOB
     // Preserve internal RAM for Wi-Fi/TCP, RTOS stacks and DMA. The framework
     // otherwise keeps ordinary allocations up to4096 bytes in internal RAM.

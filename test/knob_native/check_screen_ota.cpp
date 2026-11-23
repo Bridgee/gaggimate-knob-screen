@@ -105,5 +105,23 @@ int main() {
     }
     auto full = release; full.screen.bytes = SlotBytes;
     state(inspect(true, full, pair, local, true), "metadata-ready");
+    auto detached = local;detached.controllerReady=false;detached.controllerProtocol=0;detached.controllerVersion="";
+    detached.transportIsolated=true;detached.replayQuiescent=true;
+    const auto solo=inspectScreenOnly(true,release,pair,detached,true,true);
+    state(solo,"metadata-ready");assert(solo.plan.screenOnly && solo.plan.controllerVersion.empty());
+    auto soloRequest=request;soloRequest.qualification=true;soloRequest.screenOnly=true;soloRequest.verifyOnly=true;
+    assert(mayQualifyScreenOnly(solo,soloRequest,true));assert(!mayQualifyScreenOnly(solo,soloRequest,false));
+    assert(!mayQualify(solo,soloRequest,true));assert(!mayInstall(solo,soloRequest));
+    assert(!matchesRequest(ready,soloRequest));assert(!matchesRequest(solo,request));
+    state(inspect(true,release,pair,detached,true),"controller-disconnected"); // ordinary guard unchanged
+    state(inspectScreenOnly(true,release,pair,detached,true,false),"qualification-disabled");
+    auto unsafe=detached;unsafe.transportIsolated=false;state(inspectScreenOnly(true,release,pair,unsafe,true,true),"qualification-disabled");
+    unsafe=detached;unsafe.replayQuiescent=false;state(inspectScreenOnly(true,release,pair,unsafe,true,true),"replay-stop-required");
+    unsafe=detached;unsafe.controllerReady=true;state(inspectScreenOnly(true,release,pair,unsafe,true,true),"replay-stop-required");
+    unsafe=detached;unsafe.bootHealthy=false;state(inspectScreenOnly(true,release,pair,unsafe,true,true),"startup-unverified");
+    unsafe=detached;unsafe.standby=false;state(inspectScreenOnly(true,release,pair,unsafe,true,true),"standby-required");
+    unsafe=detached;unsafe.updateOffset=unsafe.runningOffset;state(inspectScreenOnly(true,release,pair,unsafe,true,true),"unsupported-partitions");
+    unsafe=detached;unsafe.portVersion=pair.screenVersion;state(inspectScreenOnly(true,release,pair,unsafe,true,true),"metadata-ready");
+    unsafe.portVersion="9.0.0";state(inspectScreenOnly(true,release,pair,unsafe,true,true),"not-newer");
     std::cout << "PASS: own-asset binding, stale request rejection, channels, versions, controller/busy/slot guards; both installers remain denied\n";
 }

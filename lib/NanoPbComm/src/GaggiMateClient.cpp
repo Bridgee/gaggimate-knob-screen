@@ -3,7 +3,21 @@
 
 GaggiMateClient::GaggiMateClient() = default;
 
+#ifdef GAGGIMATE_KNOB_VALIDATION
+void GaggiMateClient::initReplay(Transport &transport, std::function<void()> disconnect) {
+    _replayDisconnect = std::move(disconnect);
+    registerHandlers();
+    _endpoint.onConnection([this](bool connected) { if (_connCb) _connCb(connected); });
+    // Uart is only a LinkSelector slot here; no UART driver is constructed.
+    _link.add(LinkType::Uart, transport);
+    _endpoint.begin();
+}
+#endif
 void GaggiMateClient::enableUart(uint8_t rxPin, uint8_t txPin, HardwareSerial &port, uint32_t baud) {
+#ifdef GAGGIMATE_KNOB_VALIDATION
+    (void)rxPin; (void)txPin; (void)port; (void)baud;
+#else
+
     if (_uart)
         return;
     _uartPort = &port;
@@ -12,9 +26,14 @@ void GaggiMateClient::enableUart(uint8_t rxPin, uint8_t txPin, HardwareSerial &p
     _uartBaud = baud;
     _uart = std::make_unique<UartTransport>(port);
     _uartOta = std::make_unique<UartOtaSender>(*_uart);
+#endif
 }
 
 void GaggiMateClient::init(const String &deviceName) {
+#ifdef GAGGIMATE_KNOB_VALIDATION
+    (void)deviceName; // Only initReplay may create a validation session.
+#else
+
     registerHandlers();
     _endpoint.onConnection([this](bool connected) {
         if (_connCb)
@@ -56,6 +75,7 @@ void GaggiMateClient::init(const String &deviceName) {
         _pumpTaskHandle = nullptr;
         ESP_LOGE("GaggiMateClient", "Failed to create pump task; pumping from loop() instead");
     }
+#endif
 }
 
 // The wire keeps listening while BLE carries the session; once it is up, the radio link goes away and stops searching.
@@ -66,6 +86,10 @@ void GaggiMateClient::onLinkSelected(LinkType active) {
 }
 
 bool GaggiMateClient::isReadyForConnection() {
+#ifdef GAGGIMATE_KNOB_VALIDATION
+    return false;
+#else
+
     if (!_ble.isReadyForConnection()) {
         _bleReadySince = 0;
         return false;
@@ -75,24 +99,40 @@ bool GaggiMateClient::isReadyForConnection() {
     if (_bleReadySince == 0)
         _bleReadySince = millis() | 1;
     return millis() - _bleReadySince >= UART_HEAD_START_MS;
+#endif
 }
 
 void GaggiMateClient::disconnect() {
+#ifdef GAGGIMATE_KNOB_VALIDATION
+    if (_replayDisconnect) _replayDisconnect();
+#else
+
     if (_link.activeType() == LinkType::Uart)
         _uart->disconnect();
     else
         _ble.disconnect();
+#endif
 }
 
 int GaggiMateClient::getRssi() const {
+#ifdef GAGGIMATE_KNOB_VALIDATION
+    return 0;
+#else
+
     NimBLEClient *client = _ble.getNativeClient();
     return client != nullptr && client->isConnected() ? client->getRssi() : 0;
+#endif
 }
 
 OtaSender *GaggiMateClient::getOtaSender() {
+#ifdef GAGGIMATE_KNOB_VALIDATION
+    return nullptr;
+#else
+
     if (_link.activeType() == LinkType::Uart)
         return _uartOta.get();
     return &_bleOta;
+#endif
 }
 
 void GaggiMateClient::pumpTask(void *arg) {
@@ -107,12 +147,17 @@ void GaggiMateClient::pumpTask(void *arg) {
 }
 
 void GaggiMateClient::loop() {
+#ifdef GAGGIMATE_KNOB_VALIDATION
+    _endpoint.loop();
+#else
+
     _ble.maintain();
     if (_pumpTaskHandle == nullptr) {
         if (_uart)
             _uart->loop();
         _endpoint.loop();
     }
+#endif
 }
 
 gm::Payload GaggiMateClient::buildPing() {

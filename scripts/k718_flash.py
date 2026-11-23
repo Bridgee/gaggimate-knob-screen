@@ -15,14 +15,21 @@ from k718_lock import digest
 from k718 import partition_entries, write_json, tool_env
 
 
-def verified_release(folder):
+def verified_release(folder, allow_test_image=False):
     folder=Path(folder).resolve();manifest=json.loads((folder/'release.json').read_text())
-    if manifest.get('schema')!=1 or manifest.get('target')!='display-knob' or manifest.get('chip')!='ESP32-S3':
+    test_image=manifest.get('target')=='display-knob-validation'
+    if manifest.get('schema')!=1 or manifest.get('target') not in ({'display-knob','display-knob-validation'} if allow_test_image else {'display-knob'}) or manifest.get('chip')!='ESP32-S3':
         raise RuntimeError('Unsupported release target')
     for name,entry in manifest['artifacts'].items():
         path=(folder/name).resolve()
         if path.parent!=folder or not path.is_file() or path.stat().st_size!=entry['bytes'] or digest(path)!=entry['sha256']:
             raise RuntimeError('Artifact checksum/path mismatch: '+name)
+    marker=b'\x91K718-VALIDATION-ONLY\x92'
+    present=marker in (folder/'firmware.bin').read_bytes()
+    if test_image:
+        if not manifest.get('validation_only') or not present:raise RuntimeError('Validation image identity mismatch')
+    elif manifest.get('validation_only') or present:
+        raise RuntimeError('Validation image cannot be used as production firmware')
     if manifest.get('audit_report_sha256') and digest(folder/'audit/report.json')!=manifest['audit_report_sha256']:
         raise RuntimeError('Build audit checksum mismatch')
     for name in ('firmware.bin','partitions.bin','boot_app0.bin'):
@@ -48,8 +55,9 @@ def qualification(folder, results, output):
     return output
 
 
-def flash(folder,port,expected_mac,backup,validation=False,receipt=None,mode='update'):
-    folder,manifest,parts=verified_release(folder)
+def flash(folder,port,expected_mac,backup,validation=False,receipt=None,mode='update',test_image=False):
+    if test_image and not validation:raise RuntimeError('Test images require explicit --validation and --test-image')
+    folder,manifest,parts=verified_release(folder,allow_test_image=True) if test_image else verified_release(folder)
     if mode not in ('update','trial','recover'):raise RuntimeError('Unknown USB operation')
     if not validation:
         if not receipt:raise RuntimeError('Use a SHA-bound hardware qualification, or explicitly --validation for bench testing')
@@ -149,16 +157,16 @@ def flash(folder,port,expected_mac,backup,validation=False,receipt=None,mode='up
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__);sub=parser.add_subparsers(dest='command',required=True)
-    p=sub.add_parser('plan');p.add_argument('release')
+    p=sub.add_parser('plan');p.add_argument('release');p.add_argument('--test-image',action='store_true')
     p=sub.add_parser('qualify');p.add_argument('release');p.add_argument('--results',required=True);p.add_argument('--out',required=True)
-    p=sub.add_parser('update');p.add_argument('release');p.add_argument('--write',action='store_true');p.add_argument('--port');p.add_argument('--expected-mac');p.add_argument('--backup');p.add_argument('--validation',action='store_true');p.add_argument('--qualification');p.add_argument('--mode',choices=['update','trial','recover'],default='update')
+    p=sub.add_parser('update');p.add_argument('release');p.add_argument('--write',action='store_true');p.add_argument('--port');p.add_argument('--expected-mac');p.add_argument('--backup');p.add_argument('--validation',action='store_true');p.add_argument('--test-image',action='store_true');p.add_argument('--qualification');p.add_argument('--mode',choices=['update','trial','recover'],default='update')
     args=parser.parse_args()
     try:
         if args.command=='qualify':print(qualification(args.release,args.results,args.out))
         elif args.command=='plan' or not args.write:
-            folder,m,parts=verified_release(args.release)
+            folder,m,parts=verified_release(args.release,allow_test_image=args.test_image)
             print(json.dumps({'release':str(folder),'firmware_sha256':m['artifacts']['firmware.bin']['sha256'],'upstream':m['upstream'],'controller_protocol':m['controller_protocol'],'write_regions':{name:parts.get(name) for name in ('app0','app1')},'selection':'resolved from device only; recover explicitly selects app0','hardware_qualified':False,'device_contacted':False},indent=2))
-        else:flash(args.release,args.port,args.expected_mac,args.backup,args.validation,args.qualification,args.mode)
+        else:flash(args.release,args.port,args.expected_mac,args.backup,args.validation,args.qualification,args.mode,args.test_image)
     except (RuntimeError,KeyError,ValueError,OSError) as error:print('STOP:',error,file=sys.stderr);return 1
     return 0
 if __name__=='__main__':sys.exit(main())

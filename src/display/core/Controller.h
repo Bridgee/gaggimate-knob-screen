@@ -75,6 +75,10 @@ class Controller {
 #ifdef GAGGIMATE_KNOB
     bool tryBeginScreenUpdate();
     bool canCommitScreenUpdate(unsigned protocol, const char *version) const;
+#ifdef GAGGIMATE_KNOB_VALIDATION
+    bool tryBeginStandaloneScreenUpdate();
+    bool canCommitStandaloneScreenUpdate() const;
+#endif
 #endif
     bool isAutotuning() const;
     bool isReady() const;

@@ -38,6 +38,10 @@ class GaggiMateClient {
     using ErrorCallback = std::function<void(int code)>;
 
     GaggiMateClient();
+#ifdef GAGGIMATE_KNOB_VALIDATION
+    // Test build only: no BLE initialization, NVS access or wired output.
+    void initReplay(Transport &transport, std::function<void()> disconnect);
+#endif
 
     // Adds a wired link on `port`; call before init(). The display driver knows which pins reach the controller.
     void enableUart(uint8_t rxPin, uint8_t txPin, HardwareSerial &port = Serial1, uint32_t baud = gm_uart::DEFAULT_BAUD);
@@ -46,7 +50,13 @@ class GaggiMateClient {
 
     // BLE connection lifecycle (driven from the display's main loop); the UART link comes up by itself.
     bool isReadyForConnection();
+
+#ifdef GAGGIMATE_KNOB_VALIDATION
+    bool connectToServer() { return false; }
+#else
     bool connectToServer() { return _ble.connectToServer(); }
+#endif
+
     bool isConnected() const { return _endpoint.isConnected(); }
     void disconnect();
 
@@ -58,7 +68,13 @@ class GaggiMateClient {
     OtaSender *getOtaSender();
 
     // Forget the paired controller so the display can pair to a different one.
+
+#ifdef GAGGIMATE_KNOB_VALIDATION
+    void clearBonds() {}
+#else
     void clearBonds() { _ble.clearBonds(); }
+#endif
+
 
     // EWMA-smoothed send->ACK round-trip (ms); hasLatency() is false until the first ACK of a link.
     uint32_t getLatencyMs() const { return _endpoint.latencyMs(); }
@@ -70,7 +86,13 @@ class GaggiMateClient {
     bool isIdle() { return _endpoint.isIdle(); }
 
     // Tight connection interval while active; relaxed when idle to give the shared radio back to Wi-Fi.
+
+#ifdef GAGGIMATE_KNOB_VALIDATION
+    void setLowLatency(bool) {}
+#else
     void setLowLatency(bool active) { _ble.setLowLatency(active); }
+#endif
+
 
     // Build a payload without sending (compose your own batch, then send()).
     gm::Payload buildPing();
@@ -145,6 +167,9 @@ class GaggiMateClient {
     void onError(ErrorCallback cb) { _errorCb = std::move(cb); }
 
   private:
+#ifdef GAGGIMATE_KNOB_VALIDATION
+    std::function<void()> _replayDisconnect;
+#endif
     BleClientTransport _ble;
     BleOtaSender _bleOta{_ble};
     // Allocated only on boards with a wired link; the frame buffers are a few KB of internal RAM.

@@ -74,3 +74,15 @@ python scripts/k718.py check
 The second command needs the pinned LVGL dependencies installed by the build, or by `python scripts/k718.py deps`.
 The full build also runs `test/knob_native/check_protocol.py` after firmware generation, against its exact nanopb schema/runtime. For a targeted rerun, build the firmware first, then run that script.
 Software checks do not automatically qualify a binary as hardware-tested; see [Validation scope](VALIDATION.md).
+
+## Isolated validation image
+
+For controller-free development, build the explicit candidate-only target:
+
+```sh
+python scripts/k718.py build-validation --out dist/validation
+python scripts/package_validation.py dist/validation --out dist/validation-publish
+python scripts/k718_flash.py plan dist/validation --test-image
+```
+
+It uses the same locked dependencies and native driver/UI, but a local replay peer instead of physical controller communication. Its image/manifest role differs from a production release; ordinary packaging and qualification reject it. A future checked USB installation must explicitly add `--test-image --validation` to the normal backed-up updater command. No build/plan command flashes hardware. See [Testing](TESTING.md) for storage isolation and screen-only OTA qualification. Keep normal and validation output directories separate.

@@ -8,7 +8,7 @@ The current port targets **official v1.10.0**, commit `34bf9fc5f6cf89c9929636fc2
 | --- | --- | --- |
 | Historical 0.3.8 and 0.4.0-rc.8 hardware acceptance | Known panel, touch, brightness, rotary contacts, LED layout, standby and peripheral configuration | Acceptance of the new protocol-16 application |
 | Source comparison with the accepted port and official releases | Identifies retained drivers and the integrations requiring new checks | Timing, electrical operation or stored-data migration on a running board |
-| Official control-source parity check | Controller, protocol, PID and process files retain the selected release's behavior, apart from one removed filepath comment | Fixes or features added to upstream after that release |
+| Official control-source parity check | Controller/PID/process files match the selected release; two display facade files match after validation-only guards are disabled, apart from whitespace and one unrelated filepath comment | Fixes or features added to upstream after that release |
 | Native LVGL/EEZ tests | Actual generated pages, both themes, original handlers/flow integrity, rotary targets, standby content and status-row layout | Physical LCD output, real touch latency or coffee-control execution; most application actions are stubbed |
 | Firmware-generated nanopb and queue tests | Actual schema/runtime encoding, indexed telemetry/commands, malformed-input bounds and coalescing/priority rules | BLE connection, retransmission, RTOS scheduling or controller responses |
 | Full build, exact source replay and artifact checks | Source provenance, locked inputs, valid packages and reproducibility for the environments actually compared | Physical installation, flash/NVS migration or brewing qualification |
@@ -49,3 +49,9 @@ At the reviewed master snapshot `26ee775eb94d043717c7b529e91eeb8c10e79b94`, ther
 | `26ee775e` | Accept String paths in simulator rename | Simulator support for the profile-save change |
 
 These changes are **not included** in the current v1.10.0-based port. They are reviewed follow-up inputs, not prerequisites for claiming that release's source was adapted. Do not merge a moving master or silently cherry-pick controller changes while distributing an unchanged official controller image. A deliberate backport needs its own source identity, compatibility review and regression checks; a new official release follows [the migration workflow](MAINTAINING.md#upstream-updates).
+
+## Validation-only transport and OTA
+
+The explicit validation image adds a local peer through a conditional display-facade transport adapter. The two adapted `GaggiMateClient` files are checked against upstream with only `GAGGIMATE_KNOB_VALIDATION` branches disabled and blank/trailing whitespace normalized. Other selected control/protocol/PID/process files remain byte-exact, apart from the documented filepath-comment removal. This is a declared test-only source adaptation, not a claim that the raw facade files are identical.
+
+Replay sanitizers exercise actual generated datagrams and the local sink. Native UI tests remain separate; neither simulates BLE/RTOS scheduling. The validation ESP32 target compiles the real Endpoint and UI. Screen-only preflight/queue tests establish permission separation, stopped replay, slot/health/standby guards and frozen selection; the downloader tests cover failure cases. Only future device execution can establish actual LCD/input and flash recovery behavior. Normal builds retain physical-controller guards and all normal OTA permissions remain disabled.

@@ -246,23 +246,37 @@ def partition_entries(data):
         result[label.split(b'\0',1)[0].decode()]={'type':kind,'subtype':subtype,'offset':address,'size':size}
     return result
 
-def build(destination=None,cache=None):
-    require_clean();cfg=guard_source();environment=doctor();audit=Audit('build')
+def build(destination=None,cache=None,validation=False):
+    require_clean();cfg=dict(guard_source());environment=doctor();audit=Audit('build-validation' if validation else 'build')
+    target='display-knob-validation' if validation else 'display-knob'
+    if validation:
+        if cfg.get('release_channel')!='candidate' or '-' not in cfg['port_version']:
+            raise RuntimeError('Validation images require an explicit candidate version')
+        cfg['target']=target
     output=Path(destination).resolve() if destination else ROOT/'dist/releases'/git('rev-parse','HEAD^{tree}')[:12]
     if output.exists():raise RuntimeError('Release output already exists; choose a new --out to retain evidence')
-    deps(audit,cache);environment=doctor();checks(audit);web_bundle(audit)
-    audit.run('firmware',[sys.executable,'-m','platformio','run','-e','display-knob'])
-    audit.run('protocol-codec',[sys.executable,'test/knob_native/check_protocol.py'])
+    deps(audit,cache)
+    if validation:
+        audit.run('validation-dependencies',[sys.executable,'-m','platformio','pkg','install','-e',target])
+        lock=json.loads((ROOT/'port/dependencies.lock.json').read_text())
+        prepare_libraries(ROOT,lock,environment=target);verify_libraries(ROOT,lock,environment=target)
+    environment=doctor();checks(audit);web_bundle(audit)
+    audit.run('firmware',[sys.executable,'-m','platformio','run','-e',target])
+    audit.run('protocol-codec',[sys.executable,'test/knob_native/check_protocol.py','--environment',target])
+    audit.run('replay-codec',[sys.executable,'test/knob_native/check_replay.py','--environment',target])
+    image=(ROOT/'.pio/build'/target/'firmware.bin').read_bytes()
+    if (b'\x91K718-VALIDATION-ONLY\x92' in image) != validation:
+        raise RuntimeError('Compiled image/build-profile identity mismatch')
     # PlatformIO may clean the build directory when switching to buildfs.
     # Capture application outputs immediately; never rely on old leftovers.
-    staged=audit.path/'staging'/'display-knob';staged.mkdir(parents=True)
+    staged=audit.path/'staging'/target;staged.mkdir(parents=True)
     for name in ('firmware.bin','firmware.elf','bootloader.bin','partitions.bin'):
-        shutil.copyfile(ROOT/'.pio/build/display-knob'/name,staged/name)
-    audit.run('filesystem',[sys.executable,'-m','platformio','run','-e','display-knob','-t','buildfs'])
-    shutil.copyfile(ROOT/'.pio/build/display-knob/littlefs.bin',staged/'littlefs.bin')
+        shutil.copyfile(ROOT/'.pio/build'/target/name,staged/name)
+    audit.run('filesystem',[sys.executable,'-m','platformio','run','-e',target,'-t','buildfs'])
+    shutil.copyfile(ROOT/'.pio/build'/target/'littlefs.bin',staged/'littlefs.bin')
     audit.run('filesystem-metadata',[sys.executable,'scripts/k718_repro.py','--verify-filesystem',staged/'littlefs.bin'])
-    audit.run('package',[sys.executable,'scripts/package_knob.py','--target','display-knob','--build-root',staged.parent])
-    source=ROOT/'dist/k718/display-knob';parts=partition_entries((source/'partitions.bin').read_bytes())
+    audit.run('package',[sys.executable,'scripts/package_knob.py','--target',target,'--build-root',staged.parent])
+    source=ROOT/'dist/k718'/target;parts=partition_entries((source/'partitions.bin').read_bytes())
     if parts.get('app0',{}).get('offset')!=cfg['application_offset'] or parts['app0']['size']!=cfg['application_size']:
         raise RuntimeError('Application partition layout changed; explicit migration required')
     if parts.get('spiffs',{}).get('offset')!=cfg['filesystem_offset']:raise RuntimeError('Filesystem layout changed')
@@ -279,7 +293,7 @@ def build(destination=None,cache=None):
     for preview in (ROOT/'dist/preview').rglob('*.png'):
         target=output/'preview'/preview.relative_to(ROOT/'dist/preview')
         target.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(preview,target)
-    manifest={'schema':1,'screen_ota_qualification':qualification_enabled(cfg),'qualification':'software-verified','hardware_verified':False,'upstream':cfg['upstream'],'port_version':cfg['port_version'],'release_channel':cfg.get('release_channel','development'),'source_commit':git('rev-parse','HEAD'),'source_tree':git('rev-parse','HEAD^{tree}'),'source_date_epoch':tool_env()['SOURCE_DATE_EPOCH'],'target':cfg['target'],'chip':cfg['chip'],'required_hardware_checks':cfg['required_hardware_checks'],'controller_protocol':cfg['controller_protocol'],'application_offset':cfg['application_offset'],'application_size':cfg['application_size'],'environment':environment,'reproducibility':environment['reproducible_filesystem'],'dependency_lock_sha256':digest(ROOT/'port/dependencies.lock.json'),'npm_lock_sha256':digest(ROOT/'web/package-lock.json'),'audit':'audit/report.json','audit_report_sha256':digest(output/'audit/report.json'),'artifacts':{p.name:{'bytes':p.stat().st_size,'sha256':digest(p)} for p in sorted(output.iterdir()) if p.is_file() and p.suffix in {'.bin','.elf'}}}
+    manifest={'schema':1,'validation_only':validation,'screen_ota_standalone_qualification':validation,'screen_ota_qualification':qualification_enabled(cfg) and not validation,'qualification':'software-verified','hardware_verified':False,'upstream':cfg['upstream'],'port_version':cfg['port_version'],'release_channel':cfg.get('release_channel','development'),'source_commit':git('rev-parse','HEAD'),'source_tree':git('rev-parse','HEAD^{tree}'),'source_date_epoch':tool_env()['SOURCE_DATE_EPOCH'],'target':cfg['target'],'chip':cfg['chip'],'required_hardware_checks':cfg['required_hardware_checks'],'controller_protocol':cfg['controller_protocol'],'application_offset':cfg['application_offset'],'application_size':cfg['application_size'],'environment':environment,'reproducibility':environment['reproducible_filesystem'],'dependency_lock_sha256':digest(ROOT/'port/dependencies.lock.json'),'npm_lock_sha256':digest(ROOT/'web/package-lock.json'),'audit':'audit/report.json','audit_report_sha256':digest(output/'audit/report.json'),'artifacts':{p.name:{'bytes':p.stat().st_size,'sha256':digest(p)} for p in sorted(output.iterdir()) if p.is_file() and p.suffix in {'.bin','.elf'}}}
     write_json(output/'release.json',manifest);print('Release:',output)
     return output
 
@@ -297,6 +311,7 @@ def main():
     p=sub.add_parser('verify-repro');p.add_argument('first');p.add_argument('second');p.add_argument('--out',required=True)
     p=sub.add_parser('deps');p.add_argument('--cache-from')
     p=sub.add_parser('build');p.add_argument('--out');p.add_argument('--cache-from')
+    p=sub.add_parser('build-validation');p.add_argument('--out',required=True);p.add_argument('--cache-from')
     p=sub.add_parser('export');p.add_argument('--out',required=True)
     p=sub.add_parser('replay');p.add_argument('--stack',required=True);p.add_argument('--dest',required=True);p.add_argument('--upstream');p.add_argument('--fetch-from')
     p=sub.add_parser('bind-upstream');p.add_argument('--ref');p.add_argument('--version',required=True);p.add_argument('--controller-protocol',type=int,required=True)
@@ -313,7 +328,7 @@ def main():
             first,a,_=verified_release(args.first);second,b,_=verified_release(args.second)
             write_json(target,compare_releases(first,second,(a,b)));print(target)
         elif args.command=='assets':assets()
-        elif args.command=='build':build(args.out,args.cache_from)
+        elif args.command in ('build','build-validation'):build(args.out,args.cache_from,args.command=='build-validation')
         else:
             doctor();audit=Audit(args.command)
             if args.command=='deps':deps(audit,args.cache_from)

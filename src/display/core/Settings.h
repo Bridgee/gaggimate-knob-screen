@@ -25,7 +25,11 @@ constexpr uint16_t DEFAULT_HARDWARE_SCALE_SAMPLE_RATE_SPS = 10;
 constexpr float DEFAULT_HARDWARE_SCALE_IDLE_ALPHA = 0.80f;
 constexpr float DEFAULT_HARDWARE_SCALE_ACTIVE_ALPHA = 0.80f;
 
+#ifdef GAGGIMATE_KNOB_VALIDATION
+constexpr char PREFERENCES_KEY[] = "knob-test";
+#else
 constexpr char PREFERENCES_KEY[] = "controller";
+#endif
 
 // Per-warning severity: hidden, shown as a warning, or shown as an error that needs confirmation before brewing.
 enum WarningLevel { WARNING_LEVEL_IGNORE = 0, WARNING_LEVEL_WARN = 1, WARNING_LEVEL_ERROR = 2 };

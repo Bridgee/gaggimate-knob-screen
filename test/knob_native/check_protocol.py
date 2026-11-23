@@ -5,12 +5,14 @@ No radio, RTOS, controller endpoint or physical outputs are simulated here.
 """
 from pathlib import Path
 import json
+import argparse
 import subprocess
 
 ROOT = Path(__file__).resolve().parents[2]
-BUILD = ROOT / 'dist/protocol-check'
-GENERATED = ROOT / '.pio/build/display-knob/nanopb/generated-src'
-NANOPB = ROOT / '.pio/libdeps/display-knob/Nanopb'
+parser=argparse.ArgumentParser();parser.add_argument('--environment',choices=['display-knob','display-knob-validation'],default='display-knob');args=parser.parse_args()
+BUILD = ROOT / 'dist/protocol-check' / args.environment
+GENERATED = ROOT / '.pio/build' / args.environment / 'nanopb/generated-src'
+NANOPB = ROOT / '.pio/libdeps' / args.environment / 'Nanopb'
 BUILD.mkdir(parents=True, exist_ok=True)
 protocol = json.loads((ROOT / 'port/config.json').read_text())['controller_protocol']
 flags = ['-g', '-O1', '-Wall', '-Wextra', '-Werror', '-fsanitize=address,undefined',

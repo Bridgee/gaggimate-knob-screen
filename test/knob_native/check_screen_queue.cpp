@@ -26,6 +26,13 @@ int main() {
     assert(!installer.takeQueued(frozen)); assert(installer.snapshot().busy);
     installer.fail("readiness-changed"); assert(!installer.snapshot().busy);
     ready.plan.image.sha = request.imageSha;
+    auto solo = ready;solo.plan.screenOnly=true;
+    auto isolated = request;isolated.screenOnly=true;
+    Installer noSolo(true);assert(!noSolo.queue(solo,isolated));
+    Installer soloOnly(false,true);assert(!soloOnly.queue(ready,request));
+    assert(!soloOnly.queue(solo,request));assert(soloOnly.queue(solo,isolated));
+    InstallJob isolatedJob;assert(soloOnly.takeQueued(isolatedJob));assert(isolatedJob.plan.screenOnly && isolatedJob.verifyOnly);
+    soloOnly.fail("test");isolated.qualification=false;assert(!soloOnly.queue(solo,isolated));
     std::atomic<unsigned> accepted{0};
     std::thread a([&] { if (installer.queue(ready, request)) ++accepted; });
     std::thread b([&] { if (installer.queue(ready, request)) ++accepted; });

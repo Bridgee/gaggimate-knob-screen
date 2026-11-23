@@ -14,7 +14,7 @@ Installed screen/controller compatibility is reported even when no newer release
 
 The current candidate wires the web screen action to the own-release installer, including confirmation and progress. **Normal screen installation, controller OTA and combined updates remain disabled.** Controls become usable only when their separate firmware permission and all live preconditions permit them; finding a matching release cannot enable an installer.
 
-For now, install a compatible screen package over [checked USB](BUILDING.md). An explicitly enabled candidate-only test interface can verify or install screen images; its current preflight still requires a matching connected controller. A future disconnected Knob-only qualification route is planned, not available in this package. See [Testing](TESTING.md#screen-ota-without-a-second-controller).
+For now, install a compatible screen package over [checked USB](BUILDING.md). An explicitly enabled candidate-only test interface can verify or install screen images; its current preflight still requires a matching connected controller. The separate validation-only image now provides a disconnected screen-only qualification route. It is absent from normal firmware and requires stopped replay; it does not qualify physical controller compatibility. See [Testing](TESTING.md#screen-ota-without-a-second-controller).
 
 ## Messages and next steps
 

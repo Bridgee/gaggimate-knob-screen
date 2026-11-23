@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.0-rc.12
+
+- Add an explicit validation-only target with local generated-protocol replay, bounded command/ACK handling, visible simulation labels and isolated settings/profiles. Physical BLE/UART and external integrations are not initialized in this target.
+- Add separate stopped-replay screen-only OTA qualification, preserving ordinary controller guards and length/hash/SDK/readback/boot checks. Normal/controller installation remains disabled.
+- Distinguish validation image/manifest identity, require explicit test-image USB options, and reject validation binaries in normal release/pair tools. Build and test both targets in CI.
+- Source/host evidence only until physical execution; no installed-machine or pairing changes are implied.
+
 ## 0.5.0-rc.11
 
 - Report installed official base/protocol and controller compatibility independently of available releases. Distinguish disconnected, unidentified, protocol and version mismatches.

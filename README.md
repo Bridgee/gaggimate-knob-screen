@@ -18,6 +18,7 @@ This is an independent port maintained by [Bridgee](https://github.com/Bridgee).
 - Callable speaker and microphone interfaces. The temporary hardware-test page has been removed.
 - Matched-release discovery, separate installed/release compatibility and a guarded own-repository screen web-update flow. Installation permissions remain disabled pending qualification; official notices stay separate.
 - Locked build inputs, official-base patch replay and reproducible firmware builds.
+- A separate validation-only build for framed local data replay and controller-free screen OTA qualification; it is isolated from normal releases and does not qualify real BLE or brewing.
 
 ## Feature previews
 
@@ -85,7 +86,7 @@ See [Port architecture and migration](docs/PORTING.md) for the implementation ma
 
 ## Releases and compatibility
 
-The development branch targets official v1.10.0 / protocol 16. [Port configuration](port/config.json) records the current port version and exact upstream commit. It requires an official v1.10.0 controller; hardware validation is pending and all OTA installation is disabled for this migration candidate. The web update flow is described in [Firmware updates](docs/UPDATES.md); current candidate notes are in [0.5.0-rc.11](docs/RELEASE-0.5.0-rc.11.md). The latest USB stable release is [0.3.8](https://github.com/Bridgee/gaggimate-knob-screen/releases/tag/v0.3.8), based on GaggiMate v1.9.0 / protocol 5. Available versioned packages are listed under [Releases](https://github.com/Bridgee/gaggimate-knob-screen/releases). Each package has its own source identity, artifact checksums and validation scope.
+The development branch targets official v1.10.0 / protocol 16. [Port configuration](port/config.json) records the current port version and exact upstream commit. It requires an official v1.10.0 controller; hardware validation is pending and all OTA installation is disabled for this migration candidate. The web update flow is described in [Firmware updates](docs/UPDATES.md); development changes are recorded in the [Changelog](CHANGELOG.md). The latest USB stable release is [0.3.8](https://github.com/Bridgee/gaggimate-knob-screen/releases/tag/v0.3.8), based on GaggiMate v1.9.0 / protocol 5. Available versioned packages are listed under [Releases](https://github.com/Bridgee/gaggimate-knob-screen/releases). Each package has its own source identity, artifact checksums and validation scope.
 
 Stable builds check only stable matched releases; pre-releases are excluded. Candidate builds also include explicitly labelled pre-releases.
 

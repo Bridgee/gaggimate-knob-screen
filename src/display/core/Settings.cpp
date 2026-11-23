@@ -104,7 +104,9 @@ bool Settings::setMachineProfileSelection(const String &value) {
 }
 
 Settings::Settings() {
-#ifdef GAGGIMATE_KNOB
+#ifdef GAGGIMATE_KNOB_VALIDATION
+    bootLoadOk = preferences.begin(PREFERENCES_KEY, false);
+#elif defined(GAGGIMATE_KNOB)
     bootLoadOk = preferences.begin(PREFERENCES_KEY, true);
 #else
     preferences.begin(PREFERENCES_KEY, true);
@@ -112,6 +114,18 @@ Settings::Settings() {
     for (auto *property : registry) {
         property->load(preferences);
     }
+#ifdef GAGGIMATE_KNOB_VALIDATION
+    // Seed in memory from read-only production settings once; every later save
+    // uses knob-test. Never open the machine/controller or BLE namespaces writable.
+    if (bootLoadOk && !preferences.isKey("validation_seed")) {
+        Preferences source;
+        if (source.begin("controller", true)) {
+            for (auto *property : registry) { property->load(source); property->persist(); }
+            source.end();
+        }
+        preferences.putBool("validation_seed", true);
+    }
+#endif
     // Copy the saved brew gains once when upgrading to separate steam tuning.
     if (steamPid.get().isEmpty()) {
         const String brewPid = pid.get();

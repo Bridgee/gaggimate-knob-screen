@@ -16,7 +16,8 @@ struct InstallStatus {
 };
 class Installer {
   public:
-    explicit Installer(bool qualificationPermission) : qualificationPermission(qualificationPermission) {}
+    explicit Installer(bool qualificationPermission, bool standalonePermission = false)
+        : qualificationPermission(qualificationPermission), standalonePermission(standalonePermission) {}
     bool queue(const Preflight &, const Request &);
     bool takeQueued(InstallJob &);
     void start(const InstallJob &, std::function<bool()> guard);
@@ -26,7 +27,7 @@ class Installer {
   private:
     void run(const InstallJob &, const std::function<bool()> &);
     void report(const char *, unsigned);
-    const bool qualificationPermission;
+    const bool qualificationPermission, standalonePermission;
     mutable std::mutex mutex;
     InstallStatus status;
     InstallJob job;

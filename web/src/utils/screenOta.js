@@ -3,19 +3,29 @@
 export function screenOtaRequest(settings, options = {}, submitting = false) {
   const qualification = options.qualification === true;
   const verifyOnly = options.verifyOnly === true;
-  const permission = qualification
-    ? settings.screenOtaQualificationAvailable === true
-    : settings.screenOtaInstallationAllowed === true;
+  const screenOnly = options.screenOnly === true;
+  const permission = screenOnly
+    ? settings.screenOtaStandaloneQualificationAvailable === true &&
+      qualification &&
+      settings.validationBuild === true
+    : qualification
+      ? settings.screenOtaQualificationAvailable === true
+      : settings.screenOtaInstallationAllowed === true;
+  const contextReady = screenOnly
+    ? settings.controllerConnected === false &&
+      settings.screenOtaStandalonePreflight === 'metadata-ready' &&
+      ['update-available', 'up-to-date'].includes(settings.pairDisplayState)
+    : settings.controllerConnected === true &&
+      settings.pairCompatibility === 'matched' &&
+      settings.pairDisplayState === 'update-available' &&
+      settings.screenOtaPreflight === 'metadata-ready';
   if (
     !settings.pairSupported ||
-    settings.controllerConnected !== true ||
     !permission ||
+    !contextReady ||
     submitting ||
     settings.updating ||
     settings.pairStatus !== 'ready' ||
-    settings.pairCompatibility !== 'matched' ||
-    settings.pairDisplayState !== 'update-available' ||
-    settings.screenOtaPreflight !== 'metadata-ready' ||
     (!qualification && verifyOnly) ||
     settings.screenOtaSelectionTag !== settings.pairReleaseTag ||
     !/^v[0-9]+\.[0-9]+\.[0-9]+(?:[-+][a-zA-Z0-9.+-]+)?$/.test(settings.screenOtaSelectionTag) ||
@@ -31,6 +41,7 @@ export function screenOtaRequest(settings, options = {}, submitting = false) {
     imageSha256: settings.screenOtaImageSha256,
     qualification,
     verifyOnly,
+    screenOnly,
   });
 }
 
@@ -43,6 +54,10 @@ export function selectionCurrent(settings, selection, submitting = false) {
 export function otaStateText(state) {
   return (
     {
+      'qualification-disabled': 'This build does not permit isolated screen qualification.',
+      'simulation-only':
+        'This image uses simulated telemetry; ordinary controller-matched installation is unavailable.',
+      'replay-stop-required': 'Stop and disconnect replay before screen-only qualification.',
       'metadata-unavailable': 'Check matched releases to obtain verified update metadata.',
       'refresh-required': 'The release check expired. Refresh matched releases before updating.',
       'invalid-release': 'Release metadata is invalid. Installation is blocked.',
@@ -50,7 +65,7 @@ export function otaStateText(state) {
       'not-newer': 'No newer compatible screen release is selected.',
       busy: 'An update or machine process is active. Wait until it finishes.',
       'controller-disconnected':
-        'Connect the matching controller on the test bench before updating.',
+        'Connect the matching controller before an ordinary update.',
       'controller-unidentified': 'Waiting for the controller version and protocol.',
       'protocol-mismatch':
         'The selected release uses a different controller protocol. Use the matched USB packages for this transition.',
@@ -84,6 +99,7 @@ export function otaStateText(state) {
 export function installedPairText(state) {
   return (
     {
+      simulated: 'Simulated peer only; no physical controller compatibility has been verified.',
       matched: 'The installed screen and controller versions match.',
       'controller-disconnected':
         'No controller is connected; installed-pair compatibility is unknown.',

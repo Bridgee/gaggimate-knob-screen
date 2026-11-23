@@ -33,6 +33,10 @@ jobs:
         run: python scripts/check_public.py
       - name: Build and verify firmware
         run: python scripts/k718.py build --out dist/release
+      - name: Build isolated validation firmware
+        run: python scripts/k718.py build-validation --out dist/validation
+      - name: Prepare validation-only bundle
+        run: python scripts/package_validation.py dist/validation --out dist/validation-publish
       - name: Prepare shareable firmware package
         run: python scripts/package_release.py dist/release --out dist/publish
       - name: Prepare matched firmware pair
@@ -46,4 +50,9 @@ jobs:
         with:
           name: gaggimate-knob-screen-pair-${{ github.sha }}
           path: dist/paired/
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gaggimate-knob-validation-${{ github.sha }}
+          path: dist/validation-publish/
           if-no-files-found: error

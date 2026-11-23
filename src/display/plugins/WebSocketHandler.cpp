@@ -224,6 +224,14 @@ void WebSocketHandler::handleWebSocketData(AsyncWebSocket *server, AsyncWebSocke
                 // Storage-backed requests run on the AsyncTCP task, which the task watchdog polices; while an update
                 // hammers flash, SD I/O crawls and has blown that deadline (field coredumps). Refuse them meanwhile.
 #ifdef GAGGIMATE_KNOB
+#ifdef GAGGIMATE_KNOB_VALIDATION
+                if (msgType.startsWith("req:history")) {
+                    JsonDocument response(&psramAllocator);
+                    response["tp"] = String("res:") + msgType.substring(4);
+                    response["rid"] = doc["rid"]; response["error"] = "History disabled in validation firmware";
+                    client->text(toWsBuffer(response));
+                } else
+#endif
                 if (controller->isUpdating() && !screen_ota::readOnlyDuringUpdate(msgType.c_str())) {
                     JsonDocument response(&psramAllocator);
                     response["tp"] = "res:update-in-progress"; response["error"] = "Screen update in progress";
@@ -580,6 +588,14 @@ void WebSocketHandler::publishTelemetry() {
     }
     processGuard.unlock();
 
+#ifdef GAGGIMATE_KNOB
+    statusDoc["validationBuild"] = false;
+#endif
+#ifdef GAGGIMATE_KNOB_VALIDATION
+    statusDoc["validationBuild"] = true;
+    statusDoc["lnk"] = controller->getClientController()->isConnected() ? "replay" : "none";
+    statusDoc["bc"] = false;
+#endif
     broadcastJson(statusDoc);
 }
 

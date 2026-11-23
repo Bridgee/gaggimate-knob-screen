@@ -151,6 +151,40 @@ export function MatchedVersions({ settings, onCheckPair, onScreenUpdate, submitt
           {settings.screenOtaVerified && <p>Image hash and flash readback verified.</p>}
         </div>
       )}
+      {settings.validationBuild === true &&
+        settings.screenOtaStandaloneQualificationAvailable === true && (
+          <div className='border-warning space-y-3 rounded-lg border p-4 md:col-span-2'>
+            <p className='font-semibold'>Isolated screen OTA qualification</p>
+            <p className='text-sm'>
+              No controller compatibility is asserted. Stop and disconnect replay, enter standby,
+              and keep USB recovery available. This image can verify or test-install an own-release
+              screen image.
+            </p>
+            <p className='text-sm'>{otaStateText(settings.screenOtaStandalonePreflight)}</p>
+            <div className='flex flex-wrap gap-2'>
+              {[true, false].map(verifyOnly => (
+                <button
+                  key={String(verifyOnly)}
+                  type='button'
+                  className='btn btn-outline btn-sm'
+                  disabled={
+                    !screenOtaRequest(
+                      settings,
+                      { qualification: true, screenOnly: true, verifyOnly },
+                      submitting,
+                    )
+                  }
+                  onClick={() => {
+                    const options = { qualification: true, screenOnly: true, verifyOnly };
+                    if (screenOtaRequest(settings, options, submitting)) onScreenUpdate?.(options);
+                  }}
+                >
+                  {verifyOnly ? 'Verify screen image only' : 'Test-install screen image'}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       <div id='ota-installation-notice' role='note' className='alert alert-info md:col-span-2'>
         <div>
           <p className='font-semibold'>
@@ -217,9 +251,15 @@ export function ScreenUpdateConfirmation({ selection, settings, submitting, onCa
         <p>
           Knob Screen {selection.request.tag}, based on official {selection.upstreamVersion}.
         </p>
-        <p>
-          Required controller: {selection.controllerVersion} · Protocol {selection.protocol}.
-        </p>
+        {selection.request.screenOnly ? (
+          <p className='text-warning'>
+            Screen-only qualification. Physical controller compatibility is not checked.
+          </p>
+        ) : (
+          <p>
+            Required controller: {selection.controllerVersion} · Protocol {selection.protocol}.
+          </p>
+        )}
         <p className='my-3 text-sm'>
           {selection.request.verifyOnly
             ? 'The inactive screen slot will be written and verified. No boot selection change or restart.'

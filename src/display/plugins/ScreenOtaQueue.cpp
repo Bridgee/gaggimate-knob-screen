@@ -4,7 +4,9 @@
 namespace screen_ota {
 bool Installer::queue(const Preflight &preflight, const Request &request) {
     const bool normal = mayInstall(preflight, request) && !request.qualification && !request.verifyOnly;
-    if (!normal && !mayQualify(preflight, request, qualificationPermission)) return false;
+    const bool qualified = request.screenOnly ? mayQualifyScreenOnly(preflight, request, standalonePermission) :
+        mayQualify(preflight, request, qualificationPermission);
+    if (!normal && !qualified) return false;
     std::lock_guard<std::mutex> lock(mutex);
     if (status.busy) return false;
     job = {preflight.plan, request.verifyOnly}; queued = true;

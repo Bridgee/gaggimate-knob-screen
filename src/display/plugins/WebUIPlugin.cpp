@@ -27,6 +27,9 @@
 #include <Protocol.h>
 #include "ScreenOtaPolicy.h"
 #include "NetworkWorker.h"
+#ifdef GAGGIMATE_KNOB_VALIDATION
+#include <display/validation/ReplayPeer.h>
+#endif
 #include "BufferedProfileImage.h"
 #include <display/drivers/GuitionKnob/BootHealth.h>
 #include <esp_ota_ops.h>
@@ -47,7 +50,7 @@ static void mbedtlsPsramFree(void *p) { heap_caps_free(p); } // NOSONAR
 WebUIPlugin::WebUIPlugin()
 #ifdef GAGGIMATE_KNOB
     : matchedReleases(std::strcmp(BUILD_RELEASE_CHANNEL, "candidate") == 0),
-      screenInstaller(BUILD_SCREEN_OTA_QUALIFICATION != 0), server(80)
+      screenInstaller(BUILD_SCREEN_OTA_QUALIFICATION != 0, BUILD_SCREEN_OTA_STANDALONE_QUALIFICATION != 0), server(80)
 #else
     : server(80)
 #endif
@@ -125,11 +128,21 @@ void WebUIPlugin::loop() {
         const bool healthy = !guition_knob::bootHealthPending() &&
             (std::strcmp(guition_knob::bootHealthState(), "healthy") == 0 ||
              std::strcmp(guition_knob::bootHealthState(), "confirmed") == 0);
-        if (!healthy || !controller->tryBeginScreenUpdate()) screenInstaller.fail("standby-or-readiness-changed");
+        bool reserved = false;
+#ifdef GAGGIMATE_KNOB_VALIDATION
+        if (healthy && screenJob.plan.screenOnly) reserved = controller->tryBeginStandaloneScreenUpdate();
+#endif
+        if (healthy && !screenJob.plan.screenOnly) reserved = controller->tryBeginScreenUpdate();
+        if (!reserved) screenInstaller.fail("standby-or-readiness-changed");
         else {
             screenUpdateActive = true;
             pluginManager->trigger("ota:update:start", "component", "display");
-            screenInstaller.start(screenJob, [this, protocol = screenJob.plan.protocol, version = screenJob.plan.controllerVersion] {
+            screenInstaller.start(screenJob, [this, screenOnly = screenJob.plan.screenOnly, protocol = screenJob.plan.protocol, version = screenJob.plan.controllerVersion] {
+#ifdef GAGGIMATE_KNOB_VALIDATION
+                if (screenOnly) return controller->canCommitStandaloneScreenUpdate();
+#else
+                if (screenOnly) return false;
+#endif
                 return controller->canCommitScreenUpdate(protocol, version.c_str());
             });
         }
@@ -235,6 +248,43 @@ void WebUIPlugin::serveWebAsset(AsyncWebServerRequest *request) {
 }
 
 void WebUIPlugin::setupServer() {
+#ifdef GAGGIMATE_KNOB_VALIDATION
+    // Keep production history/machine-profile stores and scale pairing inaccessible.
+    server.addMiddleware([](AsyncWebServerRequest *request, ArMiddlewareNext next) {
+        const String url = request->url();
+        if (url.startsWith("/api/history") || url.startsWith("/api/machine-profiles") || url.startsWith("/api/scales")) {
+            request->send(403, "application/json", "{\"error\":\"Unavailable in validation firmware\"}"); return;
+        }
+        next();
+    });
+    server.on("/api/validation", [this](AsyncWebServerRequest *request) {
+        if (request->method() != HTTP_GET && request->method() != HTTP_POST) { request->send(405); return; }
+        if (request->method() == HTTP_POST) {
+            if (controller->isUpdating() || screenInstaller.snapshot().busy) { request->send(409); return; }
+            const String action = request->arg("action"), trace = request->arg("trace");
+            knob_validation::Action command;
+            if (action == "play") command = knob_validation::Action::Play;
+            else if (action == "pause") command = knob_validation::Action::Pause;
+            else if (action == "reset") command = knob_validation::Action::Reset;
+            else if (action == "disconnect") command = knob_validation::Action::Disconnect;
+            else { request->send(400); return; }
+            knob_validation::Trace chosen = knob_validation::Trace::Idle;
+            if (trace == "warmup") chosen = knob_validation::Trace::Warmup;
+            else if (trace == "shot") chosen = knob_validation::Trace::Shot;
+            else if (trace.length() && trace != "idle") { request->send(400); return; }
+            if (!knob_validation::peer().request(command, chosen)) { request->send(409); return; }
+        }
+        const auto state = knob_validation::peer().snapshot();
+        JsonDocument doc(&psramAllocator);
+        doc["validationBuild"] = true; doc["physicalController"] = false;
+        doc["connected"] = state.connected; doc["playing"] = state.playing;
+        doc["trace"] = knob_validation::traceName(state.trace); doc["positionMs"] = state.positionMs;
+        doc["temperature"] = state.temperature; doc["pressure"] = state.pressure; doc["weight"] = state.weight;
+        doc["commandsTerminated"] = state.commands; doc["malformed"] = state.malformed;
+        doc["quiescent"] = knob_validation::peer().quiescent();
+        auto *response = request->beginResponseStream("application/json"); serializeJson(doc, *response); request->send(response);
+    });
+#endif
 #ifdef GAGGIMATE_KNOB
     guition_knob::Hardware::instance().bindWeb(server);
 #endif
@@ -1121,7 +1171,12 @@ void WebUIPlugin::handleBLEScaleInfo(AsyncWebServerRequest *request) {
 }
 
 #ifdef GAGGIMATE_KNOB
-screen_ota::Preflight WebUIPlugin::screenPreflight() const {
+screen_ota::Preflight WebUIPlugin::screenPreflight(bool screenOnly) const {
+#ifndef GAGGIMATE_KNOB_VALIDATION
+    if (screenOnly) return {"qualification-disabled", {}};
+#else
+    if (!screenOnly) return {"simulation-only", {}};
+#endif
     const auto pair = matchedReleases.snapshot();
     if (pair.status != "ready") return {};
     if (!screen_ota::metadataFresh(pair.validatedAt, millis())) return {"refresh-required", {}};
@@ -1145,18 +1200,27 @@ screen_ota::Preflight WebUIPlugin::screenPreflight() const {
     local.bootSelectionCurrent = running && boot && running->address == boot->address &&
         esp_ota_get_state_partition(running, &runningState) == ESP_OK &&
         (runningState == ESP_OTA_IMG_VALID || runningState == ESP_OTA_IMG_UNDEFINED);
+#ifdef GAGGIMATE_KNOB_VALIDATION
+    local.controllerReady = false; // This image never observes a physical controller.
+    local.transportIsolated = true;
+    local.replayQuiescent = knob_validation::peer().quiescent();
+    if (screenOnly) return screen_ota::inspectScreenOnly(true, pair.release, pair.pair, local,
+        true, BUILD_SCREEN_OTA_STANDALONE_QUALIFICATION != 0);
+#endif
     return screen_ota::inspect(true, pair.release, pair.pair, local,
         std::strcmp(BUILD_RELEASE_CHANNEL, "candidate") == 0);
 }
 void WebUIPlugin::handleScreenOTAStart(JsonDocument &request) {
-    const auto preflight = screenPreflight();
+    const bool screenOnly = request["screenOnly"].is<bool>() && request["screenOnly"].as<bool>();
+    const auto preflight = screenPreflight(screenOnly);
     screen_ota::Request selected;
+    selected.screenOnly = screenOnly;
     selected.component = matched_release::text(request["component"]);
     selected.tag = matched_release::text(request["tag"]);
     selected.manifestSha = matched_release::text(request["manifestSha256"]);
     selected.imageSha = matched_release::text(request["imageSha256"]);
     bool valid = request["url"].isNull() && request["downloadUrl"].isNull();
-    for (const char *key : {"qualification", "verifyOnly"})
+    for (const char *key : {"qualification", "verifyOnly", "screenOnly"})
         if (!request[key].isNull() && !request[key].is<bool>()) valid = false;
     selected.qualification = request["qualification"].is<bool>() && request["qualification"].as<bool>();
     selected.verifyOnly = request["verifyOnly"].is<bool>() && request["verifyOnly"].as<bool>();
@@ -1165,7 +1229,7 @@ void WebUIPlugin::handleScreenOTAStart(JsonDocument &request) {
     response["tp"] = "res:screen-ota-start";
     if (request["rid"].is<const char *>()) response["rid"] = request["rid"];
     response["accepted"] = accepted;
-    const bool permission = selected.qualification ? BUILD_SCREEN_OTA_QUALIFICATION != 0 :
+    const bool permission = selected.screenOnly ? (selected.qualification && BUILD_SCREEN_OTA_STANDALONE_QUALIFICATION != 0) : selected.qualification ? BUILD_SCREEN_OTA_QUALIFICATION != 0 :
         screen_ota::screenInstallationAllowed && !selected.verifyOnly;
     response["state"] = accepted ? "queued" : (!valid ? "invalid-request" :
         (!permission ? "installation-disabled" : (!preflight.ready() ? preflight.state : "selection-changed")));
@@ -1214,6 +1278,12 @@ void WebUIPlugin::updateOTAStatus(const String &version) {
     doc["installedCompatibility"] = matched_release::installedCompatibility(BUILD_UPSTREAM_VERSION,
         gm_proto::PROTOCOL_VERSION, system.protocolVersion, controller->getSystemState() == SYSTEM_READY,
         system.version.c_str());
+#ifdef GAGGIMATE_KNOB_VALIDATION
+    doc["validationBuild"] = true;
+    doc["controllerConnected"] = false;
+    doc["controllerVersion"] = "";
+    doc["installedCompatibility"] = "simulated";
+#endif
     doc["pairSupported"] = true;
     doc["pairStatus"] = pair.status;
     doc["pairMessage"] = pair.message;
@@ -1230,7 +1300,12 @@ void WebUIPlugin::updateOTAStatus(const String &version) {
     doc["pairControllerState"] = ready && controllerReady ? matched_release::componentState(system.version.c_str(), pair.pair.controllerVersion) : "unknown";
     doc["pairCompatibility"] = ready ? matched_release::compatibility(pair.pair, gm_proto::PROTOCOL_VERSION,
         system.protocolVersion, controller->getSystemState() == SYSTEM_READY, system.version.c_str()) : "unknown";
+#ifdef GAGGIMATE_KNOB_VALIDATION
+    doc["pairCompatibility"] = "simulated";
+#endif
     const auto preflight = screenPreflight();
+    doc["screenOtaStandaloneQualificationAvailable"] = BUILD_SCREEN_OTA_STANDALONE_QUALIFICATION != 0;
+    doc["screenOtaStandalonePreflight"] = screenPreflight(true).state;
     doc["screenOtaInstallationAllowed"] = screen_ota::screenInstallationAllowed;
     doc["controllerOtaInstallationAllowed"] = screen_ota::controllerInstallationAllowed;
     doc["screenOtaPreflight"] = preflight.state;

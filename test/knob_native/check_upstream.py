@@ -2,6 +2,9 @@
 import json
 from pathlib import Path
 import subprocess
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
+from k718_validation_source import production_source
 
 ROOT = Path(__file__).resolve().parents[2]
 base = json.loads((ROOT / 'port/config.json').read_text())['upstream']['commit']
@@ -16,5 +19,7 @@ for name in names:
         # Drop only the original author's machine-local filepath comment.
         assert expected.startswith(b'// filepath: ')
         expected = expected.split(b'\n', 1)[1]
-    assert actual == expected, 'Upstream control source changed: ' + name
-print(f'PASS: {len(names)} upstream controller/protocol/PID/process files retained; one non-code filepath comment removed.')
+    if name in {'lib/NanoPbComm/src/GaggiMateClient.h', 'lib/NanoPbComm/src/GaggiMateClient.cpp'}:
+        actual, expected = production_source(actual), production_source(expected)
+    assert actual == expected, 'Upstream production control source changed: ' + name
+print(f'PASS: {len(names)} upstream controller/protocol/PID/process files retained; one non-code filepath comment removed; two display facade files compared with validation-only guards disabled.')

@@ -1,5 +1,6 @@
 #include "Controller.h"
 #include "ArduinoJson.h"
+#include <display/plugins/BLEScalePlugin.h>
 #include "esp_coexist.h"
 #include "esp_sntp.h"
 #include <LittleFS.h>
@@ -26,7 +27,7 @@
 #include <display/plugins/WebUIPlugin.h>
 #include <display/plugins/mahlkonig/MahlkonigPlugin.h>
 #include <display/util/FsUtil.h>
-#ifndef GAGGIMATE_SIM // network/BLE plugins are device-only
+#if !defined(GAGGIMATE_SIM) && !defined(GAGGIMATE_KNOB_VALIDATION) // network/BLE plugins are device-only
 #include <display/plugins/BLEScalePlugin.h>
 #include <display/plugins/HomekitPlugin.h>
 #include <display/plugins/ImprovPlugin.h>
@@ -50,6 +51,10 @@
 #include <display/drivers/AmoledDisplayDriver.h>
 #include <display/drivers/LilyGoDriver.h>
 #include <display/drivers/WaveshareDriver.h>
+#endif
+
+#ifdef GAGGIMATE_KNOB_VALIDATION
+#include <display/validation/ReplayPeer.h>
 #endif
 
 const String LOG_TAG = F("Controller");
@@ -90,15 +95,22 @@ void Controller::setup() {
         sdcard = true;
         ESP_LOGI(LOG_TAG, "SD Card detected and mounted");
         ESP_LOGI(LOG_TAG, "Used: %lluMB, Capacity: %lluMB", SD_MMC.usedBytes() / 1024 / 1024, SD_MMC.cardSize() / 1024 / 1024);
+#ifndef GAGGIMATE_KNOB_VALIDATION
         seedSDCard();
+#endif
     }
     FS *fs = &LittleFS;
     if (sdcard) {
         fs = &SD_MMC;
     }
+#ifdef GAGGIMATE_KNOB_VALIDATION
+    fs->mkdir("/validation");
+    profileManager = new ProfileManager(fs, "/validation/p", settings, pluginManager);
+#else
     profileManager = new ProfileManager(fs, "/p", settings, pluginManager);
+#endif
     profileManager->setup();
-#ifndef GAGGIMATE_SIM // mDNS/HomeKit are device-only
+#if !defined(GAGGIMATE_SIM) && !defined(GAGGIMATE_KNOB_VALIDATION) // mDNS/HomeKit are device-only
     if (settings.isHomekit())
         pluginManager->registerPlugin(new HomekitPlugin(settings.getWifiSsid(), settings.getWifiPassword()));
     else
@@ -110,22 +122,26 @@ void Controller::setup() {
     if (settings.isSmartGrindActive()) {
         pluginManager->registerPlugin(new SmartGrindPlugin());
     }
-#ifndef GAGGIMATE_SIM // MQTT/HomeAssistant is device-only
+#if !defined(GAGGIMATE_SIM) && !defined(GAGGIMATE_KNOB_VALIDATION) // MQTT/HomeAssistant is device-only
     if (settings.isHomeAssistant()) {
         pluginManager->registerPlugin(new MQTTPlugin());
     }
 #endif
     pluginManager->registerPlugin(new WebUIPlugin());
+#ifndef GAGGIMATE_KNOB_VALIDATION
     if (settings.isMahlkonigActive()) {
         pluginManager->registerPlugin(new MahlkonigPlugin());
     }
-#ifndef GAGGIMATE_SIM // WiFi watchdogs and BLE scales are device-only
+#endif
+#if !defined(GAGGIMATE_SIM) && !defined(GAGGIMATE_KNOB_VALIDATION) // WiFi watchdogs and BLE scales are device-only
     pluginManager->registerPlugin(new NetworkWatchdogPlugin());
     pluginManager->registerPlugin(new WifiStaWatchdogPlugin());
     pluginManager->registerPlugin(new ImprovPlugin());
 #endif
+#ifndef GAGGIMATE_KNOB_VALIDATION
     pluginManager->registerPlugin(&ShotHistory);
-#ifndef GAGGIMATE_SIM
+#endif
+#if !defined(GAGGIMATE_SIM) && !defined(GAGGIMATE_KNOB_VALIDATION)
     pluginManager->registerPlugin(&BLEScales);
 #endif
     if (settings.isSmartDoseActive()) {
@@ -150,6 +166,14 @@ void Controller::setup() {
 
 #ifndef GAGGIMATE_HEADLESS
     ui->init();
+#ifdef GAGGIMATE_KNOB_VALIDATION
+    auto *notice = lv_label_create(lv_layer_top());
+    lv_label_set_text(notice, "SIMULATED / NO CONTROLLER");
+    lv_obj_set_style_bg_opa(notice, LV_OPA_COVER, 0);
+    lv_obj_set_style_bg_color(notice, lv_color_black(), 0);
+    lv_obj_set_style_text_color(notice, lv_color_hex(0xffcc44), 0);
+    lv_obj_align(notice, LV_ALIGN_TOP_MID, 0, 55);
+#endif
 #endif
     this->onScreenReady();
 #ifdef GAGGIMATE_KNOB
@@ -298,7 +322,11 @@ void Controller::setupBluetooth() {
         const UartConf uart = driver->getUARTConf();
         comms.enableUart(uart.rxPin, uart.txPin);
     }
+#ifdef GAGGIMATE_KNOB_VALIDATION
+    comms.initReplay(knob_validation::peer(), [] { knob_validation::peer().request(knob_validation::Action::Disconnect); });
+#else
     comms.init("GPBLC");
+#endif
     comms.onSendFailed([this]() { requestStateResend(); });
     comms.onConnectionChanged([this](bool connected) {
         if (!connected)
@@ -638,6 +666,9 @@ void Controller::loop() {
     }
 
     if (initialized) {
+#ifdef GAGGIMATE_KNOB_VALIDATION
+        knob_validation::peer().tick(millis());
+#endif
         comms.loop(); // drive the comms send pump + retransmit
         // Stop + tare go out on the fast interval; the switch back starts only once the link is quiet (or after a cap).
         if (relaxPending && (comms.isIdle() || millis() - relaxRequestedAt > RELAX_TIMEOUT_MS)) {
@@ -784,6 +815,20 @@ bool Controller::tryBeginScreenUpdate() {
     if (getSystemState() != SYSTEM_READY || mode != MODE_STANDBY || currentProcess != nullptr || screenControlEntries != 0) return false;
     updating = true; return true;
 }
+#ifdef GAGGIMATE_KNOB_VALIDATION
+bool Controller::tryBeginStandaloneScreenUpdate() {
+    std::lock_guard<std::recursive_mutex> guard(processMutex);
+    if (updating || autotuning || isErrorState() || mode != MODE_STANDBY || currentProcess ||
+        screenControlEntries || comms.isConnected() || !knob_validation::peer().quiescent()) return false;
+    updating = true; return true;
+}
+bool Controller::canCommitStandaloneScreenUpdate() const {
+    std::lock_guard<std::recursive_mutex> guard(processMutex);
+    return updating && !autotuning && !isErrorState() && mode == MODE_STANDBY &&
+        currentProcess == nullptr && screenControlEntries == 0 && !comms.isConnected() &&
+        knob_validation::peer().quiescent();
+}
+#endif
 bool Controller::canCommitScreenUpdate(unsigned protocol, const char *version) const {
     std::lock_guard<std::recursive_mutex> guard(processMutex);
     return updating && !autotuning && !isErrorState() && mode == MODE_STANDBY &&
@@ -844,6 +889,9 @@ bool Controller::isVolumetricAvailable() const {
 }
 
 void Controller::autotune(int testTime, int samples, int heaterWattage) {
+#ifdef GAGGIMATE_KNOB_VALIDATION
+    (void)testTime; (void)samples; (void)heaterWattage; return;
+#endif
 #ifdef GAGGIMATE_KNOB
     guition_knob::ActionReservation updateGuard(processMutex, screenControlEntries, updating);
     if (!updateGuard) return;
@@ -860,6 +908,10 @@ void Controller::autotune(int testTime, int samples, int heaterWattage) {
 }
 
 void Controller::startProcess(Process *process) {
+#ifdef GAGGIMATE_KNOB_VALIDATION
+    delete process;
+    return;
+#endif
     std::unique_ptr<Process> owned(process);
     if (!isMachineHardwareReady()) {
         return;
