@@ -198,6 +198,8 @@ class DefaultUI {
 #ifdef GAGGIMATE_KNOB
     gaggimate_ui::KnobAdjustment knobAdjustment;
     bool knobCalibrated = false;
+    bool canKnobBrowseProfiles() const;
+    void onKnobBrowseProfiles(int steps);
 #endif
     Driver *panelDriver = nullptr;
     Controller *controller;

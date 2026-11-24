@@ -163,6 +163,44 @@ void checkUiExtensions(const char *directory,int theme,void(*save)(const char *,
         lv_obj_remove_event_cb_with_user_data(objects.next_profile_1,countClick,&next);
         lv_obj_remove_event_cb_with_user_data(objects.select_profile_1,countClick,&loads);
     }
+    // Brew-main detents use the same decoder, without stealing parameter-panel input.
+    {
+        KnobAdjustment knob;knob.calibrate(1,-1);
+        int opens=0,steps=0;
+        knob.setProfileShortcut([&](int delta){++opens;steps+=delta;});
+        UIFlagsValue flags(eez::flow::getGlobalVariable(FLOW_GLOBAL_VARIABLE_UI_FLAGS));
+        flags.brew_adjustments(false);flags.active(false);
+        eez::flow::setGlobalVariable(FLOW_GLOBAL_VARIABLE_UI_FLAGS,flags);
+        eez_flow_set_screen(SCREEN_ID_BREW_SCREEN,LV_SCR_LOAD_ANIM_NONE,0,0);tick();
+        auto main=visibleKnobTargets(SCREEN_ID_BREW_SCREEN);assert(main.count==0);
+        knob.update(SCREEN_ID_BREW_SCREEN,0,true,main,focus,true);
+        knob.update(SCREEN_ID_BREW_SCREEN,-1,true,main,focus,true);
+        assert(opens==1 && steps==1 && knob.selected()==AdjustmentId::None);
+        knob.update(SCREEN_ID_BREW_SCREEN,0,true,main,focus,true);
+        assert(opens==2 && steps==0); // counterclockwise previews previous
+        knob.update(SCREEN_ID_BREW_SCREEN,-5,true,main,focus,false);
+        knob.update(SCREEN_ID_BREW_SCREEN,-5,true,main,focus,true);
+        assert(opens==2); // active/overlay-disabled motion cannot replay later
+        knob.update(SCREEN_ID_BREW_SCREEN,-6,true,main,focus,true);
+        assert(opens==3 && steps==1);
+        knob.update(SCREEN_ID_BREW_SCREEN,-8,false,main,focus,true);
+        knob.update(SCREEN_ID_BREW_SCREEN,-8,true,main,focus,true);assert(opens==3);
+        flags.brew_adjustments(true);eez::flow::setGlobalVariable(FLOW_GLOBAL_VARIABLE_UI_FLAGS,flags);tick();
+        auto panel=visibleKnobTargets(SCREEN_ID_BREW_SCREEN);assert(panel.count==2);
+        knob.update(SCREEN_ID_BREW_SCREEN,-9,true,panel,focus,true);
+        knob.update(SCREEN_ID_BREW_SCREEN,-10,true,panel,focus,true);
+        assert(opens==3 && knob.selected()==AdjustmentId::None);
+        int raises=0;lv_obj_add_event_cb(panel.items[0].raise,countClick,LV_EVENT_CLICKED,&raises);
+        lv_event_send(panel.items[0].row,LV_EVENT_PRESSED,nullptr);
+        knob.update(SCREEN_ID_BREW_SCREEN,-11,true,panel,focus,true);
+        assert(raises==1 && opens==3 && knob.selected()==panel.items[0].id);
+        lv_event_send(panel.items[0].raise,LV_EVENT_CLICKED,nullptr);assert(raises==2);
+        lv_obj_remove_event_cb_with_user_data(panel.items[0].raise,countClick,&raises);
+        eez_flow_set_screen(SCREEN_ID_MENU_SCREEN_NEW,LV_SCR_LOAD_ANIM_NONE,0,0);tick();
+        auto menu=visibleKnobTargets(SCREEN_ID_MENU_SCREEN_NEW);
+        knob.update(SCREEN_ID_MENU_SCREEN_NEW,-12,true,menu,focus,true);
+        knob.update(SCREEN_ID_MENU_SCREEN_NEW,-13,true,menu,focus,true);assert(opens==3);
+    }
     eez_flow_set_screen(1,LV_SCR_LOAD_ANIM_NONE,0,0);tick();
     StandbyAppearance appearance;
     auto *screen=objects.standby_screen;
@@ -196,5 +234,5 @@ void checkUiExtensions(const char *directory,int theme,void(*save)(const char *,
     eez_flow_set_screen(4,LV_SCR_LOAD_ANIM_NONE,0,0);tick();eez_flow_set_screen(1,LV_SCR_LOAD_ANIM_NONE,0,0);tick();
     appearance.content=StandbyContent::Text;
     assert(updateStandbyDisplay(objects.standby_screen,objects.obj3,objects.time,appearance,"10:27",foreground));
-    printf("PASS: %s rotary single/multi/profile-preview/touch/deletion/disabled and standby text/clock/layout/recreation\n",theme?"Light":"Dark");
+    printf("PASS: %s rotary single/multi/profile-preview/brew-shortcut/touch/deletion/disabled and standby text/clock/layout/recreation\n",theme?"Light":"Dark");
 }

@@ -84,7 +84,7 @@ void KnobAdjustment::highlight() {
         else lv_obj_clear_state(t.value, LV_STATE_USER_1);
     }
 }
-void KnobAdjustment::update(int screen, int32_t raw, bool enabled, const AdjustmentTargets &targets, lv_color_t focusColor) {
+void KnobAdjustment::update(int screen, int32_t raw, bool enabled, const AdjustmentTargets &targets, lv_color_t focusColor, bool profileShortcutAllowed) {
     if(!styleReady) {
         lv_style_init(&focusStyle);
         lv_style_set_outline_width(&focusStyle, 2);
@@ -123,7 +123,12 @@ void KnobAdjustment::update(int screen, int32_t raw, bool enabled, const Adjustm
         lv_obj_report_style_change(&focusStyle);
     }
     highlight();
-    int steps=decoder.consume(raw,enabled && !changed && selectedId!=AdjustmentId::None);
+    const bool shortcut = screen == SCREEN_ID_BREW_SCREEN && count == 0 && profileShortcutAllowed && profileShortcut;
+    int steps=decoder.consume(raw,enabled && !changed && (selectedId!=AdjustmentId::None || shortcut));
+    if (shortcut && steps) {
+        profileShortcut(steps);
+        return;
+    }
     for(unsigned i=0;i<count && steps;++i) {
         auto t=bindings[i].target;
         if(t.id!=selectedId)continue;

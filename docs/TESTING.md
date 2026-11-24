@@ -28,7 +28,7 @@ The full build runs generated-protocol, rendered OTA web, upstream web and packa
 
 ## Knob-only development
 
-Current controller-free checks cover USB recovery/trial boot, local startup health, saved data, web image traffic and disconnected behavior. Local health confirmation does not require Wi-Fi or a controller.
+Current controller-free checks cover USB recovery/trial boot, local startup health, saved data, web image traffic and disconnected behavior. Local health confirmation does not require Wi-Fi or a controller. The exact rc.13 validation/normal packages passed local replay/input/LED, web download/readback/install, controlled-reset rollback and USB recovery with retained data; see its [recorded scope](https://github.com/Bridgee/gaggimate-knob-screen/releases/tag/v0.5.0-rc.13). These checks do not qualify a later binary or real controller communication.
 
 The dedicated **display-knob-validation** image now implements local replay through the actual generated nanopb frames, LinkSelector, Endpoint and display facade callbacks. It never initializes the physical BLE/wired client. Idle, warmup and shot traces interpolate synthetic temperature/pressure/weight; pause/reset/disconnect are deterministic controls. Outbound commands terminate locally, with ACK/dedup and bounded command counters. This is data replay, not a thermal model or a controller substitute.
 
@@ -42,6 +42,8 @@ python scripts/package_validation.py dist/validation --out dist/validation-publi
 On that image, open **Settings → System → Local data replay**. The screen and web UI identify simulated data. `GET /api/validation` returns replay status; a form `POST` accepts `action=play|pause|reset|disconnect` and `trace=idle|warmup|shot`. The endpoint and local transport do not exist in normal firmware. Start at idle, inspect parameters/rotary/LED behavior, then replay the other traces; process starts and autotuning are disabled.
 
 Validation settings use `knob-test` NVS, seeded once from read-only screen settings; profiles use `/validation/p` and their images use `/validation/pi`. The physical bond store is not initialized or cleared. HomeKit/MQTT/mDNS, Bluetooth-scale and external-grinder integrations are not started. History and machine-profile stores are unavailable to the validation API. This preserves the production workflow while allowing local parameter tests.
+
+For the Brew-main rotary shortcut, use at least two ordinary favorite profiles in the isolated store. With idle replay, turn from the main view: the picker should open and preview by one detent without loading. Check both directions and list boundaries, then use the original checkmark to load. Open the parameter panel and confirm that touch selection and rotary adjustments still work. Host tests execute the actual active-process guard and verify that disabled motion is not replayed; no physical process start is required for these software checks.
 
 The synthetic identity is never passed to the legacy physical-controller OTA parser. The host suite compiles the actual ready callback and official-check request boundary with that unchanged parser in both build roles, and checks the capability submessage after wire encoding/decoding.
 

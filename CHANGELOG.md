@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.0-rc.14
+
+- Turn the knob on the idle Brew main page to open the existing Profile picker and preview the previous/next entry; the original checkmark still confirms the selection.
+- Block the shortcut during active processes, updates, overlays, transitions and unavailable controller/profile state. Preserve parameter-panel focus, original touch actions and no disabled-motion backlog.
+- Add actual-callback guard tests and native LVGL regressions in both themes. Candidate device acceptance remains tied to its exact image.
+
 ## 0.5.0-rc.13
 
 - Fix the first device replay activation: keep the synthetic identity out of the legacy physical-controller OTA version parser.

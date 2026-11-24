@@ -5,7 +5,8 @@
 - Native 360 × 360 display, touch, backlight and upstream controller connection.
 - Battery/power status, optional LED gauge mirror with persistent enable/brightness controls, and rotary parameter adjustment.
 - Custom standby text/clock and callable speaker/microphone interfaces.
-- Dedicated validation-only image with framed local replay, command termination, isolated settings/profiles and separate screen-only OTA qualification; physical acceptance pending.
+- Dedicated validation-only image with framed local replay, command termination, isolated settings/profiles and separate screen-only OTA qualification. Exact rc.13 local replay/input/LED and screen OTA/recovery results are recorded in its [test release](https://github.com/Bridgee/gaggimate-knob-screen/releases/tag/v0.5.0-rc.13); real controller acceptance is separate.
+- Idle Brew-main rotary entry into Profile preview, retaining explicit checkmark confirmation and parameter-panel controls. Current-candidate device acceptance is recorded separately.
 - English firmware repository, exact official-base source reconstruction and reproducible-build tooling.
 - Matched packages containing our screen image and a hash-pinned, unmodified official controller image.
 - Matched-release discovery, independent installed/release compatibility, and own-release screen web selection/confirmation/progress; official notices retained. Both OTA installers remain disabled.
@@ -29,12 +30,12 @@ When an installed controller is paired to another screen, continue the [controll
 
 ## Next development stage: screen OTA
 
-Read-only preflight, separate disabled permissions, two-slot USB recovery/trials and local startup-health confirmation are implemented in development. Recovery/health have been exercised on a development build. The explicit candidate-only interface passed USB-bench download/readback, interrupted staging, unconfirmed-boot rollback, healthy installation, settings and UI checks in 0.4.0-rc.8. The web action is now connected to the own-release backend, with confirmation, stale-selection rejection and progress. Normal web installation remains disabled; current-protocol bench and normal-flow qualification are still pending.
+Read-only preflight, separate disabled permissions, two-slot USB recovery/trials and local startup-health confirmation are implemented in development. Recovery/health have been exercised on a development build. The explicit candidate-only interface passed USB-bench download/readback, interrupted staging, unconfirmed-boot rollback, healthy installation, settings and UI checks in 0.4.0-rc.8. The web action is now connected to the own-release backend, with confirmation, stale-selection rejection and progress. Normal web installation remains disabled. The exact protocol-16 rc.13 isolated image passed the screen-only web download/readback/install, controlled-reset staging interruption, pending-boot rollback and USB recovery checks. Ordinary connected-flow qualification remains pending; controlled reset does not establish physical power-loss recovery.
 
 1. Implemented: bind installation requests to a freshly validated own-repository release and exact manifest/image hashes.
 2. Exercised on hardware: support USB recovery from either application slot and application health-gated boot confirmation.
 3. Exercised on hardware: own-repository screen download/install, length/hash/SDK/readback verification, interrupted staging and unconfirmed-boot recovery. Malformed/corrupt-image cases also have host tests.
-4. Implemented: wire the screen web action to the own-release path, retaining the legacy installer block and separate disabled controller permission. Implemented: isolated validation-only replay and Knob-only screen qualification with stopped-replay/healthy-slot guards. Pending: actual device download/readback/boot recovery, followed by ordinary connected-flow qualification before enabling normal installation. Record physical power loss and other untested cases explicitly.
+4. Implemented: wire the screen web action to the own-release path, retaining the legacy installer block and separate disabled controller permission. Implemented: isolated validation-only replay and Knob-only screen qualification with stopped-replay/healthy-slot guards. Exercised on the exact rc.13 isolated device build: download/readback/boot recovery. Pending: ordinary connected-flow qualification before enabling normal installation. Record physical power loss and other untested cases explicitly.
 
 Keep the old K718 installer denied. Controller OTA needs independent qualification; combined updates follow later. These stages do not block the existing USB stable release.
 

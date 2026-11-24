@@ -24,6 +24,7 @@
 #include <display/drivers/WaveshareDriver.h>
 #include <display/drivers/common/LV_Helper.h>
 #endif
+#include <algorithm>
 #include <cmath>
 #include <display/main.h>
 #include <display/plugins/SmartDosePlugin.h>
@@ -207,6 +208,7 @@ DefaultUI::DefaultUI(Controller *controller, Driver *driver, PluginManager *plug
                 this->controller->getSettings().getTargetGrindVolume(), direction, BREW_MIN_VOLUMETRIC, BREW_MAX_VOLUMETRIC));
         }
     });
+    knobAdjustment.setProfileShortcut([this](int steps) { onKnobBrowseProfiles(steps); });
 #endif
     setupPanel();
     xTaskCreatePinnedToCore(loopTask, "DefaultUI::loop", configMINIMAL_STACK_SIZE * 6, this, 1, &taskHandle, 1);
@@ -460,7 +462,7 @@ void DefaultUI::loop() {
     const int knobScreen=eez_flow_get_current_screen();
     knobAdjustment.update(knobScreen,knobHardware.encoderDetents,knobEnabled,
         gaggimate_ui::visibleKnobTargets(knobScreen),
-        lv_color_hex(eez_flow_get_selected_theme_index()==1?0x0069ad:0x80cfff));
+        lv_color_hex(eez_flow_get_selected_theme_index()==1?0x0069ad:0x80cfff), canKnobBrowseProfiles());
     const auto batteryScreen = eez_flow_get_current_screen();
     lv_obj_t *batteryStatusRow = batteryScreen == SCREEN_ID_MENU_SCREEN_NEW ? objects.status_icons
         : batteryScreen == SCREEN_ID_STANDBY_SCREEN ? objects.standby_icons
@@ -602,6 +604,27 @@ void DefaultUI::changeBrewScreenMode(BrewScreenState state) {
     brewScreenState = state;
     rerender = true;
 }
+
+#ifdef GAGGIMATE_KNOB
+bool DefaultUI::canKnobBrowseProfiles() const {
+    return eez_flow_get_current_screen() == SCREEN_ID_BREW_SCREEN && currentScreen == SCREEN_ID_BREW_SCREEN &&
+        targetScreen == SCREEN_ID_BREW_SCREEN && brewScreenState == BrewScreenState::Brew &&
+        !welcomeActive && !brewConfirmVisible && profileLoaded && controller->getMode() == MODE_BREW &&
+        controller->isReady() && !controller->isActive() && !controller->isUpdating() && !controller->isErrorState() &&
+        controller->getClientController()->isConnected() && !controller->getSystemInfo().protocolMismatch;
+}
+
+void DefaultUI::onKnobBrowseProfiles(int steps) {
+    if (!steps || !canKnobBrowseProfiles()) return;
+    // Use the existing preview path; only the original checkmark loads a profile.
+    onProfileSwitch();
+    steps = std::clamp(steps, -4, 4);
+    for (int n = 0; n < (steps > 0 ? steps : -steps); ++n) {
+        if (steps > 0) onNextProfile();
+        else onPreviousProfile();
+    }
+}
+#endif
 
 void DefaultUI::onProfileSwitch() {
     currentProfileIdx = 0;

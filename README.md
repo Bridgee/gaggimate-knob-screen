@@ -12,7 +12,7 @@ This is an independent port maintained by [Bridgee](https://github.com/Bridgee).
 - Native display, touch and backlight support; upstream Wi-Fi/web and Bluetooth controller communication remain available.
 - Battery/power-source icons on menu, standby and welcome screens, with filtered voltage estimates, display hysteresis and low-battery colors.
 - Rotary parameter adjustment: direct on single-field pages; tap to select on multi-field pages. Grind uses 0.5 seconds or 0.5 grams per detent. Original +/− buttons retain their steps.
-- Rotary Profile browsing: one preview per detent, with no extra highlight. Tap the existing checkmark to load it; touch arrows remain available.
+- Rotary Profile browsing: turn on the idle Brew main page to open the existing picker and move the preview. Each further detent previews one profile; tap the existing checkmark to load it. The shortcut is disabled during a process or while the parameter panel is open; parameter adjustment and touch arrows remain available.
 - Optional LED-ring temperature/pressure bars, following the screen colors. Enable the ring and set its brightness in **Settings → General → LED Ring**; saved preferences survive restarts.
 - Custom standby text or a centered clock, with both themes and touch wake.
 - Callable speaker and microphone interfaces. The temporary hardware-test page has been removed.

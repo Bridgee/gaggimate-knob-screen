@@ -21,9 +21,10 @@ class KnobAdjustment {
   public:
     KnobAdjustment();
     ~KnobAdjustment();
-    void update(int screen, int32_t raw, bool enabled, const AdjustmentTargets &targets, lv_color_t focusColor);
+    void update(int screen, int32_t raw, bool enabled, const AdjustmentTargets &targets, lv_color_t focusColor, bool profileShortcutAllowed = false);
     void calibrate(int edges, int direction) { decoder.calibrate(edges, direction); }
     void setGrindAdjustment(std::function<void(AdjustmentId, int)> adjust) { grindAdjustment = std::move(adjust); }
+    void setProfileShortcut(std::function<void(int)> preview) { profileShortcut = std::move(preview); }
     AdjustmentId selected() const { return selectedId; }
     uint8_t targetCount() const { return count; }
   private:
@@ -36,6 +37,7 @@ class KnobAdjustment {
     lv_style_t focusStyle;
     KnobStepDecoder decoder;
     std::function<void(AdjustmentId, int)> grindAdjustment;
+    std::function<void(int)> profileShortcut;
     int page = -1;
     uint8_t count = 0;
     bool ready = false, styleReady = false, haveFocusColor = false;
