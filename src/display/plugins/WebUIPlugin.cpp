@@ -104,8 +104,12 @@ void WebUIPlugin::setup(Controller *_controller, PluginManager *_pluginManager) 
         wsHandler.cleanupClients(); // drop dead websocket clients; keep the listener up
     });
     pluginManager->on("controller:ready", [this](Event const &) {
+#ifndef GAGGIMATE_KNOB_VALIDATION
+        // The synthetic peer is deliberately not a physical controller version.
+        // The unchanged legacy parser accepts only real semantic versions.
         ota->setControllerVersion(controller->getSystemInfo().version);
         ota->init();
+#endif
 #ifdef GAGGIMATE_KNOB
         officialRefreshRequested = true;
 #endif

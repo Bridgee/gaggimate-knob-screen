@@ -9,3 +9,5 @@ The validation image also exposes isolated screen-only OTA qualification after r
 Normal release/pair packaging rejects validation images. Validation packages require explicit test-image USB handling. See [Testing](TESTING.md) and [Building](BUILDING.md).
 
 This candidate requires physical Knob/recovery acceptance. Host tests and compilation do not qualify BLE, current-protocol connected operation or brewing; real brewing remains outside the USB scope. No control-board OTA, ordinary screen OTA permission or new physical acceptance is implied.
+
+The first Knob-only device run passed USB readback and local startup, then failed on replay activation: the synthetic identity reached the legacy controller-version parser, and the capability presence flag was missing. This candidate was not published. See [0.5.0-rc.13](RELEASE-0.5.0-rc.13.md) for the fixes; earlier host results are not a physical replay pass.

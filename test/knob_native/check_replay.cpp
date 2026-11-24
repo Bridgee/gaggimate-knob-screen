@@ -20,7 +20,7 @@ int main() {
     gm::Frame f=gaggimate_Frame_init_zero;auto s=pb_istream_from_buffer(b,n);assert(pb_decode(&s,gaggimate_Frame_fields,&f));
     if(f.ack==42)++ack;
     for(pb_size_t i=0;i<f.payloads_count;++i){const auto &p=f.payloads[i];
-      if(p.which_content==gaggimate_Payload_system_info_tag){++identities;assert(p.content.system_info.protocol_version==16);assert(std::string(p.content.system_info.version)=="simulated");}
+      if(p.which_content==gaggimate_Payload_system_info_tag){++identities;assert(p.content.system_info.protocol_version==16);assert(std::string(p.content.system_info.version)=="simulated");assert(p.content.system_info.has_capabilities);assert(p.content.system_info.capabilities.pressure && p.content.system_info.capabilities.dimming);assert(p.content.system_info.capabilities.addons_count==1 && p.content.system_info.capabilities.addons[0].type==8);}
       if(p.which_content==gaggimate_Payload_sensor_tag){++sensors;pressure=p.content.sensor.boilers[0].pressure;temp=p.content.sensor.boilers[0].temperature;}
       if(p.which_content==gaggimate_Payload_machine_hardware_status_tag){hw=p.content.machine_hardware_status.ready;}
     }

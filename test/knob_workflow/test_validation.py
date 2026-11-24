@@ -63,3 +63,57 @@ class ValidationIsolationTest(unittest.TestCase):
                 expected='/validation/pi/sample.bin' if validation else '/pi/sample.bin'
                 subprocess.run(['clang++','-std=c++17','-Wall','-Wextra','-Werror','-I'+str(root),'-I'+str(ROOT/'src'),*flags,'-DEXPECTED_PATH="'+expected+'"',str(source),'-o',str(binary)],check=True)
                 subprocess.run([str(binary)],check=True)
+
+    def test_actual_ready_callback_never_parses_simulated_controller_as_ota_version(self):
+        source=(ROOT/'src/display/plugins/WebUIPlugin.cpp').read_text()
+        body=source.split('pluginManager->on("controller:ready", [this](Event const &) {',1)[1].split('\n    });',1)[0]
+        with tempfile.TemporaryDirectory() as folder:
+            root=Path(folder)
+            (root/'Arduino.h').write_text('''#pragma once
+#include <string>
+#include <vector>
+#include <cstdlib>
+class String: public std::string {
+ public: using std::string::string;
+ String(std::string value):std::string(std::move(value)) {}
+ String(int value):std::string(std::to_string(value)) {}
+};
+''')
+            harness='''#include <Arduino.h>
+#include <cassert>
+#include <stdexcept>
+#include "semver_extensions.h"
+struct Ota {
+ int sets=0, inits=0;
+ void setControllerVersion(const String &s) { ++sets;auto v=from_string(s);semver_free(&v); }
+ void init() { ++inits; }
+};
+struct Controller { struct Info { String version; } info; const Info &getSystemInfo(){return info;} };
+struct Bench { Ota *ota;Controller *controller;bool officialRefreshRequested=false;
+ void ready(){BODY}
+};
+int main(){
+ bool invalid=false;try{auto v=from_string("simulated");semver_free(&v);}catch(const std::out_of_range &){invalid=true;}
+ assert(invalid); // The unchanged legacy parser rejects a synthetic identity.
+ Ota ota;Controller controller;
+#ifdef GAGGIMATE_KNOB_VALIDATION
+ controller.info.version="simulated";
+#else
+ controller.info.version="1.10.0";
+#endif
+ Bench bench{&ota,&controller};bench.ready();assert(bench.officialRefreshRequested);
+#ifdef GAGGIMATE_KNOB_VALIDATION
+ assert(ota.sets==0 && ota.inits==0);
+#else
+ assert(ota.sets==1 && ota.inits==1);
+#endif
+}
+'''.replace('BODY',body+'\n')
+            (root/'ready.cpp').write_text(harness)
+            obj=root/'semver.o'
+            subprocess.run(['clang','-fsanitize=address,undefined','-c',str(ROOT/'lib/OTA/src/semver.c'),'-o',str(obj)],check=True)
+            for validation in [False,True]:
+                flags=['-DGAGGIMATE_KNOB_VALIDATION'] if validation else []
+                binary=root/('validation' if validation else 'normal')
+                subprocess.run(['clang++','-std=c++17','-fsanitize=address,undefined','-DGAGGIMATE_KNOB',*flags,'-I'+str(root),'-I'+str(ROOT/'lib/OTA/src'),str(root/'ready.cpp'),str(ROOT/'lib/OTA/src/semver_extensions.cpp'),str(obj),'-o',str(binary)],check=True)
+                subprocess.run([str(binary)],check=True)

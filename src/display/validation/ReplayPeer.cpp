@@ -72,7 +72,7 @@ void ReplayPeer::identity() {
     auto &p=f.payloads[0];p.which_content=gaggimate_Payload_system_info_tag;
     auto &info=p.content.system_info;
     std::strcpy(info.hardware,"SIMULATED - no controller"); std::strcpy(info.version,"simulated");
-    info.protocol_version=gm_proto::PROTOCOL_VERSION;
+    info.protocol_version=gm_proto::PROTOCOL_VERSION; info.has_capabilities=true;
     info.capabilities.pressure=true; info.capabilities.dimming=true;
     info.capabilities.addons_count=1; info.capabilities.addons[0].type=8;
     deliver(f);

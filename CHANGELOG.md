@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.0-rc.13
+
+- Fix the first device replay activation: keep the synthetic identity out of the legacy physical-controller OTA version parser.
+- Encode the SystemInfo capability presence flag so pressure, dimming and hardware-scale capabilities reach the real display callbacks.
+- Add regressions using the actual ready callback, unchanged legacy parser and decoded wire capabilities. Normal controller/OTA behavior is retained.
+- USB/replay/OTA qualification remains tied to the exact image and recorded device checks; rc.12 replay failed its first physical run and was not published.
+
 ## 0.5.0-rc.12
 
 - Add an explicit validation-only target with local generated-protocol replay, bounded command/ACK handling, visible simulation labels and isolated settings/profiles. Physical BLE/UART and external integrations are not initialized in this target.
