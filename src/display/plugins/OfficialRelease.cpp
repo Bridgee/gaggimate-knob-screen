@@ -5,7 +5,14 @@
 #include "NetworkWorker.h"
 namespace official_release {
 void Discovery::request(const std::string &channel, const std::string &controllerVersion) {
+#ifdef GAGGIMATE_KNOB_VALIDATION
+    // Synthetic telemetry cannot supply a physical controller version to the
+    // unchanged legacy parser in the background checker either.
+    (void)controllerVersion;
+    const auto generation = mailbox.enqueue(channel, "");
+#else
     const auto generation = mailbox.enqueue(channel, controllerVersion);
+#endif
     if (!network_work::post(network_work::Kind::Official, [this] { check(); })) {
         Snapshot failed; failed.status = "error"; failed.message = "Official release checker could not start.";
         mailbox.publish(generation, failed);

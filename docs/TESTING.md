@@ -43,7 +43,7 @@ On that image, open **Settings → System → Local data replay**. The screen an
 
 Validation settings use `knob-test` NVS, seeded once from read-only screen settings; profiles use `/validation/p` and their images use `/validation/pi`. The physical bond store is not initialized or cleared. HomeKit/MQTT/mDNS, Bluetooth-scale and external-grinder integrations are not started. History and machine-profile stores are unavailable to the validation API. This preserves the production workflow while allowing local parameter tests.
 
-The synthetic identity is never passed to the legacy physical-controller OTA parser. The host suite compiles the actual ready callback with that unchanged parser in both build roles, and checks the capability submessage after wire encoding/decoding.
+The synthetic identity is never passed to the legacy physical-controller OTA parser. The host suite compiles the actual ready callback and official-check request boundary with that unchanged parser in both build roles, and checks the capability submessage after wire encoding/decoding.
 
 Host tests compile the real replay transport and generated codec with sanitizers, including malformed bounds, ACK/dedup, pause/reset/disconnect, hardware-status messages and concurrent command production. The ESP32 validation build uses the real Endpoint dispatch task. Neither a successful host test nor compilation establishes physical display, RTOS timing, real BLE or controller acceptance.
 Do not add a production setting that pretends an absent controller is connected. Do not forward test control commands to the installed machine. Raw recordings, device identities and backups stay outside the public repository.

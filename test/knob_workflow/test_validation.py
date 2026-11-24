@@ -67,6 +67,7 @@ class ValidationIsolationTest(unittest.TestCase):
     def test_actual_ready_callback_never_parses_simulated_controller_as_ota_version(self):
         source=(ROOT/'src/display/plugins/WebUIPlugin.cpp').read_text()
         body=source.split('pluginManager->on("controller:ready", [this](Event const &) {',1)[1].split('\n    });',1)[0]
+        worker=(ROOT/'src/display/plugins/OfficialRelease.cpp').read_text().split('void Discovery::request(const std::string &channel, const std::string &controllerVersion) {',1)[1].split('\n}\nvoid Discovery::check()',1)[0]
         with tempfile.TemporaryDirectory() as folder:
             root=Path(folder)
             (root/'Arduino.h').write_text('''#pragma once
@@ -83,6 +84,13 @@ class String: public std::string {
 #include <cassert>
 #include <stdexcept>
 #include "semver_extensions.h"
+#include <functional>
+#include <display/plugins/OfficialReleasePolicy.h>
+namespace network_work { enum class Kind { Official };inline bool post(Kind,std::function<void()>){return true;} }
+namespace official_release { struct Discovery {
+ Mailbox mailbox;void check(){}
+ void request(const std::string &channel,const std::string &controllerVersion){WORKERBODY}
+}; }
 struct Ota {
  int sets=0, inits=0;
  void setControllerVersion(const String &s) { ++sets;auto v=from_string(s);semver_free(&v); }
@@ -102,18 +110,19 @@ int main(){
  controller.info.version="1.10.0";
 #endif
  Bench bench{&ota,&controller};bench.ready();assert(bench.officialRefreshRequested);
+ official_release::Discovery discovery;discovery.request("latest",controller.info.version);official_release::Request request;assert(discovery.mailbox.take(request));
 #ifdef GAGGIMATE_KNOB_VALIDATION
- assert(ota.sets==0 && ota.inits==0);
+ assert(ota.sets==0 && ota.inits==0);assert(request.controllerVersion.empty());
 #else
- assert(ota.sets==1 && ota.inits==1);
+ assert(ota.sets==1 && ota.inits==1);assert(request.controllerVersion=="1.10.0");
 #endif
 }
-'''.replace('BODY',body+'\n')
+'''.replace('WORKERBODY',worker+'\n').replace('BODY',body+'\n')
             (root/'ready.cpp').write_text(harness)
             obj=root/'semver.o'
             subprocess.run(['clang','-fsanitize=address,undefined','-c',str(ROOT/'lib/OTA/src/semver.c'),'-o',str(obj)],check=True)
             for validation in [False,True]:
                 flags=['-DGAGGIMATE_KNOB_VALIDATION'] if validation else []
                 binary=root/('validation' if validation else 'normal')
-                subprocess.run(['clang++','-std=c++17','-fsanitize=address,undefined','-DGAGGIMATE_KNOB',*flags,'-I'+str(root),'-I'+str(ROOT/'lib/OTA/src'),str(root/'ready.cpp'),str(ROOT/'lib/OTA/src/semver_extensions.cpp'),str(obj),'-o',str(binary)],check=True)
+                subprocess.run(['clang++','-std=c++17','-fsanitize=address,undefined','-DGAGGIMATE_KNOB',*flags,'-I'+str(root),'-I'+str(ROOT/'lib/OTA/src'),'-I'+str(ROOT/'src'),str(root/'ready.cpp'),str(ROOT/'lib/OTA/src/semver_extensions.cpp'),str(obj),'-o',str(binary)],check=True)
                 subprocess.run([str(binary)],check=True)
