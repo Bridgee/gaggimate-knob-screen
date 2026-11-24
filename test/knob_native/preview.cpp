@@ -1,4 +1,5 @@
 #include <lvgl.h>
+#include <display/config.h>
 #include "screens.h"
 #include "ui.h"
 #include "structs.h"
@@ -49,7 +50,7 @@ static void publish() {
     system.error_label(""); system.time("10:27"); system.controller_version("v1.10.0");
     system.display_version("native360"); system.pressure_available(true);
     system.grind_available(true); system.volumetric_available(true);
-    system.network("GaggiMate"); system.ip("4.4.4.1"); system.ap_active(true); system.mode(1);
+    system.network(WIFI_AP_SSID); system.ip("4.4.4.1"); system.ap_active(true); system.mode(1);
     system.qrcodeContent("http://4.4.4.1/");
     BoilerValue boiler;
     boiler.current_temperature(25.5); boiler.target_temperature(93);

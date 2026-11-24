@@ -1,4 +1,5 @@
 #include "DefaultUI.h"
+#include <display/config.h>
 #include "NativeResolution.h"
 #include "BrightnessPolicy.h"
 #include "StandbyDisplay.h"
@@ -941,7 +942,7 @@ void DefaultUI::updateSystemStatus() {
     const String ip = apActive ? String("4.4.4.1") : WiFi.localIP().toString();
     if (stringChanged(systemStatus.ip(), ip.c_str()))
         systemStatus.ip(ip.c_str());
-    const String network = apActive ? String("GaggiMate") : systemStatus.wifi() ? settings.getWifiSsid() : String("Disconnected");
+    const String network = apActive ? String(WIFI_AP_SSID) : systemStatus.wifi() ? settings.getWifiSsid() : String("Disconnected");
     if (stringChanged(systemStatus.network(), network.c_str()))
         systemStatus.network(network.c_str());
     systemStatus.ap_active(apActive);

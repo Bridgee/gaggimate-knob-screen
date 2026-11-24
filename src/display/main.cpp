@@ -32,6 +32,12 @@ void setup() {
     // DMA TX buffers on demand while profile images and HTTPS share the link.
     WiFi.useStaticBuffers(true);
     knobDiagnosticBegin();
+    // Subscribe before station startup so early association/authentication failures are visible.
+    WiFi.onEvent([](WiFiEvent_t event, WiFiEventInfo_t info) {
+        const unsigned reason = event == ARDUINO_EVENT_WIFI_STA_DISCONNECTED ? info.wifi_sta_disconnected.reason : 0;
+        knobDiagnosticPrintf("K718 WiFi event: kind=%u reason=%u status=%u\n",
+                             static_cast<unsigned>(event), reason, static_cast<unsigned>(WiFi.status()));
+    });
     heap_caps_register_failed_alloc_callback([](size_t bytes, uint32_t caps, const char *function) {
         knobDiagnosticPrintf("K718 allocation failed: bytes=%u caps=0x%x function=%s\n",
                              static_cast<unsigned>(bytes), static_cast<unsigned>(caps), function ? function : "?");

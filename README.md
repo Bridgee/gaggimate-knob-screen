@@ -66,6 +66,8 @@ You may find this screen on [AliExpress](https://www.aliexpress.com/); verify th
 | Audio | I2S speaker output and PDM microphone |
 | Power | Battery and USB; SYS-voltage-based battery estimate |
 
+The K718 setup/fallback hotspot is **`gaggimate_knob`**, available at **http://4.4.4.1** when the screen is in AP mode. Its existing hotspot password is retained; the information page shows the same network name.
+
 Manufacturer manuals, schematics and examples: [Official K718 English package](https://pan.jczn1688.com/directlink/1/HMI%20display/JC3636K718_knob_EN.zip).
 
 Pin assignments, callable interfaces and limitations are in [Hardware interfaces](docs/HARDWARE.md).

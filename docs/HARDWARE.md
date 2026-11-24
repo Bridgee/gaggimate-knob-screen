@@ -14,6 +14,10 @@ The public interfaces are in `src/display/drivers/GuitionKnob/Hardware.h` and `K
 | Speaker | I2S1 TX, 44.1 kHz/16-bit stereo; BCK3, WS45, DATA42, EN46 | `requestTest(HardwareTest::Speaker, jobId)` |
 | Microphone | I2S0 PDM RX, 16 kHz/16-bit mono; CLK5, DATA4 | `requestTest(HardwareTest::Microphone, jobId)` |
 
+## Wi-Fi identity
+
+K718 normal and validation builds use `gaggimate_knob` for their setup/fallback hotspot. The saved hotspot password and `http://4.4.4.1` address are retained. Other display targets keep the upstream `GaggiMate` name. This only identifies the local AP; joining a home network still uses the saved station SSID and password.
+
 ## Manufacturer resources
 
 The [official K718 English package](https://pan.jczn1688.com/directlink/1/HMI%20display/JC3636K718_knob_EN.zip) includes manuals, schematics, sample code and factory flashing tools. It is a hardware reference and is not required to build this firmware.

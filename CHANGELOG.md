@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.0-rc.15
+
+- Name the K718 fallback/setup hotspot `gaggimate_knob` so it can be distinguished from an official screen. The native information page uses the same configured name.
+- Retain the saved hotspot password and `http://4.4.4.1` address. This name change does not alter station credentials, authentication or controller pairing.
+- Subscribe to K718 Wi-Fi events before station startup, logging event/reason codes through the nonblocking diagnostic queue without credentials.
+- Compile identity and information-label checks for upstream, normal K718 and validation K718 roles.
+
 ## 0.5.0-rc.14
 
 - Turn the knob on the idle Brew main page to open the existing Profile picker and preview the previous/next entry; the original checkmark still confirms the selection.
