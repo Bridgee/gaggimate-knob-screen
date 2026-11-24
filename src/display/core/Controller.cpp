@@ -166,14 +166,6 @@ void Controller::setup() {
 
 #ifndef GAGGIMATE_HEADLESS
     ui->init();
-#ifdef GAGGIMATE_KNOB_VALIDATION
-    auto *notice = lv_label_create(lv_layer_top());
-    lv_label_set_text(notice, "SIMULATED / NO CONTROLLER");
-    lv_obj_set_style_bg_opa(notice, LV_OPA_COVER, 0);
-    lv_obj_set_style_bg_color(notice, lv_color_black(), 0);
-    lv_obj_set_style_text_color(notice, lv_color_hex(0xffcc44), 0);
-    lv_obj_align(notice, LV_ALIGN_TOP_MID, 0, 55);
-#endif
 #endif
     this->onScreenReady();
 #ifdef GAGGIMATE_KNOB

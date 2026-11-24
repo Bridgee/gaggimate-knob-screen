@@ -697,6 +697,16 @@ void DefaultUI::setupPanel() {
     lv_scr_load(black);
     lv_scr_load_anim(startScreen, LV_SCR_LOAD_ANIM_FADE_ON, STARTUP_FADE_MS, 0, true);
 
+    // Create the validation overlay before the constructor starts the LVGL task.
+#ifdef GAGGIMATE_KNOB_VALIDATION
+    auto *notice = lv_label_create(lv_layer_top());
+    lv_label_set_text(notice, "SIMULATED / NO CONTROLLER");
+    lv_obj_set_style_bg_opa(notice, LV_OPA_COVER, 0);
+    lv_obj_set_style_bg_color(notice, lv_color_black(), 0);
+    lv_obj_set_style_text_color(notice, lv_color_hex(0xffcc44), 0);
+    lv_obj_align(notice, LV_ALIGN_TOP_MID, 0, 55);
+#endif
+
     lv_task_handler();
 
     delay(100);

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.0-rc.16
+
+- Create the validation simulation banner before the LVGL task starts, removing a cross-core startup race.
+- Retain the distinct K718 hotspot and early Wi-Fi diagnostics from rc.15.
+
 ## 0.5.0-rc.15
 
 - Name the K718 fallback/setup hotspot `gaggimate_knob` so it can be distinguished from an official screen. The native information page uses the same configured name.
