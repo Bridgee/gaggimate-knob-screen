@@ -39,7 +39,7 @@ python scripts/k718.py build-validation --out dist/validation
 python scripts/package_validation.py dist/validation --out dist/validation-publish
 ```
 
-On that image, open **Settings → System → Local data replay**. The screen and web UI identify simulated data. `GET /api/validation` returns replay status; a form `POST` accepts `action=play|pause|reset|disconnect` and `trace=idle|warmup|shot`. The endpoint and local transport do not exist in normal firmware. Start at idle, inspect parameters/rotary/LED behavior, then replay the other traces; process starts and autotuning are disabled.
+On that image, open **Settings → Plugins → Local data replay**. The Plugins page identifies simulated data. The physical screen shows the regular interface. `GET /api/validation` returns replay status; a form `POST` accepts `action=play|pause|reset|disconnect` and `trace=idle|warmup|shot`. The endpoint and local transport do not exist in normal firmware. Start at idle, inspect parameters/rotary/LED behavior, then replay the other traces; process starts and autotuning are disabled.
 
 Validation settings use `knob-test` NVS, seeded once from read-only screen settings; profiles use `/validation/p` and their images use `/validation/pi`. The physical bond store is not initialized or cleared. HomeKit/MQTT/mDNS, Bluetooth-scale and external-grinder integrations are not started. History and machine-profile stores are unavailable to the validation API. This preserves the production workflow while allowing local parameter tests.
 
@@ -52,7 +52,7 @@ Do not add a production setting that pretends an absent controller is connected.
 
 ## Screen OTA without a second controller
 
-The validation image now has a separate **Isolated screen OTA qualification** entry. Ordinary screen/controller permissions remain off, and normal preflight still requires the matching physical controller. The isolated entry does not assert controller compatibility or fabricate a connected controller.
+The validation image now has a separate **Isolated screen OTA qualification** entry under **Settings → Plugins**. Ordinary screen/controller permissions remain off, and normal preflight still requires the matching physical controller. The isolated entry does not assert controller compatibility or fabricate a connected controller.
 
 1. Stop/disconnect replay and enter standby. The actual queue must be quiescent, startup healthy and boot selection settled. The validation firmware owns no physical controller link.
 2. Refresh own-repository matched metadata. Only the pinned K718 target/protocol, asset URLs and manifest/image hashes are accepted; drafts are ignored. A matching release must be published before a real network test. Same-version staging is permitted only on this qualification path; downgrades are rejected.

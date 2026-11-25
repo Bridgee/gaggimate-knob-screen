@@ -28,6 +28,8 @@ export function MatchedVersions({ settings, onCheckPair, onScreenUpdate, submitt
   const compatibility = {
     matched: 'Target, protocol and controller version match.',
     incompatible: 'This pair does not match the current protocol or controller version.',
+    'usb-required':
+      'This release matches the controller but requires a USB update because its protocol differs from the installed screen firmware.',
     unknown: 'Compatibility is unknown until the controller is connected and identified.',
   };
   return (
@@ -143,48 +145,7 @@ export function MatchedVersions({ settings, onCheckPair, onScreenUpdate, submitt
           </p>
         </div>
       )}
-      {settings.screenOtaPhase && settings.screenOtaPhase !== 'idle' && (
-        <div role='status' className='text-sm md:col-span-2'>
-          Screen update: {otaStateText(settings.screenOtaPhase)} ({settings.screenOtaProgress || 0}
-          %).
-          {settings.screenOtaError && <span role='alert'> Error: {settings.screenOtaError}</span>}
-          {settings.screenOtaVerified && <p>Image hash and flash readback verified.</p>}
-        </div>
-      )}
-      {settings.validationBuild === true &&
-        settings.screenOtaStandaloneQualificationAvailable === true && (
-          <div className='border-warning space-y-3 rounded-lg border p-4 md:col-span-2'>
-            <p className='font-semibold'>Isolated screen OTA qualification</p>
-            <p className='text-sm'>
-              No controller compatibility is asserted. Stop and disconnect replay, enter standby,
-              and keep USB recovery available. This image can verify or test-install an own-release
-              screen image.
-            </p>
-            <p className='text-sm'>{otaStateText(settings.screenOtaStandalonePreflight)}</p>
-            <div className='flex flex-wrap gap-2'>
-              {[true, false].map(verifyOnly => (
-                <button
-                  key={String(verifyOnly)}
-                  type='button'
-                  className='btn btn-outline btn-sm'
-                  disabled={
-                    !screenOtaRequest(
-                      settings,
-                      { qualification: true, screenOnly: true, verifyOnly },
-                      submitting,
-                    )
-                  }
-                  onClick={() => {
-                    const options = { qualification: true, screenOnly: true, verifyOnly };
-                    if (screenOtaRequest(settings, options, submitting)) onScreenUpdate?.(options);
-                  }}
-                >
-                  {verifyOnly ? 'Verify screen image only' : 'Test-install screen image'}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
+      {settings.validationBuild !== true && <ScreenUpdateProgress settings={settings} />}
       <div id='ota-installation-notice' role='note' className='alert alert-info md:col-span-2'>
         <div>
           <p className='font-semibold'>
@@ -231,6 +192,17 @@ export function MatchedVersions({ settings, onCheckPair, onScreenUpdate, submitt
         </details>
       )}
     </>
+  );
+}
+
+export function ScreenUpdateProgress({ settings }) {
+  if (!settings.screenOtaPhase || settings.screenOtaPhase === 'idle') return null;
+  return (
+    <div role='status' className='text-sm md:col-span-2'>
+      Screen update: {otaStateText(settings.screenOtaPhase)} ({settings.screenOtaProgress || 0}%).
+      {settings.screenOtaError && <span role='alert'> Error: {settings.screenOtaError}</span>}
+      {settings.screenOtaVerified && <p>Image hash and flash readback verified.</p>}
+    </div>
   );
 }
 

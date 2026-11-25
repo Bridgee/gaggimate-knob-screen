@@ -62,44 +62,90 @@ std::string sha256(const uint8_t *data, size_t size) {
     return text;
 }
 } // namespace
-void Discovery::request() {
-    if (busy.exchange(true)) return;
-    Snapshot checking; checking.status = "checking"; publish(checking);
-    if (!network_work::post(network_work::Kind::Matched, [this] {
-        publish(check()); busy = false;
-    })) {
-        Snapshot failed; failed.status = "error"; failed.message = "Release checker could not start.";
-        publish(failed); busy = false;
+bool Discovery::request() {
+    if (busy.exchange(true)) return false;
+    const auto target = [this] {
+        std::lock_guard<std::mutex> lock(mutex);
+        return liveTarget;
+    }();
+    Snapshot checking;
+    checking.target = target;
+    if (!target.protocol || !version(target.version)) {
+        checking.status = "waiting-controller";
+        checking.message = "Waiting for the connected controller to report its version and protocol.";
+        publish(checking);
+        busy = false;
+        return true;
     }
+    checking.status = "checking";
+    publish(checking);
+    if (!network_work::post(network_work::Kind::Matched, [this, target] {
+        publish(check(target));
+        busy = false;
+    })) {
+        checking.status = "error";
+        checking.message = "Release checker could not start.";
+        publish(checking);
+        busy = false;
+    }
+    return true;
 }
-Snapshot Discovery::check() {
-    Snapshot result; result.status = "error";
-    Body listing = fetch("https://api.github.com/repos/Bridgee/gaggimate-knob-screen/releases?per_page=5", 96 * 1024);
-    if (!listing.error.empty()) { result.message = listing.error; return result; }
+Snapshot Discovery::check(const ControllerTarget &target) {
+    Snapshot result;
+    result.target = target;
+    result.status = "error";
+    Release selected;
+    Pair selectedPair;
     JsonDocument filter(&psramAllocator);
     for (const char *key : {"tag_name", "draft", "prerelease", "published_at"}) filter[0][key] = true;
     for (const char *key : {"name", "browser_download_url", "size", "digest"}) filter[0]["assets"][0][key] = true;
-    JsonDocument document(&psramAllocator);
-    if (deserializeJson(document, static_cast<const uint8_t *>(listing.data.get()), listing.size, DeserializationOption::Filter(filter)) || !document.is<JsonArray>()) {
-        result.message = "Invalid release listing."; return result;
+    const auto readPair = [&result](const Release &release, Pair &pair) {
+        Body body = fetch(release.manifest.url, 16384);
+        if (!body.error.empty()) { result.message = body.error; return false; }
+        if (body.size != release.manifest.bytes || sha256(body.data.get(), body.size) != release.manifest.sha) {
+            result.message = "Matched release manifest checksum mismatch.";
+            return false;
+        }
+        JsonDocument manifest(&psramAllocator);
+        if (deserializeJson(manifest, static_cast<const uint8_t *>(body.data.get()), body.size) ||
+            !parsePair(manifest.as<JsonVariantConst>(), release, pair)) {
+            result.message = "Matched release target, schema or asset metadata does not match.";
+            return false;
+        }
+        return true;
+    };
+    constexpr unsigned pageSize = 5;
+    constexpr unsigned maxPages = 10;
+    for (unsigned page = 1; page <= maxPages; ++page) {
+        Body listing = fetch("https://api.github.com/repos/Bridgee/gaggimate-knob-screen/releases?per_page=" +
+                             std::to_string(pageSize) + "&page=" + std::to_string(page), 96 * 1024);
+        if (!listing.error.empty()) { result.message = listing.error; return result; }
+        JsonDocument document(&psramAllocator);
+        if (deserializeJson(document, static_cast<const uint8_t *>(listing.data.get()), listing.size,
+                            DeserializationOption::Filter(filter)) || !document.is<JsonArray>()) {
+            result.message = "Invalid release listing.";
+            return result;
+        }
+        listing.data.reset();
+        const auto releases = document.as<JsonArrayConst>();
+        if (!selectMatchingRelease(releases, previews, target, readPair, selected, selectedPair)) return result;
+        if (releases.size() < pageSize) {
+            if (selected.tag.empty()) {
+                result.status = "no-release";
+                result.message = "No published K718 release matches controller " + target.version +
+                                 " (protocol " + std::to_string(target.protocol) + ").";
+                if (!previews) result.message += " This build checks stable releases only.";
+            } else {
+                result.release = std::move(selected);
+                result.pair = std::move(selectedPair);
+                result.status = "ready";
+                result.validatedAt = millis();
+                result.message = "Manifest and published asset metadata checked.";
+            }
+            return result;
+        }
     }
-    Release release = selectRelease(document.as<JsonArrayConst>(), previews);
-    if (release.tag.empty()) {
-        result.status = "no-release";
-        result.message = previews ? "No published matched release was found." : "No stable matched release was found.";
-        return result;
-    }
-    listing.data.reset(); document.clear();
-    Body body = fetch(release.manifest.url, 16384);
-    if (!body.error.empty()) { result.message = body.error; return result; }
-    if (body.size != release.manifest.bytes || sha256(body.data.get(), body.size) != release.manifest.sha) {
-        result.message = "Matched release manifest checksum mismatch."; return result;
-    }
-    if (deserializeJson(document, static_cast<const uint8_t *>(body.data.get()), body.size) || !parsePair(document.as<JsonVariantConst>(), release, result.pair)) {
-        result.message = "Matched release target, schema or asset metadata does not match."; return result;
-    }
-    result.release = release; result.status = "ready"; result.validatedAt = millis();
-    result.message = "Manifest and published asset metadata checked.";
+    result.message = "Release history exceeded the check limit. Review the published releases on GitHub.";
     return result;
 }
 } // namespace matched_release

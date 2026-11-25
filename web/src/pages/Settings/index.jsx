@@ -85,6 +85,7 @@ const READ_ONLY_KEYS = [
   'machineHardwareConfiguration',
   'machineProfileSupportedFields',
   'knobLedSupported',
+  'validationBuild',
 ];
 
 // Form-only fields that never come back from GET /api/settings.

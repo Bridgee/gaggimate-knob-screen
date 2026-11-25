@@ -388,15 +388,29 @@ try {
   assert.equal(screenOtaRequest(solo, { screenOnly: true }), null);
   assert.ok(screenOtaRequest({ ...solo, pairDisplayState: 'up-to-date' }, soloOptions));
   const soloHtml = renderToString(MatchedVersions({ settings: solo }));
-  assert.match(soloHtml, /Isolated screen OTA qualification/);
+  assert.doesNotMatch(soloHtml, /Isolated screen OTA qualification/);
   const soloDialog = renderToString(
     ScreenUpdateConfirmation({ selection: { ...selection, request: soloRequest }, settings: solo }),
   );
   assert.match(soloDialog, /Physical controller compatibility is not checked/);
   assert.doesNotMatch(soloDialog, /Required controller:/);
-  const { ReplayControls } = await server.ssrLoadModule(
+  const { ReplayControls, IsolatedScreenOta } = await server.ssrLoadModule(
     '/src/pages/Settings/tabs/KnobValidationPanel.jsx',
   );
+  const soloActions = [];
+  const panel = IsolatedScreenOta({
+    settings: solo,
+    onUpdate: options => soloActions.push(options),
+    onCheck: () => soloActions.push('refresh'),
+  });
+  assert.match(renderToString(panel), /Isolated screen OTA qualification/);
+  buttons(panel).forEach(b => b.props.onClick());
+  assert.deepEqual(soloActions, ['refresh', soloOptions, { ...soloOptions, verifyOnly: false }]);
+  assert.equal(IsolatedScreenOta({ settings: ready }), null);
+  const usbRequired = renderToString(
+    MatchedVersions({ settings: { ...ready, pairCompatibility: 'usb-required' } }),
+  );
+  assert.match(usbRequired, /requires a USB update/);
   let replayActions = [];
   buttons(ReplayControls({ onAction: (...args) => replayActions.push(args) })).forEach(b =>
     b.props.onClick(),

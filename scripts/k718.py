@@ -123,6 +123,10 @@ def checks(audit):
         binary=audit.path/name
         audit.run(name+'-compile',['c++','-std=c++17','-Wall','-Wextra','-Werror','-fsanitize=address,undefined','-Isrc',source,'-o',binary])
         audit.run(name,[binary])
+    matched=audit.path/'matched-release'
+    audit.run('matched-release-compile',['c++','-std=c++17','-Wall','-Wextra','-Werror','-fsanitize=address,undefined',
+        '-Isrc','-I.pio/libdeps/display-knob/ArduinoJson/src','test/knob_native/check_matched_release.cpp','-o',matched])
+    audit.run('matched-release',[matched,'test/knob_native/fixtures'])
     audit.run('http-credit-regression',[sys.executable,'test/knob_native/check_http_credit.py'])
     audit.run('theme-preview',[sys.executable,'test/knob_native/render_preview.py'])
     audit.run('documentation-previews',[sys.executable,'scripts/generate_doc_previews.py','--check','--rendered'])

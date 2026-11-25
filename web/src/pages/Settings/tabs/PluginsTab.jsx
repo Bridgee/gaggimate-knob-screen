@@ -1,5 +1,6 @@
 import { useLingui } from '@lingui/react/macro';
 import { PluginCard } from '../PluginCard.jsx';
+import KnobValidationPanel from './KnobValidationPanel.jsx';
 import Section from '../../../components/Card.jsx';
 
 export function PluginsTab({
@@ -29,6 +30,7 @@ export function PluginsTab({
         updateAutoWakeupTime={updateAutoWakeupTime}
         updateAutoWakeupDay={updateAutoWakeupDay}
       />
+      {formData.validationBuild === true && <KnobValidationPanel />}
     </Section>
   );
 }

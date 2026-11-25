@@ -1,8 +1,11 @@
 #pragma once
 #include <ArduinoJson.h>
+#include <algorithm>
+#include <vector>
 #include <climits>
 #include <cstring>
 #include <string>
+#include <utility>
 
 namespace matched_release {
 constexpr const char *Repository = "Bridgee/gaggimate-knob-screen";
@@ -89,6 +92,11 @@ struct Release {
     bool preview = false;
     Asset manifest, screen, controller;
 };
+struct ControllerTarget {
+    std::string version;
+    unsigned protocol = 0;
+    bool operator==(const ControllerTarget &other) const { return protocol == other.protocol && version == other.version; }
+};
 struct Pair {
     std::string screenVersion, controllerVersion, upstreamVersion, sourceTree;
     unsigned protocol = 0;
@@ -106,8 +114,8 @@ inline Asset asset(JsonArrayConst assets, const std::string &tag, const char *na
     }
     return result;
 }
-inline Release selectRelease(JsonArrayConst releases, bool previews) {
-    Release selected;
+inline std::vector<Release> releaseCandidates(JsonArrayConst releases, bool previews) {
+    std::vector<Release> candidates;
     for (JsonObjectConst entry : releases) {
         std::string tag = text(entry["tag_name"]);
         if (!version(tag) || tag.empty() || tag[0] != 'v' || !entry["draft"].is<bool>() || entry["draft"].as<bool>() ||
@@ -117,10 +125,13 @@ inline Release selectRelease(JsonArrayConst releases, bool previews) {
         candidate.manifest = asset(assets, tag, "pair.json", 16384);
         candidate.screen = asset(assets, tag, "display-knob-firmware.bin", 0x640000);
         candidate.controller = asset(assets, tag, "board-firmware.bin", 8 * 1024 * 1024);
-        if (candidate.manifest.bytes && candidate.screen.bytes && candidate.controller.bytes &&
-            (selected.tag.empty() || order(tag, selected.tag) > 0)) selected = candidate;
+        if (candidate.manifest.bytes && candidate.screen.bytes && candidate.controller.bytes)
+            candidates.push_back(std::move(candidate));
     }
-    return selected;
+    std::sort(candidates.begin(), candidates.end(), [](const Release &a, const Release &b) {
+        return order(a.tag, b.tag) > 0;
+    });
+    return candidates;
 }
 inline bool parsePair(JsonVariantConst doc, const Release &release, Pair &result) {
     auto screen = doc["screen"]; auto controller = doc["controller"]; auto compatibility = doc["compatibility"];
@@ -149,6 +160,23 @@ inline bool parsePair(JsonVariantConst doc, const Release &release, Pair &result
         !screen["application_size"].is<unsigned>() || screen["application_size"].as<unsigned>() != 0x640000 ||
         !matches(screen["asset"], release.screen) || !matches(controller["asset"], release.controller)) return false;
     result = pair; return true;
+}
+// Accumulate the newest compatible pair across listing pages. Callers must not
+// report success after an incomplete scan or a failed manifest verification.
+template <typename ReadPair>
+bool selectMatchingRelease(JsonArrayConst releases, bool previews, const ControllerTarget &target,
+                           ReadPair readPair, Release &selected, Pair &selectedPair) {
+    if (!target.protocol || !version(target.version)) return false;
+    for (const auto &release : releaseCandidates(releases, previews)) {
+        if (!selected.tag.empty() && order(release.tag, selected.tag) <= 0) break;
+        Pair pair;
+        if (!readPair(release, pair)) return false;
+        if (pair.protocol != target.protocol || order(pair.controllerVersion, target.version) != 0) continue;
+        selected = release;
+        selectedPair = std::move(pair);
+        break;
+    }
+    return true;
 }
 inline const char *componentState(const std::string &current, const std::string &published) {
     if (!version(current) || !version(published)) return "unknown";

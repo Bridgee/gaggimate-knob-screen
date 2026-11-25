@@ -8,7 +8,7 @@ The System & Updates page treats the screen and controller as separate component
 - **Controller:** the unmodified official GaggiMate image, verified by the source/asset pin in `port/controller-release.json` and included unchanged in the same matched release. Do not substitute a self-build or automatically select the newest upstream controller.
 - **Official notices:** Stable/Nightly checks remain a separate, read-only notification source. An upstream notice does not mean a compatible K718 port exists or authorize any installation.
 
-Installed screen/controller compatibility is reported even when no newer release is available. A matching protocol alone is insufficient: the reviewed controller version must also match. Download assets and manifest hashes are bound to the selected own-repository release; arbitrary client URLs are not accepted.
+The screen checks at startup, periodically when idle, and after a controller handshake. It recommends the newest published K718 pair whose controller version and protocol both match the reported controller. A newer release for another controller does not hide an older matching release. Installed screen/controller compatibility is reported even when no newer release is available. A matching protocol alone is insufficient: the reviewed controller version must also match. Download assets and manifest hashes are bound to the selected own-repository release; arbitrary client URLs are not accepted.
 
 ## Current permissions
 
@@ -22,9 +22,9 @@ For now, install a compatible screen package over [checked USB](BUILDING.md). An
 | --- | --- |
 | Same release or installed screen newer | Show the independent component states; no downgrade/reinstall action |
 | Newer matching K718 release | Show port version, official base, required controller and protocol; normal action still needs its own enabled permission |
-| Controller absent or unidentified | Explain what is missing; block screen staging rather than infer compatibility from old telemetry |
+| Controller absent or unidentified | Wait for the controller to report its identity and clear stale recommendations |
 | Controller version differs | Require the controller version specified by the pair; controller button stays disabled pending its own qualification |
-| Protocol differs | Block screen OTA; use deliberately matched USB packages for a protocol transition. No automatic two-board update |
+| Protocol differs | Show a matching release for USB when the controller identity is known; block screen OTA for a protocol transition. No automatic two-board update |
 | Upstream-only update | Preserve the official notice; do not present the official LilyGO image as a K718 update |
 | No matched release, offline, rate limit or malformed metadata | Show the check result; no installation. Drafts/incomplete pairs are ignored |
 | Check older than five minutes | Refresh matched releases and confirm again |

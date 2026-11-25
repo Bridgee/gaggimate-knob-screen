@@ -8,16 +8,60 @@ static void load(const std::string &path, JsonDocument &doc) {
     std::ifstream stream(path); std::stringstream text; text << stream.rdbuf();
     assert(!deserializeJson(doc, text.str()));
 }
+static void addRelease(JsonDocument &page, JsonVariantConst original, const std::string &tag, bool preview) {
+    JsonObject row = page.as<JsonArray>().add<JsonObject>();
+    row.set(original);
+    row["tag_name"] = tag;
+    row["prerelease"] = preview;
+    for (JsonObject entry : row["assets"].as<JsonArray>()) {
+        const auto name = matched_release::text(entry["name"]);
+        entry["browser_download_url"] = std::string(ReleaseRoot) + "download/" + tag + "/" + name;
+    }
+}
+static void checkSelection(JsonVariantConst original) {
+    JsonDocument first, second;
+    first.to<JsonArray>();
+    second.to<JsonArray>();
+    addRelease(first, original, "v0.7.0", false);
+    addRelease(first, original, "v0.6.0", false);
+    addRelease(first, original, "v0.5.0", false);
+    addRelease(second, original, "v0.5.1", false);
+    addRelease(second, original, "v0.6.5-rc.1", true);
+    addRelease(second, original, "v0.4.0", false);
+    const auto readPair = [](const Release &release, Pair &pair) {
+        pair.screenVersion = release.tag.substr(1);
+        pair.controllerVersion = release.tag == "v0.7.0" ? "v1.11.0" : "v1.10.0";
+        pair.protocol = release.tag == "v0.6.0" ? 17 : 16;
+        return true;
+    };
+    Release chosen;
+    Pair pair;
+    const ControllerTarget current{"1.10.0+device", 16};
+    assert(selectMatchingRelease(first.as<JsonArrayConst>(), false, current, readPair, chosen, pair));
+    assert(chosen.tag == "v0.5.0"); // Newest listing entries differ by version or protocol.
+    assert(selectMatchingRelease(second.as<JsonArrayConst>(), false, current, readPair, chosen, pair));
+    assert(chosen.tag == "v0.5.1"); // A later listing page can contain a newer SemVer.
+    assert(selectMatchingRelease(second.as<JsonArrayConst>(), true, current, readPair, chosen, pair));
+    assert(chosen.tag == "v0.6.5-rc.1");
+    const auto unreadable = [](const Release &, Pair &) { return false; };
+    assert(!selectMatchingRelease(first.as<JsonArrayConst>(), true, current, unreadable, chosen, pair));
+    chosen = {};
+    assert(selectMatchingRelease(first.as<JsonArrayConst>(), true, {"v1.9.0", 5}, readPair, chosen, pair));
+    assert(chosen.tag.empty());
+    assert(selectMatchingRelease(first.as<JsonArrayConst>(), true, {"v1.10.0", 17}, readPair, chosen, pair));
+    assert(chosen.tag == "v0.6.0"); // A matching controller can be newer than the installed display protocol.
+}
 int main(int argc, char **argv) {
     assert(argc == 2); std::string folder = argv[1];
     JsonDocument listing, manifest;
     load(folder + "/matched-list.json", listing); load(folder + "/matched-pair.json", manifest);
-    const Release good = selectRelease(listing.as<JsonArrayConst>(), true);
+    checkSelection(listing[0]);
+    const Release good = releaseCandidates(listing.as<JsonArrayConst>(), true).at(0);
     assert(good.tag == "v0.3.6-rc.1" && good.preview);
-    assert(selectRelease(listing.as<JsonArrayConst>(), false).tag.empty());
+    assert(releaseCandidates(listing.as<JsonArrayConst>(), false).empty());
     listing[0]["prerelease"] = false;
-    assert(selectRelease(listing.as<JsonArrayConst>(), false).tag.empty());
-    assert(selectRelease(listing.as<JsonArrayConst>(), true).preview);
+    assert(releaseCandidates(listing.as<JsonArrayConst>(), false).empty());
+    assert(releaseCandidates(listing.as<JsonArrayConst>(), true).at(0).preview);
     listing[0]["prerelease"] = true;
     Pair pair; assert(parsePair(manifest.as<JsonVariantConst>(), good, pair));
     assert(pair.screenVersion == "0.3.6-rc.1" && pair.controllerVersion == "v1.9.0" && pair.protocol == 5);
@@ -48,19 +92,19 @@ int main(int argc, char **argv) {
     for (const char *bad : {"", "1.2", "1.2.3.4", "01.2.3", "1.2.3-", "1.2.3-01", "99999999.0.0", "v1.2.3/evil", "1.2.3+"})
         assert(!version(bad));
     for (const char *goodVersion : {"1.2.3", "v1.2.3", "1.2.3-rc.2", "1.2.3+abc.01"}) assert(version(goodVersion));
-    listing[0]["draft"] = true; assert(selectRelease(listing.as<JsonArrayConst>(), true).tag.empty());
+    listing[0]["draft"] = true; assert(releaseCandidates(listing.as<JsonArrayConst>(), true).empty());
     load(folder + "/matched-list.json", listing);
     for (JsonObject a : listing[0]["assets"].as<JsonArray>())
         if (a["name"] == "pair.json") a["browser_download_url"] = "https://example.com/pair.json";
-    assert(selectRelease(listing.as<JsonArrayConst>(), true).tag.empty());
+    assert(releaseCandidates(listing.as<JsonArrayConst>(), true).empty());
     load(folder + "/matched-list.json", listing);
     for (JsonObject a : listing[0]["assets"].as<JsonArray>())
         if (a["name"] == "pair.json") a["size"] = 20000;
-    assert(selectRelease(listing.as<JsonArrayConst>(), true).tag.empty());
+    assert(releaseCandidates(listing.as<JsonArrayConst>(), true).empty());
     load(folder + "/matched-list.json", listing);
     for (JsonObject a : listing[0]["assets"].as<JsonArray>())
         if (a["name"] == "pair.json") a["digest"] = "sha256:bad";
-    assert(selectRelease(listing.as<JsonArrayConst>(), true).tag.empty());
+    assert(releaseCandidates(listing.as<JsonArrayConst>(), true).empty());
     const char *paths[][2] = {{"screen", "board"}, {"screen", "target"}, {"controller", "origin"},
                               {"controller", "upstream_repository"}, {"compatibility", "upstream_commit"}};
     for (auto &path : paths) {

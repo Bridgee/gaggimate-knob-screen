@@ -114,6 +114,22 @@ void WebUIPlugin::setup(Controller *_controller, PluginManager *_pluginManager) 
         officialRefreshRequested = true;
 #endif
     });
+#ifdef GAGGIMATE_KNOB
+#ifdef GAGGIMATE_KNOB_VALIDATION
+    matchedReleases.setTarget({BUILD_UPSTREAM_VERSION, gm_proto::PROTOCOL_VERSION});
+#else
+    pluginManager->on("controller:bluetooth:connect", [this](Event const &) {
+        const auto system = controller->getSystemInfo();
+        matchedReleases.setTarget({system.version.c_str(), system.protocolVersion});
+        pairRefreshRequested = true;
+        officialRefreshRequested = true;
+    });
+    pluginManager->on("controller:bluetooth:disconnect", [this](Event const &) {
+        matchedReleases.setTarget({});
+        pairRefreshRequested = true;
+    });
+#endif
+#endif
     wsHandler.setup(controller, pluginManager);
     wsHandler.onOtaSettings([this](JsonDocument &request) { handleOTASettings(request); });
     wsHandler.onOtaStart([this](JsonDocument &request) { handleOTAStart(request); });
@@ -179,7 +195,7 @@ void WebUIPlugin::loop() {
     if (mayCheck && (lastUpdateCheck == 0 || now - lastUpdateCheck > UPDATE_CHECK_INTERVAL)) {
 #ifdef GAGGIMATE_KNOB
         officialRefreshRequested = true;
-        matchedReleases.request();
+        pairRefreshRequested = true;
 #else
         ota->checkForUpdates();
         pluginManager->trigger("ota:update:status", "value", ota->isUpdateAvailable() || ota->isUpdateAvailable(true));
@@ -190,7 +206,8 @@ void WebUIPlugin::loop() {
 #ifdef GAGGIMATE_KNOB
     if (!controller->isUpdating() && !controller->isActive() && officialRefreshRequested.exchange(false))
         officialReleases.request(controller->getSettings().getOTAChannel().c_str(), controller->getSystemInfo().version.c_str());
-    if (!controller->isUpdating() && !controller->isActive() && pairRefreshRequested.exchange(false)) matchedReleases.request();
+    if (mayCheck && pairRefreshRequested.exchange(false) && !matchedReleases.request())
+        pairRefreshRequested = true;
     const bool pairChanged = matchedReleases.takeChanged();
     const bool officialChanged = officialReleases.takeChanged();
     if (pairChanged || officialChanged) {
@@ -1052,6 +1069,9 @@ void WebUIPlugin::handleSettings(AsyncWebServerRequest *request) const {
 #ifdef GAGGIMATE_KNOB
     const auto ledPreferences = settings.getKnobLedPreferences();
     doc["knobLedSupported"] = true;
+#ifdef GAGGIMATE_KNOB_VALIDATION
+    doc["validationBuild"] = true;
+#endif
     doc["knobLedEnabled"] = ledPreferences.enabled;
     doc["knobLedBrightness"] = ledPreferences.brightness;
 #endif
@@ -1276,12 +1296,11 @@ void WebUIPlugin::updateOTAStatus(const String &version) {
     doc["officialDisplayVersion"] = BUILD_UPSTREAM_VERSION;
     doc["displayProtocol"] = gm_proto::PROTOCOL_VERSION;
     doc["controllerProtocol"] = system.protocolVersion;
-    const bool controllerReady = controller->getSystemState() == SYSTEM_READY;
-    doc["controllerConnected"] = controllerReady;
-    if (!controllerReady) doc["controllerVersion"] = "";
+    const bool controllerConnected = controller->getClientController()->isConnected();
+    doc["controllerConnected"] = controllerConnected;
+    if (!controllerConnected) doc["controllerVersion"] = "";
     doc["installedCompatibility"] = matched_release::installedCompatibility(BUILD_UPSTREAM_VERSION,
-        gm_proto::PROTOCOL_VERSION, system.protocolVersion, controller->getSystemState() == SYSTEM_READY,
-        system.version.c_str());
+        gm_proto::PROTOCOL_VERSION, system.protocolVersion, controllerConnected, system.version.c_str());
 #ifdef GAGGIMATE_KNOB_VALIDATION
     doc["validationBuild"] = true;
     doc["controllerConnected"] = false;
@@ -1301,11 +1320,17 @@ void WebUIPlugin::updateOTAStatus(const String &version) {
     doc["pairProtocol"] = pair.pair.protocol;
     doc["pairUpstreamVersion"] = pair.pair.upstreamVersion;
     doc["pairDisplayState"] = ready ? matched_release::componentState(BUILD_PORT_VERSION, pair.pair.screenVersion) : "unknown";
-    doc["pairControllerState"] = ready && controllerReady ? matched_release::componentState(system.version.c_str(), pair.pair.controllerVersion) : "unknown";
-    doc["pairCompatibility"] = ready ? matched_release::compatibility(pair.pair, gm_proto::PROTOCOL_VERSION,
-        system.protocolVersion, controller->getSystemState() == SYSTEM_READY, system.version.c_str()) : "unknown";
+    doc["pairControllerState"] = ready && controllerConnected ? matched_release::componentState(system.version.c_str(), pair.pair.controllerVersion) : "unknown";
+    doc["pairCompatibility"] = "unknown";
+    if (ready && controllerConnected) {
+        doc["pairCompatibility"] = pair.pair.protocol != gm_proto::PROTOCOL_VERSION
+            ? "usb-required"
+            : matched_release::compatibility(pair.pair, gm_proto::PROTOCOL_VERSION,
+                                             system.protocolVersion, true, system.version.c_str());
+    }
 #ifdef GAGGIMATE_KNOB_VALIDATION
     doc["pairCompatibility"] = "simulated";
+    doc["pairControllerState"] = "unknown";
 #endif
     const auto preflight = screenPreflight();
     doc["screenOtaStandaloneQualificationAvailable"] = BUILD_SCREEN_OTA_STANDALONE_QUALIFICATION != 0;

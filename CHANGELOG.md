@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.0-rc.17
+
+- Recommend the newest published K718 release for the connected controller version and protocol, even when a newer port release targets a different controller.
+- Move validation-only replay and isolated screen OTA tests to Settings → Plugins. The physical screen uses the regular interface during replay.
+
 ## 0.5.0-rc.16
 
 - Create the validation simulation banner before the LVGL task starts, removing a cross-core startup race.

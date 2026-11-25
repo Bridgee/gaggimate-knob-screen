@@ -1,5 +1,4 @@
-import KnobValidationPanel from './KnobValidationPanel.jsx';
-import { screenOtaRequest, selectionCurrent, otaStateText } from '../../../utils/screenOta.js';
+import { useScreenUpdate } from './useScreenUpdate.js';
 import {
   FirmwareVersions,
   OfficialUpdateChannel,
@@ -246,12 +245,7 @@ export function SystemTab() {
   const [formData, setFormData] = useState({});
   const [phase, setPhase] = useState(0);
   const [progress, setProgress] = useState(0);
-  const [screenSelection, setScreenSelection] = useState(null);
-  const [screenMessage, setScreenMessage] = useState('');
-  const [screenSubmitting, setScreenSubmitting] = useState(false);
-  const screenRequestPending = useRef(false);
-  const liveOtaSettings = useRef(formData);
-  liveOtaSettings.current = formData;
+  const screenUpdate = useScreenUpdate(apiService, formData);
   const rssi = machine.value.status.rssi;
   // Firmware without the link field only ever talks BLE.
   const controllerLink = machine.value.status.controllerLink ?? 'ble';
@@ -341,47 +335,6 @@ export function SystemTab() {
     return () => clearInterval(timer);
   }, [apiService, formData.pairSupported, formData.updating]);
 
-  const prepareScreenUpdate = options => {
-    const request = screenOtaRequest(formData, options, screenRequestPending.current);
-    if (!request) return;
-    setScreenMessage('');
-    setScreenSelection({
-      request,
-      upstreamVersion: formData.pairUpstreamVersion,
-      controllerVersion: formData.pairControllerVersion,
-      protocol: formData.pairProtocol,
-    });
-  };
-  const confirmScreenUpdate = async () => {
-    if (screenRequestPending.current) return;
-    if (!selectionCurrent(liveOtaSettings.current, screenSelection?.request)) {
-      setScreenMessage(otaStateText('selection-changed'));
-      return;
-    }
-    const request = screenSelection.request;
-    screenRequestPending.current = true;
-    setScreenSubmitting(true);
-    try {
-      const result = await apiService.request(request);
-      setScreenSelection(null);
-      setScreenMessage(result.accepted ? otaStateText('queued') : otaStateText(result.state));
-    } catch {
-      // A missing reply does not prove that staging failed. Never auto-resubmit.
-      setScreenSelection(null);
-      setScreenMessage(
-        'The update reply was interrupted. Reconnect and check screen status before retrying.',
-      );
-    } finally {
-      screenRequestPending.current = false;
-      setScreenSubmitting(false);
-      try {
-        apiService.send({ tp: 'req:ota-settings' });
-      } catch {
-        /* The installed screen may be restarting. */
-      }
-    }
-  };
-
   const formRef = useRef();
 
   const onSubmit = useCallback(
@@ -468,27 +421,24 @@ export function SystemTab() {
             </span>
           </div>
 
-          {formData.validationBuild === true && (
-            <KnobValidationPanel updating={Boolean(formData.updating)} />
-          )}
           <FirmwareVersions
             settings={formData}
-            submitting={submitting || screenSubmitting}
+            submitting={submitting || screenUpdate.screenSubmitting}
             onUpdate={onUpdate}
-            onScreenUpdate={prepareScreenUpdate}
+            onScreenUpdate={screenUpdate.prepareScreenUpdate}
             onCheckPair={() => apiService.send({ tp: 'req:ota-settings', refreshPair: true })}
           />
-          {screenMessage && (
+          {screenUpdate.screenMessage && (
             <p role='status' className='text-sm md:col-span-2'>
-              {screenMessage}
+              {screenUpdate.screenMessage}
             </p>
           )}
           <ScreenUpdateConfirmation
-            selection={screenSelection}
+            selection={screenUpdate.screenSelection}
             settings={formData}
-            submitting={screenSubmitting}
-            onCancel={() => setScreenSelection(null)}
-            onConfirm={confirmScreenUpdate}
+            submitting={screenUpdate.screenSubmitting}
+            onCancel={screenUpdate.cancelScreenUpdate}
+            onConfirm={screenUpdate.confirmScreenUpdate}
           />
           {formData.pairSupported && (
             <div className='md:col-span-2'>
